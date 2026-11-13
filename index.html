@@ -1244,6 +1244,33 @@
             <div class="modal-content">
                 <h3 style="margin: 0 0 15px 0; font-size: 24px;">Deudas y Préstamos</h3>
                 <div class="tc-summary-banner" style="margin-bottom: 12px;">
+                    <!-- TARJETA CAPACIDAD DE ENDEUDAMIENTO -->
+                <div class="glass-sub-box" id="borrowing-capacity-box" style="margin-bottom: 14px; padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">⚖️ Capacidad de Endeudamiento</span>
+                        <span id="cap-usage-badge" class="widget-badge good" style="font-size: 10px;">0% / 30%</span>
+                    </div>
+                    <div class="pace-bar-track" style="height: 8px; margin-bottom: 10px;">
+                        <div id="cap-usage-bar" class="pace-bar-fill" style="width: 0%; background-color: var(--positive);"></div>
+                    </div>
+                    <div class="dash-summary-strip" style="margin-bottom: 8px; padding: 7px 6px;">
+                        <div class="dash-strip-item">
+                            <small id="cap-income-label">Ingreso Base</small>
+                            <strong id="cap-base-income">$0</strong>
+                        </div>
+                        <div class="dash-strip-item">
+                            <small>Cuotas Mes</small>
+                            <strong id="cap-committed-quota" class="negative">$0</strong>
+                        </div>
+                        <div class="dash-strip-item">
+                            <small>Cuota Libre</small>
+                            <strong id="cap-available-quota" class="positive">$0</strong>
+                        </div>
+                    </div>
+                    <div id="cap-loan-estimate" style="font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.4;">
+                        Calculando cupo estimado de crédito...
+                    </div>
+                </div>
                     <div>
                         <span style="color: var(--text-muted); font-size: 12px; display: block;">Deuda Vigente</span>
                         <strong id="debts-total-amount" class="negative" style="font-size: 19px;">$0</strong>

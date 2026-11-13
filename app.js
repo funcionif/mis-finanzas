@@ -1598,6 +1598,36 @@ const renderCardsBreakdown = (balances) => {
 };
 
 const renderDebtsBreakdown = (balances, totalLoansDebt) => {
+    // Actualizar Capacidad de Endeudamiento
+    const cap = calculateBorrowingCapacity(getMonthId(viewDate));
+    const capBadge = document.getElementById('cap-usage-badge');
+    const capBar = document.getElementById('cap-usage-bar');
+    if (capBadge && capBar) {
+        const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
+        capBadge.innerText = `${String(cap.usedPct).replace('.', ',')}% / ${cap.maxPct}%`;
+        capBadge.className = `widget-badge ${cap.availableMonthlyCapacity < 0 ? 'danger' : (ratio > 80 ? 'warn' : 'good')}`;
+        capBar.style.width = `${ratio}%`;
+        capBar.style.backgroundColor = cap.availableMonthlyCapacity < 0 ? 'var(--negative)' : (ratio > 80 ? '#f59e0b' : 'var(--positive)');
+    }
+    if (document.getElementById('cap-income-label')) document.getElementById('cap-income-label').innerText = cap.incomeSource;
+    if (document.getElementById('cap-base-income')) document.getElementById('cap-base-income').innerText = formatCompact(cap.baseIncome);
+    if (document.getElementById('cap-committed-quota')) document.getElementById('cap-committed-quota').innerText = formatCompact(cap.committedMonthly);
+    const availQuotaEl = document.getElementById('cap-available-quota');
+    if (availQuotaEl) {
+        availQuotaEl.innerText = formatCompact(cap.availableMonthlyCapacity);
+        availQuotaEl.className = cap.availableMonthlyCapacity >= 0 ? 'positive' : 'negative';
+    }
+    const estEl = document.getElementById('cap-loan-estimate');
+    if (estEl) {
+        if (cap.baseIncome <= 0) {
+            estEl.innerHTML = 'Configura tu <b>Salario</b> o registra ingresos para calcular tu capacidad.';
+        } else if (cap.availableMonthlyCapacity > 0) {
+            estEl.innerHTML = `💡 Cupo libre aprox.: <b>${formatCompact(cap.estLoan24m)}</b> (a 24m) o <b>${formatCompact(cap.estLoan36m)}</b> (a 36m).`;
+        } else {
+            estEl.innerHTML = `<span class="negative">⚠️ Excedes tu límite recomendado en <b>${formatMoney(Math.abs(cap.availableMonthlyCapacity))}/mes</b>.</span>`;
+        }
+    }
+
     const amountEl = document.getElementById('debts-total-amount');
     const combinedBar = document.getElementById('debts-combined-bar');
     const combinedLegend = document.getElementById('debts-combined-legend');

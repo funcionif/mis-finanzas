@@ -533,6 +533,81 @@ const getMonthlyFlow = (targetMonthId, includePending = false) => {
 
 // --- 6. CÁLCULO DE SALUD FINANCIERA (V2.3) ---
 const calculateFinancialHealth = (monthId, snap) => {
+    const calculateBorrowingCapacity = (monthId, customMaxPct = null) => {
+    const snap = computeBalancesUpTo(monthId);
+    const maxPct = customMaxPct !== null ? customMaxPct : (financeData.healthGoals?.debt || 30);
+
+    // 1. Ingreso Neto Base (prioriza Salario Neto antes de descuentos de préstamos; si no hay, usa ingresos del mes)
+    let baseIncome = 0;
+    let incomeSource = 'Mes actual';
+    const salaryStr = localStorage.getItem('myFinancesSalary');
+    if (salaryStr) {
+        const cfg = JSON.parse(salaryStr);
+        const metrics = calculateLaborMetrics(cfg, currentDate);
+        if (metrics.grossNet > 0) {
+            baseIncome = metrics.grossNet;
+            incomeSource = 'Nómina neta';
+        }
+    }
+    if (baseIncome <= 0) {
+        baseIncome = getMonthlyFlow(monthId, false).inc;
+    }
+
+    // 2. Cuotas mensuales comprometidas (Préstamos fijos + Cupos BNPL + Tarjetas de Crédito)
+    let committedMonthly = 0;
+
+    financeData.customAccounts.filter(a => a.category === 'debt').forEach(d => {
+        const bal = Math.max(0, round2(snap.bals[d.id] || 0));
+        if (bal > 0) {
+            if (d.debtType === 'revolving') {
+                const revQuotas = getPendingRevolvingPurchases(d.id).reduce((s, p) => s + p.nextQuota, 0);
+                committedMonthly = round2(committedMonthly + revQuotas);
+            } else {
+                let q = round2(d.debtMonthlyPayment || 0);
+                if (q === 0) {
+                    q = calculateAmortization(d.debtOriginal || bal, d.debtTotalQuotes || 1, d.debtRate || 0, d.debtRateType || 'monthly').payment;
+                }
+                committedMonthly = round2(committedMonthly + q);
+            }
+        }
+    });
+
+    financeData.customAccounts.filter(a => a.category === 'credit_card').forEach(c => {
+        const bal = Math.max(0, round2(snap.bals[c.id] || 0));
+        if (bal > 0) {
+            const pending = getPendingCardPurchases(c.id);
+            if (pending.length > 0) {
+                const ccQuota = pending.reduce((s, p) => s + p.nextQuota, 0);
+                committedMonthly = round2(committedMonthly + Math.min(bal, ccQuota));
+            } else {
+                committedMonthly = round2(committedMonthly + round2(bal / 12));
+            }
+        }
+    });
+
+    // 3. Capacidad máxima, cuota libre y monto de préstamo estimado (tasa ref. 1,5% M.V.)
+    const maxMonthlyCapacity = round2(baseIncome * (maxPct / 100));
+    const availableMonthlyCapacity = round2(maxMonthlyCapacity - committedMonthly);
+    const usedPct = baseIncome > 0 ? round2((committedMonthly / baseIncome) * 100) : 0;
+
+    const refRate = 0.015;
+    const calcMaxPrincipal = (months) => {
+        if (availableMonthlyCapacity <= 0) return 0;
+        return round2(availableMonthlyCapacity * ((1 - Math.pow(1 + refRate, -months)) / refRate));
+    };
+
+    return {
+        baseIncome,
+        incomeSource,
+        maxPct,
+        usedPct,
+        maxMonthlyCapacity,
+        committedMonthly,
+        availableMonthlyCapacity,
+        estLoan24m: calcMaxPrincipal(24),
+        estLoan36m: calcMaxPrincipal(36)
+    };
+};
     const goals = financeData.healthGoals || { margin: 15, liquidity: 3, debt: 30, networth: 10 };
     const flow = getMonthlyFlow(monthId, false);
     
