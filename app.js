@@ -3967,6 +3967,24 @@ const parseFlexibleDate = (rawStr) => {
     const parsed = new Date(clean); return isNaN(parsed.getTime()) ? null : parsed;
 };
 
+document.getElementById('btn-download-csv-template')?.addEventListener('click', () => {
+    const csvRows = [
+        'FECHA;TIPO;CATEGORIA;SUBCATEGORIA;DESCRIPCION;PRESUPUESTO;VALOR;ESTADO',
+        '2026-11-01;INGRESO;Salario / Nómina;General;Pago nómina quincenal (Ejemplo);2500000;2500000;CERRADO',
+        '2026-11-05;EGRESO;Alimentación;Mercado;Compra supermercado (Ejemplo);400000;385000;CERRADO',
+        '2026-11-20;EGRESO;Vivienda y Servicios;Internet;Factura fibra óptica (Ejemplo);95000;0;PENDIENTE',
+        'AAAA-MM-DD;NOTA (Borra los ejemplos antes de subir);INGRESO o EGRESO;Nombre categoría;Opcional o General;Detalle del movimiento;Monto planeado (0 si no aplica);Monto real;CERRADO o PENDIENTE'
+    ];
+    const csvContent = '\uFEFF' + csvRows.join('\r\n');
+    const url = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Plantilla_MisFinanzas.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
 document.getElementById('btn-import-csv-trigger')?.addEventListener('click', () => document.getElementById('import-csv-input')?.click());
 document.getElementById('import-csv-input')?.addEventListener('change', (event) => {
     const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
