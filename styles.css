@@ -1,5 +1,5 @@
 /* ==========================================
-   DISEÑO LUMINOSO DE CRISTAL ESMERILADO (ESTILO iOS) - v2.1
+   DISEÑO LUMINOSO DE CRISTAL ESMERILADO (ESTILO iOS) - v2.2
    ========================================== */
 
 :root {
@@ -395,15 +395,16 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 
 /* MÓDULO DE PRESUPUESTOS (CATEGORÍAS) */
 .budget-cat-item {
-    padding: 12px 10px;
+    padding: 12px 8px;
     border-bottom: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 12px;
     margin-bottom: 8px;
+    min-width: 0;
 }
 .budget-cat-item:hover { background-color: rgba(148, 163, 184, 0.08); }
 .budget-cat-item:last-child { border-bottom: none; }
-.budget-cat-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-.budget-cat-sub { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.budget-cat-top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 6px; gap: 6px; }
+.budget-cat-sub { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; gap: 6px; }
 
 /* TARJETAS DE CRÉDITO Y DEUDAS EN RESUMEN */
 .dash-summary-strip {
@@ -551,7 +552,7 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 .fab-option[data-type="income"] .fab-option-icon { color: #10b981; }
 .fab-option[data-type="transfer"] .fab-option-icon { color: #007aff; }
 
-.history-card { margin-top: 0; margin-bottom: 20px; }
+.history-card { margin-top: 0; margin-bottom: 12px; }
 .history-card h2 { color: var(--text-main); font-size: 16px; font-weight: 700; }
 .history-list { list-style: none; }
 .history-item { 
@@ -606,14 +607,14 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 .modal.hidden, .hidden { display: none !important; }
 .modal-content { 
     background-color: var(--modal-bg); 
-    padding: 24px; border-radius: 24px; width: 93%; max-width: 410px; max-height: 85vh; overflow-y: auto; 
+    padding: 24px; border-radius: 24px; width: 93%; max-width: 410px; max-height: 85vh; overflow-y: auto; overflow-x: hidden;
     box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15); 
     backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--card-border); 
 }
 @media (prefers-color-scheme: dark) { .modal-content { box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); } }
 .modal-content h3 { margin-bottom: 5px; font-size: 20px; font-weight: 700; }
 
-.form-group { margin-bottom: 15px; }
+.form-group { margin-bottom: 15px; min-width: 0; }
 .form-group label { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 13px; font-weight: 500; }
 .form-group input, .form-group select, .modal-input { 
     width: 100%; min-width: 0; max-width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.35); 
@@ -626,7 +627,7 @@ h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 @media (prefers-color-scheme: dark) { .form-group select option, .form-group select optgroup { background-color: #1e293b; color: #f8fafc; } }
 
 /* AJUSTE DE FILAS Y FECHA/HORA EN SAFARI iOS (16px PREVIENE ZOOM AUTOMÁTICO) */
-.row-group { display: flex; gap: 10px; width: 100%; }
+.row-group { display: flex; gap: 10px; width: 100%; min-width: 0; }
 .row-group .half { flex: 1; min-width: 0; }
 input[type="date"].date-time-input,
 input[type="time"].date-time-input,
@@ -640,6 +641,119 @@ input[type="time"].date-time-input,
     padding: 10px 4px;
     font-size: 16px;
     text-align: center;
+}
+
+/* CALCULADORA INTEGRADA Y VARIACIÓN DE PRESUPUESTO EN TRANSACCIONES */
+.amount-calc-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+}
+.amount-calc-wrap .modal-input {
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+}
+.calc-trigger-btn {
+    background: rgba(148, 163, 184, 0.16);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 10px;
+    padding: 0 9px;
+    font-size: 17px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+}
+.calc-trigger-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.calc-panel {
+    background-color: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 16px;
+    padding: 10px;
+    margin-bottom: 12px;
+    animation: popIn 0.16s ease;
+}
+.calc-display {
+    background-color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 12px;
+    padding: 8px 12px;
+    text-align: right;
+    margin-bottom: 8px;
+}
+@media (prefers-color-scheme: dark) {
+    .calc-display { background-color: rgba(15, 23, 42, 0.6); }
+}
+.calc-display small {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    min-height: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.calc-display strong {
+    display: block;
+    font-size: 21px;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+}
+.calc-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+.calc-btn {
+    padding: 10px 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background-color: rgba(255, 255, 255, 0.72);
+    color: var(--text-main);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+}
+@media (prefers-color-scheme: dark) {
+    .calc-btn { background-color: rgba(30, 41, 59, 0.85); }
+}
+.calc-btn:active { transform: scale(0.94); }
+.calc-btn.calc-op {
+    background-color: rgba(148, 163, 184, 0.2);
+    color: var(--accent);
+}
+.calc-btn.calc-clear {
+    background-color: rgba(255, 59, 48, 0.14);
+    color: var(--negative);
+}
+.calc-btn.calc-ok {
+    background-color: var(--positive);
+    color: #ffffff;
+    border-color: var(--positive);
+}
+
+.tx-variance-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(148, 163, 184, 0.11);
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 10px;
+    padding: 7px 11px;
+    margin-bottom: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
 }
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
@@ -1066,15 +1180,16 @@ input[type="time"].date-time-input,
     pointer-events: none;
 }
 
-/* ESTILOS DE SUBCATEGORÍAS EN PRESUPUESTO */
-.subcat-list { margin-top: 10px; padding-left: 12px; border-left: 2px solid rgba(148,163,184,0.25); display: flex; flex-direction: column; gap: 4px; }
-.subcat-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); font-weight: 500; }
-.add-subcat-form { display: flex; gap: 6px; margin-top: 6px; }
-.add-subcat-form input { flex: 1; padding: 6px 10px; font-size: 16px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.3); background: transparent; color: var(--text-main); outline: none; }
+/* ESTILOS DE SUBCATEGORÍAS EN PRESUPUESTO (SIN DESBORDAMIENTO HORIZONTAL) */
+.subcat-list { margin-top: 10px; padding-left: 10px; border-left: 2px solid rgba(148,163,184,0.25); display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
+.subcat-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); font-weight: 500; min-width: 0; }
+.add-subcat-form { display: flex; gap: 5px; margin-top: 6px; width: 100%; min-width: 0; }
+.add-subcat-form input { flex: 1; min-width: 0; width: 0; padding: 6px 8px; font-size: 16px; border-radius: 8px; border: 1px solid rgba(148,163,184,0.3); background: transparent; color: var(--text-main); outline: none; }
 .add-subcat-form input:focus { border-color: var(--accent); }
+.add-subcat-form button { flex-shrink: 0; }
 
 /* =========================================
-   FOOTER DE COPYRIGHT (AUTH SCREEN)
+   FOOTERS DE COPYRIGHT Y VERSIÓN (AUTH, RESUMEN Y PERFIL)
    ========================================= */
 .app-footer-info {
     position: absolute;
@@ -1093,6 +1208,27 @@ input[type="time"].date-time-input,
     letter-spacing: 0.3px;
     color: var(--text-muted);
     opacity: 0.8;
+}
+
+.main-app-footer {
+    text-align: center;
+    padding: 2px 0 6px 0;
+    pointer-events: none;
+}
+
+.main-app-footer p,
+.profile-version-tag {
+    margin: 0;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+    opacity: 0.78;
+    text-align: center;
+}
+
+.profile-version-tag {
+    margin-top: 16px;
 }
 
 /* =========================================

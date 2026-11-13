@@ -1,5 +1,5 @@
 // ==========================================
-// APP.JS - EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO (v2.1)
+// APP.JS - EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO (v2.2)
 // Requiere que core.js haya sido cargado primero.
 // ==========================================
 
@@ -92,9 +92,10 @@ const openQuickActionModal = ({
         if (showAccountSelect) {
             accGroup.classList.remove('hidden');
             if (document.getElementById('quick-action-account-label')) document.getElementById('quick-action-account-label').innerText = accountLabel;
-            accSelect.innerHTML = assetsAcc.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-            if (defaultAccountId && assetsAcc.some(a => a.id === defaultAccountId)) {
-                accSelect.value = defaultAccountId;
+            accSelect.innerHTML = assetsAcc.map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
+            const preferredId = defaultAccountId || getDefaultAccountId(true);
+            if (preferredId && assetsAcc.some(a => a.id === preferredId)) {
+                accSelect.value = preferredId;
             }
         } else {
             accGroup.classList.add('hidden');
@@ -174,6 +175,8 @@ function forceCloseAllModals() {
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
     document.getElementById('quick-calendar-popover')?.classList.add('hidden');
     document.getElementById('more-menu-overlay')?.classList.add('hidden');
+    document.getElementById('tx-calculator-panel')?.classList.add('hidden');
+    document.getElementById('toggle-tx-calc-btn')?.classList.remove('active');
 
     const fabMenu = document.getElementById('fab-menu');
     const fabBtn = document.getElementById('add-btn');
@@ -209,6 +212,51 @@ function attemptCloseModals() {
     forceCloseAllModals();
     return true;
 }
+
+// Cierre inteligente al tocar/hacer clic fuera de la ventana (protegido contra arrastre de scroll)
+let modalBackdropPressed = null;
+
+document.querySelectorAll('.modal').forEach(modalEl => {
+    modalEl.addEventListener('pointerdown', (e) => {
+        modalBackdropPressed = (e.target === modalEl) ? modalEl : null;
+    });
+    modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl && modalBackdropPressed === modalEl) {
+            attemptCloseModals();
+        }
+        modalBackdropPressed = null;
+    });
+});
+
+// Cierre con tecla ESC (respetando cambios sin guardar)
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (authScreen && !authScreen.classList.contains('hidden')) return;
+
+    const calPop = document.getElementById('quick-calendar-popover');
+    if (calPop && !calPop.classList.contains('hidden')) {
+        calPop.classList.add('hidden');
+        return;
+    }
+
+    const moreOverlay = document.getElementById('more-menu-overlay');
+    if (moreOverlay && !moreOverlay.classList.contains('hidden')) {
+        moreOverlay.classList.add('hidden');
+        setActiveNav(document.getElementById('nav-home'));
+        return;
+    }
+
+    const fabM = document.getElementById('fab-menu');
+    if (fabM && !fabM.classList.contains('hidden')) {
+        fabM.classList.add('hidden');
+        document.getElementById('add-btn')?.classList.remove('active');
+        return;
+    }
+
+    if (isAnyModalOpen()) {
+        attemptCloseModals();
+    }
+});
 
 const syncUserUI = () => {
     if (!authData) return;
@@ -337,23 +385,25 @@ const categoryGroup = document.getElementById('group-category');
 const ccInstallmentsBox = document.getElementById('cc-installments-box');
 const transferAllocBox = document.getElementById('transfer-debt-allocation-box');
 
+const sortAccountsByDefault = (arr) => [...arr].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+
 const renderAccountSelects = (onlyAssets = false, forceIncludeId = null) => {
     const accSelect = document.getElementById('account');
     const toAccSelect = document.getElementById('to-account');
     if (!accSelect || !toAccSelect) return;
 
-    const assets = financeData.customAccounts.filter(a => a.category === 'asset');
-    const cards = financeData.customAccounts.filter(a => a.category === 'credit_card');
-    const debts = financeData.customAccounts.filter(a => a.category === 'debt');
+    const assets = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const cards = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
+    const debts = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'debt'));
 
     let accHtml = `<optgroup label="💵 Liquidez (Cuentas y Efectivo)">`;
-    assets.forEach(acc => accHtml += `<option value="${acc.id}">${acc.name}</option>`);
+    assets.forEach(acc => accHtml += `<option value="${acc.id}">${acc.name}${acc.isDefault ? ' ⭐' : ''}</option>`);
     accHtml += `</optgroup>`;
 
     if (!onlyAssets) {
         if (cards.length > 0) {
             accHtml += `<optgroup label="💳 Tarjetas de Crédito">`;
-            cards.forEach(acc => accHtml += `<option value="${acc.id}">${acc.name}</option>`);
+            cards.forEach(acc => accHtml += `<option value="${acc.id}">${acc.name}${acc.isDefault ? ' ⭐' : ''}</option>`);
             accHtml += `</optgroup>`;
         }
         if (debts.length > 0) {
@@ -367,12 +417,12 @@ const renderAccountSelects = (onlyAssets = false, forceIncludeId = null) => {
     }
 
     let fullHtml = `<optgroup label="💵 Liquidez (Cuentas y Efectivo)">`;
-    assets.forEach(acc => fullHtml += `<option value="${acc.id}">${acc.name}</option>`);
+    assets.forEach(acc => fullHtml += `<option value="${acc.id}">${acc.name}${acc.isDefault ? ' ⭐' : ''}</option>`);
     fullHtml += `</optgroup>`;
 
     if (cards.length > 0) {
         fullHtml += `<optgroup label="💳 Tarjetas de Crédito">`;
-        cards.forEach(acc => fullHtml += `<option value="${acc.id}">${acc.name}</option>`);
+        cards.forEach(acc => fullHtml += `<option value="${acc.id}">${acc.name}${acc.isDefault ? ' ⭐' : ''}</option>`);
         fullHtml += `</optgroup>`;
     }
     if (debts.length > 0) {
@@ -637,10 +687,17 @@ const renderCalendar = (baseDate, containerId) => {
 document.getElementById('clear-day-filter-btn')?.addEventListener('click', () => { selectedCalendarDay = null; updateDashboard(); });
 
 // --- 4. WIDGETS DEL DASHBOARD Y GRÁFICOS SVG ---
+document.getElementById('toggle-zero-accounts-btn')?.addEventListener('click', () => {
+    financeData.hideZeroAccounts = !financeData.hideZeroAccounts;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    updateDashboard();
+});
+
 const renderBalanceSheet = (balances, netWorth, pocketsTotal = 0) => {
     const list = document.getElementById('balance-sheet-list');
     const dateBadge = document.getElementById('balance-sheet-date');
     const totalEl = document.getElementById('balance-sheet-total');
+    const toggleZeroBtn = document.getElementById('toggle-zero-accounts-btn');
     if (!list || !dateBadge || !totalEl) return;
 
     dateBadge.innerText = currentDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
@@ -648,19 +705,37 @@ const renderBalanceSheet = (balances, netWorth, pocketsTotal = 0) => {
     totalEl.className = netWorth >= 0 ? 'positive' : 'negative';
 
     list.innerHTML = '';
+    let hiddenCount = 0;
+
     financeData.customAccounts.forEach(acc => {
         const bal = round2(balances[acc.id] || 0);
+        const isZero = Math.abs(bal) < 0.01;
+
+        if (financeData.hideZeroAccounts && isZero && !acc.showWhenZero) {
+            hiddenCount++;
+            return;
+        }
+
         const isLiab = isLiabilityCategory(acc.category);
         const displayVal = isLiab ? -bal : bal;
         const colorClass = isLiab ? (bal > 0 ? 'negative' : '') : (bal > 0 ? 'positive' : '');
         const icon = acc.category === 'credit_card' ? '💳' : (acc.category === 'debt' ? '💸' : '💵');
+        const starTag = acc.isDefault ? ' ⭐' : '';
 
         const row = document.createElement('div');
         row.className = 'bs-row';
         row.onclick = () => { if (attemptCloseModals()) openAccountDetail(acc.id, 'home'); };
-        row.innerHTML = `<span>${icon} ${acc.name}</span><strong class="${colorClass}">${formatMoney(displayVal)}</strong>`;
+        row.innerHTML = `<span>${icon} ${acc.name}${starTag}</span><strong class="${colorClass}">${formatMoney(displayVal)}</strong>`;
         list.appendChild(row);
     });
+
+    if (toggleZeroBtn) {
+        if (financeData.hideZeroAccounts) {
+            toggleZeroBtn.innerText = hiddenCount > 0 ? `👁️ Ver todas (+${hiddenCount})` : '👁️ Ver todas';
+        } else {
+            toggleZeroBtn.innerText = '👁️ Ocultar $0';
+        }
+    }
 
     if (pocketsTotal > 0) {
         const pRow = document.createElement('div');
@@ -668,6 +743,10 @@ const renderBalanceSheet = (balances, netWorth, pocketsTotal = 0) => {
         pRow.onclick = () => { if (attemptCloseModals()) { document.getElementById('pockets-modal')?.classList.remove('hidden'); renderPocketsView(); } };
         pRow.innerHTML = `<span>🐷 Bolsillos de Ahorro</span><strong class="positive">${formatMoney(pocketsTotal)}</strong>`;
         list.appendChild(pRow);
+    }
+
+    if (list.children.length === 0) {
+        list.innerHTML = '<div class="bs-row" style="cursor:default;"><small style="color:var(--text-muted);">Todas las cuentas están en $ 0,00. Toca "Ver todas" para mostrarlas.</small></div>';
     }
 };
 
@@ -718,7 +797,7 @@ const renderDashboardCardsSummary = (balances) => {
         const row = document.createElement('div');
         row.className = 'dash-tc-row';
         row.onclick = () => { if (attemptCloseModals()) openAccountDetail(card.id, 'home'); };
-        row.innerHTML = `<div class="dash-tc-top"><span>💳 ${card.name} ${pendingCount > 0 ? `<small style="color:var(--accent); font-weight:600;">(${pendingCount} diff.)</small>` : ''}</span><span>${formatMoney(debt)} <small style="color:var(--text-muted); font-weight:500;">/ ${formatMoney(limit)}</small></span></div><div class="pace-bar-track" style="height: 8px;"><div class="pace-bar-fill" style="width: ${pct}%; background-color: ${barColor};"></div><div class="pace-marker" style="left: ${cyclePos}%; height: 14px; top: -3px;"></div></div><div class="dash-tc-sub"><span>Disp: <b style="color:var(--positive);">${formatMoney(limit - debt)}</b>${zeroTag}</span><span>Corte: ${cutoff} • Pago: ${card.paymentDay || '-'}</span></div>`;
+        row.innerHTML = `<div class="dash-tc-top"><span>💳 ${card.name}${card.isDefault ? ' ⭐' : ''} ${pendingCount > 0 ? `<small style="color:var(--accent); font-weight:600;">(${pendingCount} diff.)</small>` : ''}</span><span>${formatMoney(debt)} <small style="color:var(--text-muted); font-weight:500;">/ ${formatMoney(limit)}</small></span></div><div class="pace-bar-track" style="height: 8px;"><div class="pace-bar-fill" style="width: ${pct}%; background-color: ${barColor};"></div><div class="pace-marker" style="left: ${cyclePos}%; height: 14px; top: -3px;"></div></div><div class="dash-tc-sub"><span>Disp: <b style="color:var(--positive);">${formatMoney(limit - debt)}</b>${zeroTag}</span><span>Corte: ${cutoff} • Pago: ${card.paymentDay || '-'}</span></div>`;
         list.appendChild(row);
     });
 };
@@ -936,7 +1015,6 @@ const renderBudgetDonut = (viewMonthId, totalMonthlyExpense) => {
         donutBox.innerHTML = svg + `</svg>`;
     }
 };
-
 // --- 5. HISTORIAL DE MOVIMIENTOS Y PENDIENTES ---
 document.querySelectorAll('#history-filter-pills .pill-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1030,14 +1108,20 @@ const renderHistory = (viewMonthId, isFuture, projectionData) => {
         const catBadge = t.category && t.type !== 'transfer' ? ` • ${t.category}${subText}` : '';
         let extraBadge = '';
 
-        if (isPending) extraBadge += ` • <span style="color:#d97706; font-weight:700;">⏳ Pendiente</span>`;
-        else if (t.budgetedAmount && t.budgetedAmount > 0 && Math.abs(t.budgetedAmount - t.amount) >= 1) {
-            const diff = round2(t.type === 'expense' ? (t.budgetedAmount - t.amount) : (t.amount - t.budgetedAmount));
-            extraBadge += ` • <span style="color:${diff >= 0 ? 'var(--positive)' : 'var(--negative)'};">Ptto: ${formatCompact(t.budgetedAmount)}</span>`;
+        if (isPending) {
+            extraBadge += ` • <span style="color:#d97706; font-weight:700;">⏳ Pendiente</span>`;
+        } else if (t.budgetedAmount && t.budgetedAmount > 0) {
+            const variance = calculateBudgetVariance(t.type, t.amount, t.budgetedAmount);
+            if (variance.hasBudget) {
+                const signPct = variance.pct > 0 ? '+' : '';
+                const pctStr = `${signPct}${String(variance.pct).replace('.', ',')}%`;
+                const colorVar = variance.isFavorable ? 'var(--positive)' : 'var(--negative)';
+                extraBadge += ` • <span style="color:${colorVar}; font-weight:600;">Ptto: ${formatCompact(t.budgetedAmount)} (${pctStr})</span>`;
+            }
         }
 
         if (t.type === 'expense' && t.installments && t.installments > 1) {
-            const rateLabel = (t.zeroInterest || !t.rate) ? '0% int.' : `${String(t.rate).replace('.',',')}%`;
+            const rateLabel = (t.zeroInterest || !t.rate) ? '0% int.' : `${String(t.rate).replace('.', ',')}%`;
             extraBadge += ` • ${t.paidInstallments || 0}/${t.installments}c (${rateLabel})`;
         } else if (t.type === 'transfer' && t.paymentMode === 'extraordinary') {
             extraBadge += ` • 🚀 Abono Extra`;
@@ -1130,6 +1214,7 @@ document.getElementById('btn-reset-tax-params-2026')?.addEventListener('click', 
         hasUnsavedChanges = false;
     }
 });
+
 // --- 7. MÓDULO DE SALARIO, DEPURACIÓN RETEFUENTE, SIMULADOR BONOS Y PRESTACIONES ---
 let quickIncomeContext = null;
 
@@ -1145,7 +1230,9 @@ const openQuickIncomeModal = ({ title, subtitle, category, benefitType = '', des
 
     const accSelect = document.getElementById('quick-income-account');
     if (accSelect) {
-        accSelect.innerHTML = assetsAcc.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        accSelect.innerHTML = assetsAcc.map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
+        const defAsset = getDefaultAccountId(true);
+        if (defAsset && assetsAcc.some(a => a.id === defAsset)) accSelect.value = defAsset;
     }
 
     quickIncomeContext = { isBiweeklyPayroll, metrics, baseDescription: description };
@@ -1358,7 +1445,6 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
 
     const metrics = calculateLaborMetrics(config, currentDate);
 
-    // PINTA DESGLOSE MENSUAL (SIEMPRE MUESTRA LAS 6 TARJETAS + DESGLOSE QUINCENAL 1Q vs 2Q SI APLICA)
     const tabMonthly = document.getElementById('salary-tab-monthly');
     if (tabMonthly) {
         const retSubLabel = metrics.retProc === '0'
@@ -1406,7 +1492,6 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
             ${ley1393AlertHtml}
             ${biweeklyBreakdownHtml}
 
-            <!-- DETALLE DE DEPURACIÓN ART. 383 E.T. -->
             <details style="margin-top: 10px; background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.2); border-radius: 10px; padding: 8px 10px;">
                 <summary style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); cursor: pointer;">📋 Ver Depuración Retefuente (UVT $${metrics.uvt.toLocaleString('es-CO')})</summary>
                 <div style="margin-top: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
@@ -1453,7 +1538,6 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
         });
     }
 
-    // PINTA PROYECCIONES ANUALES Y LIQUIDACIÓN
     const primaTotalNeta = round2(metrics.halfPrimaNeta * 2);
     const annualIntereses = round2(metrics.prestacionesBase * 0.12);
     if (document.getElementById('proj-prima-total')) document.getElementById('proj-prima-total').innerText = formatMoney(primaTotalNeta);
@@ -1471,7 +1555,6 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
     if (document.getElementById('liq-total')) document.getElementById('liq-total').innerText = formatMoney(round2(metrics.liqPrima + metrics.liqCesantias + metrics.liqIntereses));
     document.getElementById('salary-results-box')?.classList.remove('hidden');
 
-    // Enlaza botones de registro rápido para Prestaciones
     const bindBenefitBtn = (btnId, opts) => {
         const btn = document.getElementById(btnId);
         if (!btn) return;
@@ -1528,7 +1611,6 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
 
     renderBonusSimulator();
 
-    // SINCRONIZACIÓN AUTOMÁTICA CON PRESUPUESTO DE INGRESOS (NETO DEPURADO)
     if (shouldSyncBudget && config.syncBudget !== false) {
         const salCatName = '💼 Salario / Nómina';
         if (!financeData.categories.income.some(c => c.name === salCatName)) financeData.categories.income.unshift({ name: salCatName, subcategories: [] });
@@ -1921,7 +2003,6 @@ document.querySelectorAll('#annual-filter-pills .pill-btn').forEach(btn => {
         btn.classList.add('active'); annualViewTab = btn.getAttribute('data-view'); renderAnnualControlTable();
     });
 });
-
 // --- 11. CUENTAS, TARJETAS, DEUDAS, PRESUPUESTOS Y ACTIVOS ---
 const renderAccountsBreakdown = (balances, totalLiquidity) => {
     if (document.getElementById('accounts-total-liquidity')) document.getElementById('accounts-total-liquidity').innerText = formatMoney(totalLiquidity);
@@ -1929,19 +2010,22 @@ const renderAccountsBreakdown = (balances, totalLiquidity) => {
     if (!combinedBar || !combinedLegend || !list) return;
 
     combinedBar.innerHTML = ''; combinedLegend.innerHTML = ''; list.innerHTML = '';
-    financeData.customAccounts.filter(a => a.category === 'asset').forEach((acc, index) => {
+    const assets = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+
+    assets.forEach((acc, index) => {
         const balance = round2(balances[acc.id] || 0);
         let percentage = totalLiquidity > 0 ? Math.max(0, (balance / totalLiquidity) * 100) : 0;
         const color = assetColors[index % assetColors.length];
+        const starTag = acc.isDefault ? ' ⭐' : '';
         if (percentage > 0) combinedBar.innerHTML += `<div class="segment" style="width: ${percentage}%; background-color: ${color};"></div>`;
         combinedLegend.innerHTML += `<div class="legend-item"><span class="dot" style="background-color: ${color};"></span><span>${acc.name} ${percentage.toFixed(0)}%</span></div>`;
         let deleteBtnHTML = acc.id !== 'Efectivo' ? `<button type="button" onclick="event.stopPropagation(); deleteAccount('${acc.id}')" style="background:rgba(255,59,48,0.15); border:none; color:var(--negative); cursor:pointer; font-weight:bold; padding:5px 10px; border-radius:6px; margin-left:10px;">X</button>` : '';
-        list.innerHTML += `<div class="acc-list-item" onclick="openAccountDetail('${acc.id}', 'asset')"><div class="acc-list-name"><span class="dot" style="background-color: ${color};"></span>${acc.name}</div><div style="display:flex; align-items:center;"><span class="acc-list-balance">${formatMoney(balance)}</span>${deleteBtnHTML}<span style="color: var(--text-muted); margin-left: 8px; font-size: 14px;">›</span></div></div>`;
+        list.innerHTML += `<div class="acc-list-item" onclick="openAccountDetail('${acc.id}', 'asset')"><div class="acc-list-name"><span class="dot" style="background-color: ${color};"></span>${acc.name}${starTag}</div><div style="display:flex; align-items:center;"><span class="acc-list-balance">${formatMoney(balance)}</span>${deleteBtnHTML}<span style="color: var(--text-muted); margin-left: 8px; font-size: 14px;">›</span></div></div>`;
     });
 };
 
 const renderCardsBreakdown = (balances) => {
-    const cards = financeData.customAccounts.filter(a => a.category === 'credit_card');
+    const cards = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
     let totalCardsDebt = 0, totalCardsLimit = 0;
     cards.forEach(c => { totalCardsDebt = round2(totalCardsDebt + Math.max(0, round2(balances[c.id] || 0))); totalCardsLimit = round2(totalCardsLimit + round2(c.creditLimit || 0)); });
 
@@ -1956,12 +2040,13 @@ const renderCardsBreakdown = (balances) => {
 
     cards.forEach((card, index) => {
         const debt = round2(balances[card.id] || 0), limit = round2(card.creditLimit || 0), available = round2(limit - debt), color = cardColors[index % cardColors.length];
+        const starTag = card.isDefault ? ' ⭐' : '';
         let debtShare = totalCardsDebt > 0 && debt > 0 ? (debt / totalCardsDebt) * 100 : 0;
         if (debtShare > 0) combinedBar.innerHTML += `<div class="segment" style="width: ${debtShare}%; background-color: ${color};"></div>`;
         combinedLegend.innerHTML += `<div class="legend-item"><span class="dot" style="background-color: ${color};"></span><span>${card.name} ${debtShare.toFixed(0)}%</span></div>`;
         let usagePercent = limit > 0 ? Math.min(100, Math.max(0, (debt / limit) * 100)) : 0;
         let barColor = usagePercent > 80 ? 'var(--negative)' : (usagePercent > 50 ? '#f59e0b' : 'var(--positive)');
-        list.innerHTML += `<div class="tc-card-item" onclick="openAccountDetail('${card.id}', 'credit_card')"><div style="display: flex; justify-content: space-between; align-items: center;"><div class="acc-list-name"><span class="dot" style="background-color: ${color};"></span><span>${card.name}</span></div><div style="display: flex; align-items: center;"><span class="acc-list-balance negative">${formatMoney(debt)}</span><button type="button" onclick="event.stopPropagation(); deleteAccount('${card.id}')" style="background:rgba(255,59,48,0.15); border:none; color:var(--negative); cursor:pointer; font-weight:bold; padding:4px 8px; border-radius:6px; margin-left:8px; font-size: 11px;">X</button><span style="color: var(--text-muted); margin-left: 6px; font-size: 14px;">›</span></div></div><div class="tc-mini-bar"><div class="tc-mini-bar-fill" style="width: ${usagePercent}%; background-color: ${barColor};"></div></div><div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);"><span>Cupo: ${formatMoney(limit)}</span><span style="color: ${available >= 0 ? 'var(--positive)' : 'var(--negative)'}; font-weight: 600;">Disp: ${formatMoney(available)}</span></div></div>`;
+        list.innerHTML += `<div class="tc-card-item" onclick="openAccountDetail('${card.id}', 'credit_card')"><div style="display: flex; justify-content: space-between; align-items: center;"><div class="acc-list-name"><span class="dot" style="background-color: ${color};"></span><span>${card.name}${starTag}</span></div><div style="display: flex; align-items: center;"><span class="acc-list-balance negative">${formatMoney(debt)}</span><button type="button" onclick="event.stopPropagation(); deleteAccount('${card.id}')" style="background:rgba(255,59,48,0.15); border:none; color:var(--negative); cursor:pointer; font-weight:bold; padding:4px 8px; border-radius:6px; margin-left:8px; font-size: 11px;">X</button><span style="color: var(--text-muted); margin-left: 6px; font-size: 14px;">›</span></div></div><div class="tc-mini-bar"><div class="tc-mini-bar-fill" style="width: ${usagePercent}%; background-color: ${barColor};"></div></div><div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);"><span>Cupo: ${formatMoney(limit)}</span><span style="color: ${available >= 0 ? 'var(--positive)' : 'var(--negative)'}; font-weight: 600;">Disp: ${formatMoney(available)}</span></div></div>`;
     });
 };
 
@@ -2074,7 +2159,7 @@ const renderBudgetView = () => {
         });
 
         const metaPlaceholder = currentBudgetType === 'expense' ? 'Límite ($)' : 'Meta ($)';
-        subcatsHtml += `<form onsubmit="event.preventDefault(); addSubcategory('${cat}', '${currentBudgetType}', this.querySelector('.subcat-name-input').value, this.querySelector('.subcat-limit-input').value); this.reset();" class="add-subcat-form"><input type="text" class="subcat-name-input" placeholder="+ Agregar subcategoría..." required style="flex: 2;"><input type="text" inputmode="decimal" class="subcat-limit-input" placeholder="${metaPlaceholder}" style="flex: 1.5; width: 80px;"><button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Añadir</button></form></div>`;
+        subcatsHtml += `<form onsubmit="event.preventDefault(); addSubcategory('${cat}', '${currentBudgetType}', this.querySelector('.subcat-name-input').value, this.querySelector('.subcat-limit-input').value); this.reset();" class="add-subcat-form"><input type="text" class="subcat-name-input" placeholder="+ Subcategoría..." required style="flex: 1.4;"><input type="text" inputmode="decimal" class="subcat-limit-input" placeholder="${metaPlaceholder}" style="flex: 1;"><button type="submit" class="btn btn-secondary" style="padding: 6px 9px; font-size: 11px;">Añadir</button></form></div>`;
 
         const configBtnHtml = !hasSubLimits ? `<button type="button" onclick="openMonthlyBudgetConfig('${cat}', '${currentBudgetType}')" title="Configurar por mes" style="background:rgba(148,163,184,0.18); border:none; color:var(--text-main); border-radius:6px; padding:3px 6px; margin-left:8px; font-size:11px; cursor:pointer;">⚙️ Meses</button>` : '';
         const amountColorClass = (currentBudgetType === 'expense') ? (limit > 0 && spent > limit ? 'negative' : '') : 'positive';
@@ -2191,8 +2276,10 @@ document.getElementById('new-category-form')?.addEventListener('submit', (e) => 
 document.getElementById('new-account-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('new-account-name').value.trim(), initial = parseMoneyInput(document.getElementById('new-account-initial').value);
+    const makeDefault = !!document.getElementById('new-account-default')?.checked;
     if (!name || financeData.customAccounts.some(a => a.id.toLowerCase() === name.toLowerCase())) { alert("Nombre de cuenta inválido o duplicado."); return; }
-    financeData.customAccounts.push({ id: name, name, category: 'asset' });
+    financeData.customAccounts.push({ id: name, name, category: 'asset', isDefault: false, showWhenZero: false });
+    if (makeDefault) setDefaultAccount(name, false);
     if (initial > 0) {
         const now = new Date();
         financeData.transactions.push({ id: now.getTime(), monthId: getMonthId(now), type: 'income', status: 'closed', account: name, description: 'Saldo Inicial', amount: initial, date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: true });
@@ -2211,15 +2298,17 @@ document.getElementById('new-card-debt')?.addEventListener('input', updateNewCar
 document.getElementById('new-card-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('new-card-name').value.trim(), limit = parseMoneyInput(document.getElementById('new-card-limit').value), debt = parseMoneyInput(document.getElementById('new-card-debt').value);
+    const makeDefault = !!document.getElementById('new-card-default')?.checked;
     if (!name || financeData.customAccounts.some(a => a.id.toLowerCase() === name.toLowerCase())) { alert("Nombre de tarjeta inválido o duplicado."); return; }
     financeData.customAccounts.push({
-        id: name, name, category: 'credit_card', creditLimit: limit,
+        id: name, name, category: 'credit_card', isDefault: false, showWhenZero: false, creditLimit: limit,
         cutoffDay: parseInt(document.getElementById('new-card-cutoff').value) || 15,
         paymentDay: parseInt(document.getElementById('new-card-payment').value) || 30,
         rate: parseMoneyInput(document.getElementById('new-card-rate').value),
         rateType: document.getElementById('new-card-rate-type').value,
         zeroInterestMax: parseInt(document.getElementById('new-card-zero-interest-max').value) || 0
     });
+    if (makeDefault) setDefaultAccount(name, false);
     if (debt > 0) {
         const now = new Date();
         financeData.transactions.push({ id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed', account: name, description: 'Saldo Inicial Tarjeta', amount: debt, date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: true });
@@ -2241,7 +2330,7 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
     if (monthlyPay === 0) monthlyPay = calculateAmortization(original, totalQuotes, rate, rateType).payment;
 
     const id = 'Deuda_' + Date.now();
-    financeData.customAccounts.push({ id, name, category: 'debt', debtOriginal: original, debtTotalQuotes: totalQuotes, debtPaidQuotes: paidQuotes, debtRate: rate, debtRateType: rateType, debtMonthlyPayment: monthlyPay });
+    financeData.customAccounts.push({ id, name, category: 'debt', isDefault: false, showWhenZero: false, debtOriginal: original, debtTotalQuotes: totalQuotes, debtPaidQuotes: paidQuotes, debtRate: rate, debtRateType: rateType, debtMonthlyPayment: monthlyPay });
     if (current > 0) {
         const now = new Date();
         financeData.transactions.push({ id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed', account: id, description: 'Saldo Inicial Préstamo', amount: current, date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: true });
@@ -2259,9 +2348,24 @@ window.openAccountDetail = (accountId, originType = 'home') => {
     document.getElementById('accounts-modal')?.classList.remove('hidden');
     document.getElementById('account-detail-view')?.classList.remove('hidden');
 
-    if (document.getElementById('detail-account-name')) document.getElementById('detail-account-name').innerText = acc.name;
+    if (document.getElementById('detail-account-name')) document.getElementById('detail-account-name').innerText = `${acc.name}${acc.isDefault ? ' ⭐' : ''}`;
     if (document.getElementById('reconcile-account-id')) document.getElementById('reconcile-account-id').value = acc.id;
     if (document.getElementById('reconcile-real-amount')) document.getElementById('reconcile-real-amount').value = '';
+
+    const defBtn = document.getElementById('toggle-default-account-btn');
+    if (defBtn) {
+        if (acc.category === 'debt') {
+            defBtn.classList.add('hidden');
+        } else {
+            defBtn.classList.remove('hidden');
+            defBtn.innerText = acc.isDefault ? '⭐ Predeterminada' : '☆ Hacer predet.';
+            defBtn.style.background = acc.isDefault ? 'rgba(245, 158, 11, 0.2)' : '';
+            defBtn.style.color = acc.isDefault ? '#d97706' : '';
+        }
+    }
+
+    const showZeroCheck = document.getElementById('account-show-when-zero');
+    if (showZeroCheck) showZeroCheck.checked = !!acc.showWhenZero;
 
     const currentBal = round2(currentBalances[acc.id] || 0), balEl = document.getElementById('detail-account-balance');
     if (balEl) balEl.innerText = formatMoney(currentBal);
@@ -2331,7 +2435,7 @@ window.openAccountDetail = (accountId, originType = 'home') => {
         if (document.getElementById('pay-debt-principal')) document.getElementById('pay-debt-principal').value = formatNumberInput(nextPrincipal);
         if (document.getElementById('pay-debt-interest')) document.getElementById('pay-debt-interest').value = formatNumberInput(nextInterest);
         if (document.getElementById('pay-debt-date')) document.getElementById('pay-debt-date').value = new Date().toLocaleDateString('en-CA');
-        if (document.getElementById('pay-debt-source-acc')) document.getElementById('pay-debt-source-acc').innerHTML = financeData.customAccounts.filter(a => a.category === 'asset').map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+        if (document.getElementById('pay-debt-source-acc')) document.getElementById('pay-debt-source-acc').innerHTML = sortAccountsByDefault(financeData.customAccounts.filter(a => a.category === 'asset')).map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
 
         const tbody = document.getElementById('amortization-table-body');
         if (tbody) {
@@ -2373,6 +2477,25 @@ window.openAccountDetail = (accountId, originType = 'home') => {
         });
     }
 };
+
+document.getElementById('toggle-default-account-btn')?.addEventListener('click', () => {
+    const accountId = document.getElementById('reconcile-account-id')?.value;
+    if (!accountId) return;
+    setDefaultAccount(accountId, true);
+    renderAccountSelects();
+    updateDashboard();
+    openAccountDetail(accountId, lastAccountViewOrigin);
+});
+
+document.getElementById('account-show-when-zero')?.addEventListener('change', (e) => {
+    const accountId = document.getElementById('reconcile-account-id')?.value;
+    const acc = financeData.customAccounts.find(a => a.id === accountId);
+    if (!acc) return;
+    acc.showWhenZero = !!e.target.checked;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    hasUnsavedChanges = false;
+    updateDashboard();
+});
 
 document.getElementById('edit-card-settings-btn')?.addEventListener('click', () => document.getElementById('edit-card-form')?.classList.toggle('hidden'));
 document.getElementById('edit-card-form')?.addEventListener('submit', (e) => {
@@ -2589,7 +2712,204 @@ document.getElementById('btn-asset-expense')?.addEventListener('click', () => {
         }
     });
 });
-// --- 12. TRANSACCIONES (APERTURA, DIFERIDOS, TRASPASOS Y GUARDADO) ---
+
+// --- 12. TRANSACCIONES, PRESUPUESTO AUTOMÁTICO, VARIACIÓN % Y CALCULADORA ---
+let userEditedBudgetField = false;
+let calcExpression = '';
+
+const updateCalculatorDisplay = () => {
+    const exprEl = document.getElementById('calc-expression');
+    const resEl = document.getElementById('calc-result');
+    if (exprEl) exprEl.innerText = calcExpression || '0';
+    const evalRes = evaluateCalculatorExpression(calcExpression);
+    if (resEl) {
+        resEl.innerText = evalRes.valid ? (formatNumberInput(evalRes.value) || '0,00') : 'Error';
+    }
+};
+
+document.getElementById('toggle-tx-calc-btn')?.addEventListener('click', () => {
+    const panel = document.getElementById('tx-calculator-panel');
+    const btn = document.getElementById('toggle-tx-calc-btn');
+    if (!panel) return;
+    const willOpen = panel.classList.contains('hidden');
+    if (willOpen) {
+        const curAmt = parseMoneyInput(document.getElementById('amount')?.value);
+        calcExpression = curAmt > 0 ? formatNumberInput(curAmt).replace(/\./g, '') : '';
+        updateCalculatorDisplay();
+        panel.classList.remove('hidden');
+        btn?.classList.add('active');
+    } else {
+        panel.classList.add('hidden');
+        btn?.classList.remove('active');
+    }
+});
+
+document.querySelectorAll('#tx-calculator-panel [data-calc]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-calc');
+        const amountEl = document.getElementById('amount');
+        const ops = ['+', '-', '×', '÷'];
+
+        if (key === 'C') {
+            calcExpression = '';
+            updateCalculatorDisplay();
+            return;
+        }
+        if (key === 'BACK') {
+            calcExpression = calcExpression.slice(0, -1);
+            updateCalculatorDisplay();
+            return;
+        }
+        if (key === 'OK') {
+            const evalRes = evaluateCalculatorExpression(calcExpression);
+            if (!evalRes.valid) {
+                alert('Operación matemática inválida.');
+                return;
+            }
+            if (amountEl) {
+                amountEl.value = evalRes.value > 0 ? formatNumberInput(evalRes.value) : '';
+                amountEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            document.getElementById('tx-calculator-panel')?.classList.add('hidden');
+            document.getElementById('toggle-tx-calc-btn')?.classList.remove('active');
+            return;
+        }
+
+        if (ops.includes(key)) {
+            if (!calcExpression) {
+                const curAmt = parseMoneyInput(amountEl?.value);
+                if (curAmt > 0) calcExpression = formatNumberInput(curAmt).replace(/\./g, '');
+                else if (key === '-') { calcExpression = '-'; updateCalculatorDisplay(); return; }
+                else return;
+            }
+            const lastCh = calcExpression.slice(-1);
+            if (ops.includes(lastCh)) {
+                calcExpression = calcExpression.slice(0, -1) + key;
+            } else if (lastCh !== ',') {
+                calcExpression += key;
+            }
+            updateCalculatorDisplay();
+            return;
+        }
+
+        if (key === '%') {
+            const lastCh = calcExpression.slice(-1);
+            if (lastCh >= '0' && lastCh <= '9') {
+                calcExpression += '%';
+                updateCalculatorDisplay();
+            }
+            return;
+        }
+
+        const lastOpIdx = Math.max(
+            calcExpression.lastIndexOf('+'),
+            calcExpression.lastIndexOf('-'),
+            calcExpression.lastIndexOf('×'),
+            calcExpression.lastIndexOf('÷')
+        );
+        const currentToken = calcExpression.slice(lastOpIdx + 1);
+        if (currentToken.endsWith('%')) return;
+
+        if (key === ',') {
+            if (!currentToken.includes(',')) {
+                calcExpression += currentToken.length === 0 ? '0,' : ',';
+                updateCalculatorDisplay();
+            }
+            return;
+        }
+
+        if (key === '000') {
+            if (currentToken.length === 0 || currentToken === '0') {
+                if (currentToken.length === 0) calcExpression += '0';
+            } else {
+                calcExpression += '000';
+            }
+            updateCalculatorDisplay();
+            return;
+        }
+
+        // Dígitos 0-9
+        if (currentToken === '0' && key === '0') return;
+        if (currentToken === '0' && key !== '0') {
+            calcExpression = calcExpression.slice(0, -1) + key;
+        } else {
+            calcExpression += key;
+        }
+        updateCalculatorDisplay();
+    });
+});
+
+const renderTxBudgetVariancePreview = () => {
+    const box = document.getElementById('tx-budget-variance-box');
+    if (!box) return;
+    if (!typeSelect || typeSelect.value === 'transfer') {
+        box.classList.add('hidden');
+        return;
+    }
+
+    const realAmt = parseMoneyInput(document.getElementById('amount')?.value);
+    const budgetAmt = parseMoneyInput(document.getElementById('trans-budgeted-amount')?.value);
+    const variance = calculateBudgetVariance(typeSelect.value, realAmt, budgetAmt);
+
+    if (!variance.hasBudget) {
+        box.classList.add('hidden');
+        return;
+    }
+
+    const signDiff = variance.diff > 0 ? '+' : '';
+    const signPct = variance.pct > 0 ? '+' : '';
+    const colorClass = variance.isFavorable ? 'positive' : 'negative';
+    const diffLabel = typeSelect.value === 'expense'
+        ? (variance.diff >= 0 ? 'Diferencia (Ahorro)' : 'Diferencia (Exceso)')
+        : (variance.diff >= 0 ? 'Diferencia (Superávit)' : 'Diferencia (Faltante)');
+
+    box.classList.remove('hidden');
+    box.innerHTML = `
+        <span>${diffLabel}: <b class="${colorClass}">${signDiff}${formatMoney(variance.diff)}</b></span>
+        <span>Variación: <b class="${colorClass}">${signPct}${String(variance.pct).replace('.', ',')}%</b></span>
+    `;
+};
+
+const autoFillBudgetedAmountForTransaction = (force = false) => {
+    const budgetInput = document.getElementById('trans-budgeted-amount');
+    if (!budgetInput || !typeSelect) return;
+
+    if (typeSelect.value === 'transfer') {
+        budgetInput.value = '';
+        renderTxBudgetVariancePreview();
+        return;
+    }
+
+    const rawCat = document.getElementById('trans-category')?.value || '';
+    const [catName, subName] = rawCat.split('::');
+    const dateVal = document.getElementById('trans-date')?.value;
+    let monthIdx = viewDate.getMonth();
+    if (dateVal && dateVal.includes('-')) {
+        const parts = dateVal.split('-');
+        if (parts[1]) monthIdx = Math.max(0, Math.min(11, parseInt(parts[1], 10) - 1));
+    }
+
+    const budgeted = getBudgetedAmountForSelection(typeSelect.value, catName, subName || 'General', monthIdx);
+    if (force || !userEditedBudgetField) {
+        budgetInput.value = budgeted > 0 ? formatNumberInput(budgeted) : '';
+    }
+    renderTxBudgetVariancePreview();
+};
+
+document.getElementById('trans-category')?.addEventListener('change', () => {
+    userEditedBudgetField = false;
+    autoFillBudgetedAmountForTransaction(true);
+});
+
+document.getElementById('trans-date')?.addEventListener('change', () => {
+    autoFillBudgetedAmountForTransaction(false);
+});
+
+document.getElementById('trans-budgeted-amount')?.addEventListener('input', () => {
+    userEditedBudgetField = true;
+    renderTxBudgetVariancePreview();
+});
+
 const renderTransferAllocationItems = (preselectedIds = []) => {
     if (!transferAllocBox) return;
     const toAcc = getAccountObj(document.getElementById('to-account').value);
@@ -2706,7 +3026,11 @@ document.getElementById('trans-zero-interest')?.addEventListener('change', (e) =
 document.getElementById('trans-installments')?.addEventListener('input', () => updateCCInstallmentsPreview(true));
 document.getElementById('trans-rate')?.addEventListener('input', () => { if (parseMoneyInput(document.getElementById('trans-rate').value) > 0) document.getElementById('trans-zero-interest').checked = false; updateCCInstallmentsPreview(false); });
 document.getElementById('trans-rate-type')?.addEventListener('change', () => updateCCInstallmentsPreview(false));
-document.getElementById('amount')?.addEventListener('input', () => { updateCCInstallmentsPreview(false); updateTransferAllocationSummary(); });
+document.getElementById('amount')?.addEventListener('input', () => {
+    updateCCInstallmentsPreview(false);
+    updateTransferAllocationSummary();
+    renderTxBudgetVariancePreview();
+});
 document.getElementById('transfer-payment-mode')?.addEventListener('change', () => renderTransferAllocationItems(Array.from(document.querySelectorAll('#transfer-pending-items-list input[type="checkbox"]:checked')).map(cb => cb.value)));
 document.getElementById('account')?.addEventListener('change', () => updateCCInstallmentsPreview(true));
 document.getElementById('to-account')?.addEventListener('change', () => renderTransferAllocationItems([]));
@@ -2717,19 +3041,41 @@ document.getElementById('trans-recurrence')?.addEventListener('change', (e) => {
 });
 
 typeSelect?.addEventListener('change', () => {
+    const accEl = document.getElementById('account');
+    const budgetGroup = document.getElementById('group-budgeted-amount');
     if (typeSelect.value === 'transfer') {
-        renderAccountSelects(false); toAccountGroup?.classList.remove('hidden'); categoryGroup?.classList.add('hidden');
-        document.getElementById('cc-installments-box')?.classList.add('hidden'); document.getElementById('label-account').innerText = "Cuenta Origen"; document.getElementById('to-account').required = true;
+        renderAccountSelects(false);
+        if (accEl) accEl.value = getDefaultAccountId(true);
+        toAccountGroup?.classList.remove('hidden');
+        categoryGroup?.classList.add('hidden');
+        budgetGroup?.classList.add('hidden');
+        document.getElementById('cc-installments-box')?.classList.add('hidden');
+        document.getElementById('label-account').innerText = "Cuenta Origen";
+        document.getElementById('to-account').required = true;
         renderTransferAllocationItems([]);
+        renderTxBudgetVariancePreview();
     } else if (typeSelect.value === 'income') {
-        renderAccountSelects(true); toAccountGroup?.classList.add('hidden'); categoryGroup?.classList.remove('hidden');
-        document.getElementById('cc-installments-box')?.classList.add('hidden'); document.getElementById('transfer-debt-allocation-box')?.classList.add('hidden');
-        document.getElementById('label-account').innerText = "Cuenta (Activo / Liquidez)"; document.getElementById('to-account').required = false;
+        renderAccountSelects(true);
+        if (accEl) accEl.value = getDefaultAccountId(true);
+        toAccountGroup?.classList.add('hidden');
+        categoryGroup?.classList.remove('hidden');
+        budgetGroup?.classList.remove('hidden');
+        document.getElementById('cc-installments-box')?.classList.add('hidden');
+        document.getElementById('transfer-debt-allocation-box')?.classList.add('hidden');
+        document.getElementById('label-account').innerText = "Cuenta (Activo / Liquidez)";
+        document.getElementById('to-account').required = false;
         renderCategoryOptions('income');
     } else {
-        renderAccountSelects(false); toAccountGroup?.classList.add('hidden'); categoryGroup?.classList.remove('hidden');
-        document.getElementById('transfer-debt-allocation-box')?.classList.add('hidden'); document.getElementById('label-account').innerText = "Cuenta / Tarjeta"; document.getElementById('to-account').required = false;
-        renderCategoryOptions('expense'); updateCCInstallmentsPreview(true);
+        renderAccountSelects(false);
+        if (accEl) accEl.value = getDefaultAccountId(false);
+        toAccountGroup?.classList.add('hidden');
+        categoryGroup?.classList.remove('hidden');
+        budgetGroup?.classList.remove('hidden');
+        document.getElementById('transfer-debt-allocation-box')?.classList.add('hidden');
+        document.getElementById('label-account').innerText = "Cuenta / Tarjeta";
+        document.getElementById('to-account').required = false;
+        renderCategoryOptions('expense');
+        updateCCInstallmentsPreview(true);
     }
 });
 
@@ -2743,6 +3089,8 @@ const openEditModal = (id) => {
 
     document.getElementById('group-recurrence')?.classList.add('hidden');
     document.getElementById('group-recurrence-count')?.classList.add('hidden');
+    document.getElementById('tx-calculator-panel')?.classList.add('hidden');
+    document.getElementById('toggle-tx-calc-btn')?.classList.remove('active');
 
     const statusEl = document.getElementById('trans-status');
     if (statusEl) statusEl.value = transaction.status === 'pending' ? 'pending' : 'closed';
@@ -2753,6 +3101,11 @@ const openEditModal = (id) => {
     if (document.getElementById('description')) document.getElementById('description').value = transaction.description;
     if (document.getElementById('amount')) document.getElementById('amount').value = formatNumberInput(transaction.amount);
     if (document.getElementById('trans-budgeted-amount')) document.getElementById('trans-budgeted-amount').value = transaction.budgetedAmount ? formatNumberInput(transaction.budgetedAmount) : '';
+    userEditedBudgetField = true;
+
+    const tDate = new Date(transaction.id);
+    if (document.getElementById('trans-date')) document.getElementById('trans-date').value = tDate.toLocaleDateString('en-CA');
+    if (document.getElementById('trans-time')) document.getElementById('trans-time').value = tDate.toTimeString().slice(0, 5);
 
     if (transaction.type === 'transfer') {
         if (document.getElementById('to-account')) document.getElementById('to-account').value = transaction.toAccount;
@@ -2761,6 +3114,10 @@ const openEditModal = (id) => {
         renderTransferAllocationItems(Array.isArray(transaction.allocatedItems) ? transaction.allocatedItems.map(i => String(i.txId || i.debtId)) : []);
     } else {
         if (transaction.category && document.getElementById('trans-category')) document.getElementById('trans-category').value = `${transaction.category}::${transaction.subcategory || 'General'}`;
+        if (!transaction.budgetedAmount) {
+            userEditedBudgetField = false;
+            autoFillBudgetedAmountForTransaction(true);
+        }
         if (transaction.type === 'expense') {
             if (document.getElementById('trans-installments')) document.getElementById('trans-installments').value = transaction.installments || 1;
             if (document.getElementById('trans-rate')) document.getElementById('trans-rate').value = transaction.rate !== undefined ? formatNumberInput(transaction.rate) : '0';
@@ -2770,9 +3127,7 @@ const openEditModal = (id) => {
         }
     }
 
-    const tDate = new Date(transaction.id);
-    if (document.getElementById('trans-date')) document.getElementById('trans-date').value = tDate.toLocaleDateString('en-CA');
-    if (document.getElementById('trans-time')) document.getElementById('trans-time').value = tDate.toTimeString().slice(0, 5);
+    renderTxBudgetVariancePreview();
     document.getElementById('delete-btn')?.classList.remove('hidden');
     modal?.classList.remove('hidden'); hasUnsavedChanges = false;
 };
@@ -2791,15 +3146,21 @@ document.querySelectorAll('.fab-option').forEach(option => {
 
         document.getElementById('group-recurrence')?.classList.remove('hidden');
         document.getElementById('group-recurrence-count')?.classList.add('hidden');
+        document.getElementById('tx-calculator-panel')?.classList.add('hidden');
+        document.getElementById('toggle-tx-calc-btn')?.classList.remove('active');
         if (document.getElementById('trans-status')) document.getElementById('trans-status').value = 'closed';
         if (document.getElementById('trans-installments')) document.getElementById('trans-installments').value = 1;
         if (document.getElementById('trans-zero-interest')) document.getElementById('trans-zero-interest').checked = false;
         document.getElementById('tx-amortization-box')?.classList.add('hidden');
 
-        if (typeSelect) { typeSelect.value = selectedType; typeSelect.dispatchEvent(new Event('change')); }
         const now = new Date();
         if (document.getElementById('trans-date')) document.getElementById('trans-date').value = selectedCalendarDay || now.toLocaleDateString('en-CA');
         if (document.getElementById('trans-time')) document.getElementById('trans-time').value = now.toTimeString().slice(0, 5);
+
+        if (typeSelect) { typeSelect.value = selectedType; typeSelect.dispatchEvent(new Event('change')); }
+        userEditedBudgetField = false;
+        autoFillBudgetedAmountForTransaction(true);
+
         document.getElementById('delete-btn')?.classList.add('hidden');
         fabMenu?.classList.add('hidden'); fabBtn?.classList.remove('active'); modal?.classList.remove('hidden'); hasUnsavedChanges = false;
     });
@@ -3122,7 +3483,7 @@ document.getElementById('import-csv-input')?.addEventListener('change', (event) 
 
             if (idxFecha === -1 || idxTipo === -1) { alert("Faltan columnas FECHA o REGISTRO/TIPO en el CSV."); return; }
 
-            const defaultAcc = financeData.customAccounts.find(a => a.category === 'asset')?.id || 'Efectivo';
+            const defaultAcc = getDefaultAccountId(true);
             const importedTxs = [];
 
             for (let i = 1; i < lines.length; i++) {
@@ -3172,7 +3533,7 @@ document.getElementById('import-csv-input')?.addEventListener('change', (event) 
 });
 
 // ==========================================
-// 15. ARRANQUE DE LA APLICACIÓN Y SERVICE WORKER (V2.1)
+// 15. ARRANQUE DE LA APLICACIÓN Y SERVICE WORKER (V2.2)
 // ==========================================
 const savedTheme = localStorage.getItem('myFinancesTheme') || 'purple';
 applyThemeUI(savedTheme);

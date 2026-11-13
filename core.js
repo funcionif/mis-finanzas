@@ -1,5 +1,5 @@
 // ==========================================
-// CORE.JS - EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS (v2.1)
+// CORE.JS - EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS (v2.2)
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
 
@@ -44,15 +44,16 @@ const registerUser = (name, pin, usePin) => {
 
 // --- 3. BASE DE DATOS LOCAL Y ESTRUCTURAS ---
 let financeData = JSON.parse(localStorage.getItem('myFinances')) || {
-    transactions: [], customAccounts: [], monthlyBudget: 0, fixedAssets: [], pockets: []
+    transactions: [], customAccounts: [], monthlyBudget: 0, fixedAssets: [], pockets: [], hideZeroAccounts: false
 };
 
 if (!financeData.fixedAssets) financeData.fixedAssets = [];
 if (!financeData.pockets) financeData.pockets = [];
 if (!financeData.customAccounts || financeData.customAccounts.length === 0) {
-    financeData.customAccounts = [{ id: 'Efectivo', name: 'Efectivo', category: 'asset' }];
+    financeData.customAccounts = [{ id: 'Efectivo', name: 'Efectivo', category: 'asset', isDefault: false, showWhenZero: false }];
 }
 if (financeData.monthlyBudget === undefined) financeData.monthlyBudget = 0;
+if (financeData.hideZeroAccounts === undefined) financeData.hideZeroAccounts = false;
 
 if (!financeData.categories || (financeData.categories.expense && financeData.categories.expense.length === 0 && financeData.categories.income && financeData.categories.income.length === 0) || (financeData.categories.expense.length > 0 && typeof financeData.categories.expense[0] === 'string')) {
     financeData.categories = {
@@ -86,10 +87,12 @@ if (!financeData.plannerExtras) financeData.plannerExtras = [];
 financeData.customAccounts.forEach(acc => {
     if (!acc.category) acc.category = 'asset';
     if (acc.category === 'liability') acc.category = 'debt';
+    if (acc.isDefault === undefined) acc.isDefault = false;
+    if (acc.showWhenZero === undefined) acc.showWhenZero = false;
 });
 localStorage.setItem('myFinances', JSON.stringify(financeData));
 
-// --- 4. MOTOR MATEMÁTICO, DECIMALES Y FORMATOS ---
+// --- 4. MOTOR MATEMÁTICO, DECIMALES, CALCULADORA Y FORMATOS ---
 const round2 = (num) => Math.round(((num || 0) + Number.EPSILON) * 100) / 100;
 
 const parseMoneyInput = (val) => {
@@ -196,10 +199,129 @@ const formatCompact = (amount) => {
     return `${sign}${abs.toFixed(2)}`;
 };
 
-// --- 5. LÓGICA FINANCIERA (BALANCES, DEUDAS Y FLUJO) ---
+// Evaluador matemático puro para la calculadora integrada (sin eval)
+const evaluateCalculatorExpression = (rawExpr) => {
+    if (!rawExpr) return { valid: true, value: 0 };
+    let clean = String(rawExpr)
+        .replace(/\s+/g, '')
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/,/g, '.');
+
+    // Quitar operadores sueltos al final para evaluar parciales
+    clean = clean.replace(/[+\-*/.]+$/, '');
+    if (!clean) return { valid: true, value: 0 };
+
+    // Tokenizar números (con soporte para % al final del número) y operadores
+    const tokens = [];
+    let i = 0;
+    while (i < clean.length) {
+        const ch = clean[i];
+        if ((ch >= '0' && ch <= '9') || ch === '.' || ((ch === '-' || ch === '+') && (i === 0 || ['+', '-', '*', '/'].includes(clean[i - 1])))) {
+            let numStr = ch;
+            i++;
+            while (i < clean.length && ((clean[i] >= '0' && clean[i] <= '9') || clean[i] === '.')) {
+                numStr += clean[i];
+                i++;
+            }
+            let isPct = false;
+            if (i < clean.length && clean[i] === '%') {
+                isPct = true;
+                i++;
+            }
+            const parsed = parseFloat(numStr);
+            if (isNaN(parsed)) return { valid: false, value: 0 };
+            tokens.push({ type: 'num', value: parsed, isPct });
+        } else if (['+', '-', '*', '/'].includes(ch)) {
+            tokens.push({ type: 'op', value: ch });
+            i++;
+        } else {
+            return { valid: false, value: 0 };
+        }
+    }
+
+    if (tokens.length === 0) return { valid: true, value: 0 };
+
+    // Resolver porcentajes tipo calculadora estándar:
+    // Ej: A + B% -> A + (A * B / 100); A * B% -> A * (B / 100)
+    const resolved = [];
+    for (let t = 0; t < tokens.length; t++) {
+        const tok = tokens[t];
+        if (tok.type === 'num' && tok.isPct) {
+            if (resolved.length >= 2 && resolved[resolved.length - 1].type === 'op' && resolved[resolved.length - 2].type === 'num') {
+                const op = resolved[resolved.length - 1].value;
+                const base = resolved[resolved.length - 2].value;
+                if (op === '+' || op === '-') {
+                    resolved.push({ type: 'num', value: (base * tok.value) / 100 });
+                } else {
+                    resolved.push({ type: 'num', value: tok.value / 100 });
+                }
+            } else {
+                resolved.push({ type: 'num', value: tok.value / 100 });
+            }
+        } else {
+            resolved.push(tok);
+        }
+    }
+
+    // Primera pasada: multiplicación y división
+    const pass1 = [resolved[0]];
+    for (let t = 1; t < resolved.length; t += 2) {
+        const opTok = resolved[t];
+        const nextNum = resolved[t + 1];
+        if (!opTok || !nextNum || nextNum.type !== 'num') break;
+        if (opTok.value === '*') {
+            pass1[pass1.length - 1] = { type: 'num', value: pass1[pass1.length - 1].value * nextNum.value };
+        } else if (opTok.value === '/') {
+            if (nextNum.value === 0) return { valid: false, value: 0 };
+            pass1[pass1.length - 1] = { type: 'num', value: pass1[pass1.length - 1].value / nextNum.value };
+        } else {
+            pass1.push(opTok, nextNum);
+        }
+    }
+
+    // Segunda pasada: suma y resta
+    let acc = pass1[0].value;
+    for (let t = 1; t < pass1.length; t += 2) {
+        const opTok = pass1[t];
+        const nextNum = pass1[t + 1];
+        if (!opTok || !nextNum) break;
+        if (opTok.value === '+') acc += nextNum.value;
+        else if (opTok.value === '-') acc -= nextNum.value;
+    }
+
+    if (!isFinite(acc) || isNaN(acc)) return { valid: false, value: 0 };
+    return { valid: true, value: round2(acc) };
+};
+
+// --- 5. LÓGICA FINANCIERA (BALANCES, DEUDAS, PRESUPUESTO Y FLUJO) ---
 const getAccountObj = (id) => financeData.customAccounts.find(a => a.id === id) || { id: id, name: id, category: 'asset' };
 const isLiabilityCategory = (cat) => cat === 'credit_card' || cat === 'debt';
 const isTxClosed = (t) => t.status !== 'pending';
+
+const setDefaultAccount = (accountId, toggleIfAlreadyDefault = false) => {
+    const target = financeData.customAccounts.find(a => a.id === accountId);
+    if (!target) return null;
+    const willBeDefault = toggleIfAlreadyDefault ? !target.isDefault : true;
+    financeData.customAccounts.forEach(a => {
+        a.isDefault = (a.id === accountId) ? willBeDefault : false;
+    });
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    return willBeDefault;
+};
+
+const getDefaultAccountId = (onlyAssets = false) => {
+    if (onlyAssets) {
+        const defAsset = financeData.customAccounts.find(a => a.category === 'asset' && a.isDefault);
+        if (defAsset) return defAsset.id;
+        const firstAsset = financeData.customAccounts.find(a => a.category === 'asset');
+        return firstAsset ? firstAsset.id : 'Efectivo';
+    }
+    const defAny = financeData.customAccounts.find(a => a.isDefault);
+    if (defAny) return defAny.id;
+    const firstAcc = financeData.customAccounts[0];
+    return firstAcc ? firstAcc.id : 'Efectivo';
+};
 
 const getCategoryLimitForMonth = (catObj, monthIndex) => {
     let subcatsTotalLimit = 0;
@@ -215,6 +337,46 @@ const getCategoryLimitForMonth = (catObj, monthIndex) => {
         return round2(cfg.months[monthIndex] || 0);
     }
     return round2(cfg.general || 0);
+};
+
+// Obtiene el monto presupuestado configurado para una categoría/subcategoría en un mes dado
+const getBudgetedAmountForSelection = (type, categoryName, subcategoryName, monthIndex) => {
+    if (!type || type === 'transfer' || !categoryName) return 0;
+    const catList = financeData.categories[type] || [];
+    const catObj = catList.find(c => c.name === categoryName);
+    if (!catObj) return 0;
+
+    if (subcategoryName && subcategoryName !== 'General' && Array.isArray(catObj.subcategories)) {
+        const subObj = catObj.subcategories.find(s => s.name === subcategoryName);
+        if (subObj && round2(subObj.limit || 0) > 0) {
+            return round2(subObj.limit);
+        }
+    }
+
+    const cfg = financeData.categoryBudgets[catObj.name];
+    if (!cfg) return 0;
+    if (typeof cfg === 'number') return round2(cfg);
+    if (cfg.isMonthly && Array.isArray(cfg.months)) {
+        return round2(cfg.months[monthIndex] || 0);
+    }
+    return round2(cfg.general || 0);
+};
+
+// Calcula Diferencia ($) y Variación (%) entre Real y Presupuestado (fórmula Excel)
+const calculateBudgetVariance = (type, realAmount, budgetedAmount) => {
+    const real = round2(realAmount || 0);
+    const budget = round2(budgetedAmount || 0);
+    if (budget <= 0 || type === 'transfer') {
+        return { hasBudget: false, diff: 0, pct: 0, isFavorable: true };
+    }
+
+    const diff = type === 'income'
+        ? round2(real - budget)
+        : round2(budget - real);
+    const pct = round2(((real - budget) / budget) * 100);
+    const isFavorable = type === 'income' ? (real >= budget) : (real <= budget);
+
+    return { hasBudget: true, diff, pct, isFavorable };
 };
 
 const computeBalancesUpTo = (targetMonthId) => {
@@ -331,14 +493,14 @@ const DEFAULT_TAX_PARAMS_2026 = {
     uvt: 52374,
     smmlv: 1750905,
     transportAid: 249095,
-    exempt25AnnualUvt: 790,       // Tope anual 25% exento (65,83 UVT/mes)
-    global40AnnualUvt: 1340,       // Tope global anual 40% (111,67 UVT/mes)
-    prepaidMonthlyUvt: 16,         // Tope mensual Medicina Prepagada (192 UVT/año)
-    dependentsMonthlyUvt: 32,      // Tope mensual Dependientes (384 UVT/año)
-    housingMonthlyUvt: 100,        // Tope mensual Intereses Vivienda (1.200 UVT/año)
-    voluntaryAnnualUvt: 3800,      // Tope anual AFC / FVP (316,67 UVT/mes)
-    nonSalaryCapPct: 40,           // Ley 1393: Tope 40% ingresos no salariales
-    fspSmmlvThreshold: 4           // Umbral FSP: 4 SMMLV
+    exempt25AnnualUvt: 790,
+    global40AnnualUvt: 1340,
+    prepaidMonthlyUvt: 16,
+    dependentsMonthlyUvt: 32,
+    housingMonthlyUvt: 100,
+    voluntaryAnnualUvt: 3800,
+    nonSalaryCapPct: 40,
+    fspSmmlvThreshold: 4
 };
 
 const getTaxParams = () => {
@@ -363,7 +525,6 @@ const saveTaxParams = (params) => {
     return merged;
 };
 
-// Tabla Marginal Art. 383 Estatuto Tributario (Ley 2277)
 const calcArt383TableUVT = (uvtBase) => {
     if (uvtBase <= 95) return 0;
     if (uvtBase <= 150) return (uvtBase - 95) * 0.19;
@@ -383,21 +544,18 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const basic = round2(config.basicSalary || 0);
     const nonSalary = round2(config.nonSalary || 0);
 
-    // 1. Ley 1393: Regla del 40% sobre ingresos no salariales para IBC
     const totalRemuneration = round2(basic + nonSalary);
     const nonSalaryCapRatio = (params.nonSalaryCapPct || 40) / 100;
     const maxNonSalary = round2(totalRemuneration * nonSalaryCapRatio);
     const excessNonSalary = nonSalary > maxNonSalary ? round2(nonSalary - maxNonSalary) : 0;
     const ibc = round2(basic + excessNonSalary);
 
-    // 2. Auxilio de Transporte (< 2 SMMLV)
     const effectiveTransport = overrideTransport !== null
         ? round2(overrideTransport)
         : ((config.transportAuto !== false)
             ? (basic > 0 && basic <= round2(smmlv * 2) ? rawTransport : 0)
             : rawTransport);
 
-    // 3. Seguridad Social (Salud 4%, Pensión 4% y FSP progresivo desde umbral SMMLV)
     const health = round2(ibc * 0.04);
     const pension = round2(ibc * 0.04);
 
@@ -413,12 +571,10 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     }
     fsp = round2(fsp);
 
-    // 4. Depuración Retención en la Fuente (Guía Excel Art. 383 y 387 E.T. + Ley 2277)
     const ingresosBrutos = round2(basic + nonSalary);
     const incrngo = round2(health + pension + fsp);
     const rentaLiquida = Math.max(0, round2(ingresosBrutos - incrngo));
 
-    // Alivios Tributarios con sus topes mensuales legales en UVT
     const maxPrepaidCOP = round2((params.prepaidMonthlyUvt || 16) * uvt);
     const dedPrepaid = Math.min(round2(config.dedPrepaid || 0), maxPrepaidCOP);
 
@@ -434,11 +590,9 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const totalDeduccionesArt387 = round2(dedPrepaid + dedHousing + dedDependents);
     const baseNeta25 = Math.max(0, round2(rentaLiquida - totalDeduccionesArt387 - dedVoluntary));
 
-    // Renta Exenta del 25% (Tope 790 UVT anuales / 12 = 65,83 UVT/mes)
     const exempt25MonthlyCapCOP = round2(((params.exempt25AnnualUvt || 790) / 12) * uvt);
     const exempt25 = Math.min(round2(baseNeta25 * 0.25), exempt25MonthlyCapCOP);
 
-    // Total Beneficios Tributarios sujetos al límite global del 40% y 1.340 UVT anuales (111,67 UVT/mes)
     const totalBeneficiosBrutos = round2(totalDeduccionesArt387 + dedVoluntary + exempt25);
     const global40PctCapCOP = round2(rentaLiquida * 0.40);
     const globalUvtMonthlyCapCOP = round2(((params.global40AnnualUvt || 1340) / 12) * uvt);
@@ -463,7 +617,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const net = round2(basic + effectiveTransport + nonSalary - health - pension - fsp - ret);
     const prestacionesBase = round2(basic + effectiveTransport);
 
-    // 4B. Desglose Quincenal (1Q vs 2Q)
     const biweeklyRetMode = config.biweeklyRetMode || 'prorated';
     const gross1Q = round2((basic + effectiveTransport + nonSalary) / 2);
     const gross2Q = round2((basic + effectiveTransport + nonSalary) - gross1Q);
@@ -475,7 +628,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const net1Q = Math.max(0, round2(gross1Q - ss1Q - ret1Q));
     const net2Q = Math.max(0, round2(gross2Q - ss2Q - ret2Q));
 
-    // 5. Depuración independiente de Prima Legal (Art. 383 E.T. - Semestral)
     const halfPrimaBruta = round2(prestacionesBase / 2);
     const primaExempt25 = Math.min(round2(halfPrimaBruta * 0.25), exempt25MonthlyCapCOP, globalUvtMonthlyCapCOP);
     const primaBaseGravable = Math.max(0, round2(halfPrimaBruta - primaExempt25));
@@ -485,7 +637,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     else if (retProc === '2') retPrima = round2(primaBaseGravable * (effectiveRetPct / 100));
     const halfPrimaNeta = Math.max(0, round2(halfPrimaBruta - retPrima));
 
-    // 6. Fechas y Días de Liquidación (Año Comercial 360/30)
     let startObj = new Date(today.getFullYear(), 0, 1);
     if (config.startDate) { const [sy, sm, sd] = config.startDate.split('-').map(Number); startObj = new Date(sy, sm - 1, sd); }
     const currentYear = today.getFullYear();
@@ -498,7 +649,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     let liqCesantias = round2((prestacionesBase * daysYear) / 360);
     let liqIntereses = round2((liqCesantias * daysYear * 0.12) / 360);
 
-    // Rastreo de pagos anticipados registrados en el historial del año / semestre en curso
     let advPrima = 0, advCes = 0, advInt = 0;
     financeData.transactions.forEach(t => {
         if (t.type === 'income' && isTxClosed(t)) {
@@ -537,7 +687,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     };
 };
 
-// Simulador Marginal de Bonificación Ocasional
 const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', customParams = null) => {
     const bonus = Math.max(0, round2(bonusAmount));
     const params = customParams || getTaxParams();
@@ -545,21 +694,10 @@ const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', custo
 
     if (bonus <= 0) {
         return {
-            bonus: 0,
-            bonusType,
-            baseMetrics,
-            simMetrics: baseMetrics,
-            deltaHealth: 0,
-            deltaPension: 0,
-            deltaFsp: 0,
-            deltaSS: 0,
-            deltaRet: 0,
-            totalDeductions: 0,
-            netBonus: 0,
-            effectiveTaxRate: 0,
-            crossedFsp: false,
-            triggeredLey1393: false,
-            deltaExcessLey1393: 0
+            bonus: 0, bonusType, baseMetrics, simMetrics: baseMetrics,
+            deltaHealth: 0, deltaPension: 0, deltaFsp: 0, deltaSS: 0, deltaRet: 0,
+            totalDeductions: 0, netBonus: 0, effectiveTaxRate: 0,
+            crossedFsp: false, triggeredLey1393: false, deltaExcessLey1393: 0
         };
     }
 
@@ -580,18 +718,9 @@ const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', custo
     const deltaExcessLey1393 = Math.max(0, round2(simMetrics.excessNonSalary - baseMetrics.excessNonSalary));
 
     return {
-        bonus,
-        bonusType,
-        baseMetrics,
-        simMetrics,
-        deltaHealth,
-        deltaPension,
-        deltaFsp,
-        deltaSS,
-        deltaRet,
-        totalDeductions,
-        netBonus,
-        effectiveTaxRate,
+        bonus, bonusType, baseMetrics, simMetrics,
+        deltaHealth, deltaPension, deltaFsp, deltaSS, deltaRet,
+        totalDeductions, netBonus, effectiveTaxRate,
         crossedFsp: baseMetrics.fsp === 0 && simMetrics.fsp > 0,
         triggeredLey1393: deltaExcessLey1393 > 0,
         deltaExcessLey1393

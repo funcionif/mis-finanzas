@@ -1,9 +1,9 @@
 // ==========================================
-// SW.JS - SERVICE WORKER INTELIGENTE (v2.1)
+// SW.JS - SERVICE WORKER INTELIGENTE (v2.2)
 // Optimizado para Safari iOS y GitHub Pages
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v2.1';
+const CACHE_NAME = 'mis-finanzas-v2.2';
 
 const CORE_ASSETS = [
     './',
@@ -28,7 +28,7 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// 2. ACTIVACIÓN: Elimina cualquier caché de versiones anteriores (v1.0 / v2.0)
+// 2. ACTIVACIÓN: Elimina cualquier caché de versiones anteriores (v1.0 / v2.0 / v2.1)
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((cacheNames) => {
