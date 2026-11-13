@@ -1987,3 +1987,17 @@ input[type="time"].date-time-input,
 .theme-color-btn { height: 55px; border-radius: 14px; border: 3px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 .theme-color-btn:active { transform: scale(0.92); }
 .theme-color-btn.active { border-color: var(--text-main); transform: scale(1.05); }
+/* CAJAS SECUNDARIAS ADAPTABLES (MODO CLARO Y OSCURO) */
+.glass-sub-box {
+    background-color: rgba(255, 255, 255, 0.58);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 10px;
+    padding: 9px 10px;
+    color: var(--text-main);
+}
+@media (prefers-color-scheme: dark) {
+    .glass-sub-box {
+        background-color: rgba(15, 23, 42, 0.55);
+        border-color: rgba(148, 163, 184, 0.24);
+    }
+}

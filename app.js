@@ -2989,7 +2989,7 @@ function renderDebtPlanner() {
     const extrasListEl = document.getElementById('planner-extra-list');
     if (extrasListEl) {
         extrasListEl.innerHTML = financeData.plannerExtras.map((ex, i) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.4); padding:4px 8px; border-radius:6px; margin-bottom:4px; font-size:11px;">
+            <div class="glass-sub-box" style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; border-radius:8px; margin-bottom:4px; font-size:11px;">
                 <span>${ex.month}: <b>${formatMoney(ex.amount)}</b></span>
                 <button type="button" onclick="removePlannerExtra(${i})" style="color:var(--negative); background:none; border:none; cursor:pointer;">X</button>
             </div>
@@ -3825,17 +3825,42 @@ document.getElementById('quick-income-form')?.addEventListener('submit', (e) => 
 });
 
 const renderBonusSimulator = () => {
-    const resultsBox = document.getElementById('sim-bonus-results'); if (!resultsBox) return;
-    const bonusAmt = parseMoneyInput(document.getElementById('sim-bonus-amount')?.value), bonusType = document.getElementById('sim-bonus-type')?.value || 'non_salary';
-    if (bonusAmt <= 0) { resultsBox.classList.add('hidden'); resultsBox.innerHTML = ''; return; }
-    const salaryStr = localStorage.getItem('myFinancesSalary'), config = salaryStr ? JSON.parse(salaryStr) : { basicSalary: parseMoneyInput(document.getElementById('profile-basic-salary')?.value), nonSalary: parseMoneyInput(document.getElementById('profile-non-salary')?.value), transportAuto: document.getElementById('profile-transport-auto')?.checked !== false, retProc: document.getElementById('profile-retefuente-proc')?.value || '1', retPct: parseMoneyInput(document.getElementById('profile-retefuente-pct')?.value) || 0, dedPrepaid: parseMoneyInput(document.getElementById('profile-ded-prepaid')?.value) || 0, dedHousing: parseMoneyInput(document.getElementById('profile-ded-housing')?.value) || 0, dedVoluntary: parseMoneyInput(document.getElementById('profile-ded-voluntary')?.value) || 0, dedDependents: !!document.getElementById('profile-ded-dependents')?.checked };
+    const resultsBox = document.getElementById('sim-bonus-results');
+    if (!resultsBox) return;
+    const bonusAmt = parseMoneyInput(document.getElementById('sim-bonus-amount')?.value);
+    const bonusType = document.getElementById('sim-bonus-type')?.value || 'non_salary';
+    if (bonusAmt <= 0) {
+        resultsBox.classList.add('hidden');
+        resultsBox.innerHTML = '';
+        return;
+    }
+    const salaryStr = localStorage.getItem('myFinancesSalary');
+    const config = salaryStr ? JSON.parse(salaryStr) : {
+        basicSalary: parseMoneyInput(document.getElementById('profile-basic-salary')?.value),
+        nonSalary: parseMoneyInput(document.getElementById('profile-non-salary')?.value),
+        transportAuto: document.getElementById('profile-transport-auto')?.checked !== false,
+        retProc: document.getElementById('profile-retefuente-proc')?.value || '1',
+        retPct: parseMoneyInput(document.getElementById('profile-retefuente-pct')?.value) || 0,
+        dedPrepaid: parseMoneyInput(document.getElementById('profile-ded-prepaid')?.value) || 0,
+        dedHousing: parseMoneyInput(document.getElementById('profile-ded-housing')?.value) || 0,
+        dedVoluntary: parseMoneyInput(document.getElementById('profile-ded-voluntary')?.value) || 0,
+        dedDependents: !!document.getElementById('profile-ded-dependents')?.checked
+    };
     const sim = simulateExtraBonus(config, bonusAmt, bonusType);
     let alertsHtml = '';
     if (sim.triggeredLey1393) alertsHtml += `<div style="font-size: 10.5px; color: #d97706; margin-top: 6px;">⚠️ <b>Ley 1393 (40%):</b> ${formatMoney(sim.deltaExcessLey1393)} del bono entra a sumar al IBC.</div>`;
     if (sim.crossedFsp) alertsHtml += `<div style="font-size: 10.5px; color: #d97706; margin-top: 4px;">⚠️ <b>Umbral FSP:</b> Con este bono superas ${sim.baseMetrics.params.fspSmmlvThreshold} SMMLV y se activa Fondo de Solidaridad.</div>`;
     resultsBox.classList.remove('hidden');
-    resultsBox.innerHTML = `<div style="background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 10px; padding: 9px 10px; font-size: 11px;"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Bonificación Bruta:</span><b>${formatMoney(sim.bonus)}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>(-) Impacto Salud, Pensión y FSP:</span><span class="negative">-${formatMoney(sim.deltaSS)}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>(-) Impacto Retefuente (Art. 383):</span><span class="negative">-${formatMoney(sim.deltaRet)}</span></div><div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px dashed rgba(148,163,184,0.35);"><div><span style="display:block; font-size:10px; color:var(--text-muted);">Neto en Bolsillo (Desc. ${String(sim.effectiveTaxRate).replace('.', ',')}%)</span><strong class="positive" style="font-size:15px;">${formatMoney(sim.netBonus)}</strong></div><button type="button" id="btn-reg-simulated-bonus" class="btn-confirm-pending" style="margin-top:0;">+ Registrar</button></div>${alertsHtml}</div>`;
-    document.getElementById('btn-reg-simulated-bonus')?.addEventListener('click', () => { openQuickIncomeModal({ title: 'Registrar Bonificación', subtitle: `Neto estimado tras deducciones marginales`, category: '💼 Salario / Nómina', description: bonusType === 'salary' ? '🎯 Bonificación Salarial' : '🎯 Bonificación Ocasional', amount: sim.netBonus }); });
+    resultsBox.innerHTML = `<div class="glass-sub-box" style="font-size: 11px;"><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>Bonificación Bruta:</span><b>${formatMoney(sim.bonus)}</b></div><div style="display:flex; justify-content:space-between; margin-bottom:4px;"><span>(-) Impacto Salud, Pensión y FSP:</span><span class="negative">-${formatMoney(sim.deltaSS)}</span></div><div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>(-) Impacto Retefuente (Art. 383):</span><span class="negative">-${formatMoney(sim.deltaRet)}</span></div><div style="display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px dashed rgba(148,163,184,0.35);"><div><span style="display:block; font-size:10px; color:var(--text-muted);">Neto en Bolsillo (Desc. ${String(sim.effectiveTaxRate).replace('.', ',')}%)</span><strong class="positive" style="font-size:15px;">${formatMoney(sim.netBonus)}</strong></div><button type="button" id="btn-reg-simulated-bonus" class="btn-confirm-pending" style="margin-top:0;">+ Registrar</button></div>${alertsHtml}</div>`;
+    document.getElementById('btn-reg-simulated-bonus')?.addEventListener('click', () => {
+        openQuickIncomeModal({
+            title: 'Registrar Bonificación',
+            subtitle: `Neto estimado tras deducciones marginales`,
+            category: '💼 Salario / Nómina',
+            description: bonusType === 'salary' ? '🎯 Bonificación Salarial' : '🎯 Bonificación Ocasional',
+            amount: sim.netBonus
+        });
+    });
 };
 document.getElementById('sim-bonus-amount')?.addEventListener('input', renderBonusSimulator);
 document.getElementById('sim-bonus-type')?.addEventListener('change', renderBonusSimulator);
