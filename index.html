@@ -13,7 +13,7 @@
 <body>
 
     <!-- NOTIFICACIÓN DE ACTUALIZACIÓN PWA -->
-    <div id="sw-update-toast" class="sw-toast hidden">🔄 Aplicando actualización v2.3...</div>
+    <div id="sw-update-toast" class="sw-toast hidden">🔄 Aplicando actualización v3.0...</div>
 
     <!-- PANTALLA DE SEGURIDAD (REGISTRO Y BLOQUEO) -->
     <div id="auth-screen" class="auth-overlay">
@@ -67,21 +67,27 @@
         </div>
         
         <div class="app-footer-info">
-            <p>&copy; 2026 Función IF • v2.3</p>
+            <p>&copy; 2026 Función IF • v3.0</p>
         </div>
     </div>
 
+    <!-- CABECERA v3.0: MENÚ HAMBURGUESA IZQUIERDA + TÍTULO + PERFIL DERECHA -->
     <header>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <button id="profile-trigger-btn" class="profile-avatar" title="Mi Perfil">
-                    <span id="profile-avatar-initial">U</span>
-                </button>
-                <div>
-                    <h1 id="app-title">Mis Finanzas</h1>
-                    <p class="subtitle">Patrimonio Neto: <strong id="net-worth-header" style="color: var(--text-main); font-weight: 800;">$0.00</strong></p>
-                </div>
+        <div class="top-bar">
+            <button type="button" id="open-drawer-btn" class="hamburger-btn" title="Abrir menú principal" aria-label="Abrir menú">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+
+            <div class="top-bar-center">
+                <h1 id="app-title">Mis Finanzas</h1>
+                <p class="subtitle">Patrimonio Neto: <strong id="net-worth-header" style="color: var(--text-main); font-weight: 800;">$0.00</strong></p>
             </div>
+
+            <button type="button" id="profile-trigger-btn" class="profile-avatar" title="Mi Perfil">
+                <span id="profile-avatar-initial">U</span>
+            </button>
         </div>
         
         <div class="month-selector">
@@ -133,9 +139,136 @@
         </div>
     </header>
 
+    <!-- MENÚ LATERAL DESPLEGABLE (SIDE DRAWER v3.0) -->
+    <div id="side-drawer-backdrop" class="side-drawer-backdrop hidden"></div>
+    <aside id="side-drawer" class="side-drawer closed" aria-hidden="true">
+        <div class="drawer-header">
+            <div class="drawer-brand">
+                <h2>Mis Finanzas</h2>
+                <span class="drawer-version-pill">v3.0</span>
+            </div>
+            <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
+        </div>
+
+        <div class="drawer-scroll">
+            <button type="button" class="drawer-item" id="drawer-accounts">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.16); color: #0ea5e9;">🏦</span>
+                    <span>Cuentas y Liquidez</span>
+                </div>
+            </button>
+
+            <button type="button" class="drawer-item" id="drawer-cards">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.16); color: #8b5cf6;">💳</span>
+                    <span>Tarjetas de Crédito</span>
+                </div>
+            </button>
+
+            <!-- Acordeón Deudas -->
+            <div class="drawer-accordion-group" id="drawer-group-debts">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-sub-debts">
+                    <div class="drawer-item-left">
+                        <span class="drawer-icon-box" style="background: rgba(244, 63, 94, 0.16); color: #f43f5e;">💸</span>
+                        <span>Deudas y Préstamos</span>
+                    </div>
+                    <span class="drawer-chevron">▾</span>
+                </button>
+                <div class="drawer-accordion-content hidden" id="drawer-sub-debts">
+                    <button type="button" class="drawer-sub-item" id="drawer-debts">
+                        <span class="drawer-icon-box" style="background: rgba(244, 63, 94, 0.14); color: #f43f5e;">🏛️</span>
+                        <span>Préstamos y Cupos BNPL</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-debt-planner">
+                        <span class="drawer-icon-box" style="background: rgba(249, 115, 22, 0.15); color: #f97316;">🚀</span>
+                        <span>Plan de Deudas (Avalancha)</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="drawer-item" id="drawer-pockets">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #10b981;">🐷</span>
+                    <span>Metas de Ahorro (Bolsillos)</span>
+                </div>
+            </button>
+
+            <button type="button" class="drawer-item" id="drawer-assets">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(6, 182, 212, 0.16); color: #06b6d4;">💎</span>
+                    <span>Activos Fijos</span>
+                </div>
+            </button>
+
+            <button type="button" class="drawer-item" id="drawer-budget">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #f59e0b;">🎯</span>
+                    <span>Presupuesto y Categorías</span>
+                </div>
+            </button>
+
+            <button type="button" class="drawer-item" id="drawer-expenses">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(239, 68, 68, 0.16); color: #ef4444;">💲</span>
+                    <span>Gastos del Mes</span>
+                </div>
+            </button>
+
+            <div class="drawer-divider"></div>
+
+            <!-- Acordeón Análisis -->
+            <div class="drawer-accordion-group" id="drawer-group-analytics">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-sub-analytics">
+                    <div class="drawer-item-left">
+                        <span class="drawer-icon-box" style="background: rgba(59, 130, 246, 0.16); color: #3b82f6;">📈</span>
+                        <span>Análisis y Reportes</span>
+                    </div>
+                    <span class="drawer-chevron">▾</span>
+                </button>
+                <div class="drawer-accordion-content hidden" id="drawer-sub-analytics">
+                    <button type="button" class="drawer-sub-item" id="drawer-analytics">
+                        <span class="drawer-icon-box" style="background: rgba(59, 130, 246, 0.14); color: #3b82f6;">📊</span>
+                        <span>Gráficos y Tendencias</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-annual">
+                        <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.14); color: #10b981;">📅</span>
+                        <span>Control Anual (12 Meses)</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-health">
+                        <span class="drawer-icon-box" style="background: rgba(236, 72, 153, 0.14); color: #ec4899;">❤️</span>
+                        <span>Salud Financiera</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Acordeón Herramientas -->
+            <div class="drawer-accordion-group" id="drawer-group-tools">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-sub-tools">
+                    <div class="drawer-item-left">
+                        <span class="drawer-icon-box" style="background: rgba(100, 116, 139, 0.18); color: var(--text-main);">🛠️</span>
+                        <span>Herramientas y Ajustes</span>
+                    </div>
+                    <span class="drawer-chevron">▾</span>
+                </button>
+                <div class="drawer-accordion-content hidden" id="drawer-sub-tools">
+                    <button type="button" class="drawer-sub-item" id="drawer-salary">
+                        <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.14); color: #10b981;">💼</span>
+                        <span>Mi Salario y Liquidación</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-tax">
+                        <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.14); color: #8b5cf6;">⚖️</span>
+                        <span>Parámetros Tributarios (UVT)</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-backup">
+                        <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.14); color: #0ea5e9;">☁️</span>
+                        <span>Respaldo e Importación</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
     <main>
-        <!-- V2.3: NUEVO DASHBOARD VISUAL (Reemplaza las mini cards antiguas) -->
-        
         <!-- WIDGET DE FLUJO -->
         <section class="card flow-widget" id="dashboard-flow-widget">
             <div class="flow-header">
@@ -200,9 +333,7 @@
             <div class="pace-bar-track" style="height: 10px; margin-bottom: 12px;">
                 <div id="dash-budget-bar" class="pace-bar-fill" style="width: 0%; background-color: var(--accent);"></div>
             </div>
-            <div id="dash-budget-categories-preview" class="dash-budget-cats-preview">
-                <!-- Se inyecta desde JS -->
-            </div>
+            <div id="dash-budget-categories-preview" class="dash-budget-cats-preview"></div>
         </section>
 
         <!-- WIDGET HOJA DE BALANCE REDISEÑADA -->
@@ -278,7 +409,7 @@
         </section>
 
         <footer class="main-app-footer">
-            <p>&copy; 2026 Función IF • v2.3</p>
+            <p>&copy; 2026 Función IF • v3.0</p>
         </footer>
 
         <!-- MENÚ FLOTANTE DE ACCIONES (FAB) -->
@@ -420,7 +551,7 @@
                     <!-- INDICADOR EN VIVO DE DIFERENCIA Y VARIACIÓN % VS PRESUPUESTO -->
                     <div id="tx-budget-variance-box" class="tx-variance-box hidden"></div>
 
-                    <!-- SIMULADOR IMPACTO BNPL (V2.3) -->
+                    <!-- SIMULADOR IMPACTO BNPL -->
                     <div id="tx-bnpl-impact-box" class="tx-variance-box hidden" style="background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.25);"></div>
 
                     <div class="row-group" style="margin-bottom: 12px; gap: 8px;">
@@ -524,9 +655,8 @@
             </div>
         </div>
 
-        <!-- VENTANA: ANÁLISIS Y GRÁFICOS (Conservado) -->
+        <!-- VENTANA: ANÁLISIS Y GRÁFICOS -->
         <div id="analytics-modal" class="modal hidden">
-            <!-- (Contenido intacto de analytics, para no alargar el bloque innecesariamente) -->
             <div class="modal-content analytics-modal-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                     <div>
@@ -600,7 +730,7 @@
         </div>
 
         <!-- VENTANA: CONTROL ANUAL CONSOLIDADO (PTTO vs REAL 12 MESES) -->
-        <div id="annual-control-modal" class="modal hidden" style="z-index: 1060;">
+        <div id="annual-control-modal" class="modal hidden" style="z-index: 1360;">
             <div class="modal-content" style="max-width: 96%; width: 720px; padding: 18px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
                     <div>
@@ -671,7 +801,6 @@
                 </div>
 
                 <div id="account-detail-view" class="hidden">
-                    <!-- DETALLE DE CUENTA/TARJETA/DEUDA -->
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 6px;">
                         <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
                             <button type="button" id="back-to-accounts-btn" class="btn-back">← Volver</button>
@@ -685,7 +814,6 @@
                     </div>
 
                     <div id="card-extra-info" class="card-specs-box hidden">
-                        <!-- Info TC intacta -->
                         <div class="specs-grid">
                             <div><small>Cupo Total</small><strong id="detail-card-limit">$0</strong></div>
                             <div><small>Saldo Disponible</small><strong id="detail-card-available" class="positive">$0</strong></div>
@@ -698,12 +826,33 @@
                         </div>
 
                         <form id="edit-card-form" class="data-form hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
-                            <!-- Form TC -->
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 11px;">Cupo Total ($)</label>
+                                <input type="text" inputmode="decimal" id="edit-card-limit" class="modal-input" required>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half"><label style="font-size: 11px;">Día de Corte</label><input type="number" id="edit-card-cutoff" inputmode="numeric" pattern="[0-9]*" min="1" max="31" class="modal-input" required></div>
+                                <div class="half"><label style="font-size: 11px;">Día de Pago</label><input type="number" id="edit-card-payment" inputmode="numeric" pattern="[0-9]*" min="1" max="31" class="modal-input" required></div>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half"><label style="font-size: 11px;">Tasa Habitual (%)</label><input type="text" inputmode="decimal" id="edit-card-rate" class="modal-input"></div>
+                                <div class="half">
+                                    <label style="font-size: 11px;">Periodicidad</label>
+                                    <select id="edit-card-rate-type" class="modal-input">
+                                        <option value="monthly">% Mensual</option>
+                                        <option value="annual">% Anual E.A.</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label style="font-size: 11px;">Máx. cuotas sin interés (0%)</label>
+                                <input type="number" id="edit-card-zero-interest-max" inputmode="numeric" pattern="[0-9]*" min="0" max="60" class="modal-input">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 13px;">Guardar Parámetros Tarjeta</button>
                         </form>
                     </div>
 
                     <div id="debt-extra-info" class="debt-specs-box hidden">
-                        <!-- WIDGET CUPOS ROTATIVOS (V2.3) -->
                         <div id="revolving-purchases-section" class="hidden" style="margin-bottom: 12px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                                 <span style="font-size: 12px; font-weight: 700; color: var(--text-main);">🛍️ Compras Pendientes</span>
@@ -773,7 +922,6 @@
                         </div>
 
                         <form id="edit-debt-form" class="data-form hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
-                            <!-- V2.3: Config Deuda -->
                             <div class="form-group" style="margin-bottom: 8px;">
                                 <label style="font-size: 11px;">Tipo de Deuda</label>
                                 <select id="edit-debt-type" class="modal-input">
@@ -845,7 +993,6 @@
 
         <!-- VENTANA: BOLSILLOS DE AHORRO CON PROPÓSITO -->
         <div id="pockets-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <h3 style="margin: 0 0 15px 0; font-size: 24px;">Bolsillos de Ahorro</h3>
                 
@@ -901,7 +1048,6 @@
 
         <!-- VENTANA: ACTIVOS FIJOS Y BIENES -->
         <div id="assets-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <h3 style="margin: 0 0 15px 0; font-size: 24px;">Mis Activos</h3>
                 
@@ -962,7 +1108,6 @@
 
         <!-- VENTANA: DETALLE DE ACTIVO INDIVIDUAL -->
         <div id="asset-detail-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                     <button type="button" id="back-to-assets-btn" class="btn-back">← Volver</button>
@@ -1030,7 +1175,6 @@
 
         <!-- VENTANA: TARJETAS DE CRÉDITO -->
         <div id="cards-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <h3 style="margin: 0 0 15px 0; font-size: 24px;">Tarjetas de Crédito</h3>
                 <div class="tc-summary-banner">
@@ -1119,7 +1263,6 @@
                 
                 <h4 style="margin: 0 0 10px 0; font-size: 15px;">Registrar Préstamo o Deuda</h4>
                 <form id="new-debt-form" class="data-form">
-                    <!-- V2.3: Tipo de Deuda (Rotativo/Fijo) -->
                     <div class="form-group" style="margin-bottom: 10px;">
                         <label style="font-size: 11px;">Tipo de Deuda</label>
                         <select id="new-debt-type" class="modal-input">
@@ -1173,7 +1316,6 @@
                         <input type="text" inputmode="decimal" id="new-debt-monthly-payment" placeholder="Ej. 350.000" class="modal-input">
                     </div>
 
-                    <!-- V2.3: Descuento de Nómina -->
                     <label class="zero-interest-toggle" style="margin-bottom: 12px; padding: 7px 10px;">
                         <input type="checkbox" id="new-debt-payroll">
                         <div class="zero-interest-text">
@@ -1188,9 +1330,8 @@
             </div>
         </div>
 
-        <!-- VENTANA HIJA: PLANIFICADOR MULTI-DEUDA (Conservado) -->
-        <div id="debt-planner-modal" class="modal hidden" style="z-index: 1060;">
-            <!-- Contenido intacto... -->
+        <!-- VENTANA HIJA: PLANIFICADOR MULTI-DEUDA -->
+        <div id="debt-planner-modal" class="modal hidden" style="z-index: 1360;">
             <div class="modal-content" style="max-width: 440px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
@@ -1278,7 +1419,6 @@
 
         <!-- VENTANA: RADIOGRAFÍA DE GASTOS -->
         <div id="expenses-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                     <h3 style="margin: 0; font-size: 24px;">Gastos del Mes</h3>
@@ -1300,7 +1440,6 @@
 
         <!-- VENTANA: PRESUPUESTOS Y CATEGORÍAS (MENSUALIZADO) -->
         <div id="budget-modal" class="modal hidden">
-            <!-- Contenido intacto... -->
             <div class="modal-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0; font-size: 22px;">Presupuesto</h3>
@@ -1343,9 +1482,8 @@
             </div>
         </div>
 
-        <!-- MODALES HIJOS DE PRESUPUESTO Y NÓMINA (Conservados) -->
-        <div id="budget-monthly-config-modal" class="modal hidden" style="z-index: 1050;">
-            <!-- Contenido intacto... -->
+        <!-- MODALES HIJOS DE PRESUPUESTO Y NÓMINA -->
+        <div id="budget-monthly-config-modal" class="modal hidden" style="z-index: 1350;">
             <div class="modal-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div>
@@ -1402,7 +1540,7 @@
             </div>
         </div>
 
-        <div id="quick-income-modal" class="modal hidden" style="z-index: 1070;">
+        <div id="quick-income-modal" class="modal hidden" style="z-index: 1370;">
             <div class="modal-content" style="max-width: 380px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
@@ -1450,7 +1588,7 @@
             </div>
         </div>
 
-        <div id="quick-action-modal" class="modal hidden" style="z-index: 1075;">
+        <div id="quick-action-modal" class="modal hidden" style="z-index: 1375;">
             <div class="modal-content" style="max-width: 380px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
@@ -1481,8 +1619,8 @@
             </div>
         </div>
 
-        <!-- V2.3: MODAL SALUD FINANCIERA (NUEVO) -->
-        <div id="health-modal" class="modal hidden" style="z-index: 1080;">
+        <!-- MODAL SALUD FINANCIERA -->
+        <div id="health-modal" class="modal hidden" style="z-index: 1380;">
             <div class="modal-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <div>
@@ -1510,9 +1648,9 @@
                 </div>
 
                 <div style="margin: 20px 0 10px 0;">
-    <h4 style="margin: 0 0 4px 0; font-size: 15px;">Métricas Clave</h4>
-    <small style="color: var(--accent); font-size: 11px; font-weight: 600;">👆 Toca cada indicador para ver tu análisis</small>
-</div>
+                    <h4 style="margin: 0 0 4px 0; font-size: 15px;">Métricas Clave</h4>
+                    <small style="color: var(--accent); font-size: 11px; font-weight: 600;">👆 Toca cada indicador para ver tu análisis</small>
+                </div>
                 <div class="health-pillars-grid">
                     <div class="health-pillar-card" onclick="showHealthTip('flow')">
                         <div class="pillar-top">
@@ -1588,7 +1726,6 @@
              VENTANA: PERFIL Y CONFIGURACIÓN UNIVERSAL
              ============================================== -->
         <div id="profile-modal" class="modal hidden">
-            <!-- Contenido intacto del perfil, salario y parámetros... -->
             <div class="modal-content" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
                 
                 <div class="profile-header">
@@ -1649,12 +1786,10 @@
                         </div>
 
                     </div>
-                    <p class="profile-version-tag">&copy; 2026 Función IF • v2.3</p>
+                    <p class="profile-version-tag">&copy; 2026 Función IF • v3.0</p>
                 </div>
 
-                <!-- SUB-VISTAS DEL PERFIL (Salario, Tax Params, Temas, Backups) se mantienen iguales, sólo omito el relleno masivo por brevedad y mantengo la estructura necesaria -->
                 <div id="profile-salary-view" class="profile-body hidden" style="overflow-y: auto;">
-                    <!-- Configuración Salarial intacta -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <button type="button" id="back-from-salary-btn" class="btn-back">← Volver</button>
                         <button type="button" id="shortcut-to-tax-params-btn" class="btn-back" style="font-size: 11px;">⚖️ SMMLV / UVT</button>
@@ -1874,7 +2009,6 @@
                     </div>
                 </div>
 
-                <!-- Los paneles tax params, theme, backup y security están intactos, mantengo estructura para asegurar que el archivo no rompa nada -->
                 <div id="profile-tax-params-view" class="profile-body hidden" style="overflow-y: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <button type="button" id="back-from-tax-params-btn" class="btn-back">← Volver al Menú</button>
@@ -2028,7 +2162,7 @@
 
     </main>
 
-    <!-- BARRA DE NAVEGACIÓN INFERIOR (TIPO DOCK iOS) -->
+    <!-- BARRA DE NAVEGACIÓN INFERIOR (DOCK iOS LIQUID GLASS) -->
     <nav class="bottom-nav">
         <div class="nav-item active" id="nav-home">
             <span class="nav-icon">📊</span><span class="nav-text">Resumen</span>
@@ -2039,38 +2173,7 @@
         <div class="nav-item" id="nav-budget">
             <span class="nav-icon">🎯</span><span class="nav-text">Presup.</span>
         </div>
-        <div class="nav-item" id="nav-more-btn">
-            <span class="nav-icon">📁</span><span class="nav-text">Menú</span>
-        </div>
     </nav>
-
-    <!-- MENÚ DESPLEGABLE DEL DOCK -->
-    <div id="more-menu-overlay" class="more-menu-overlay hidden">
-        <button type="button" class="fab-option" id="nav-accounts" style="pointer-events: auto;">
-            <span class="fab-option-icon">🏦</span>
-            <span class="fab-option-label">Cuentas</span>
-        </button>
-        <button type="button" class="fab-option" id="nav-pockets" style="pointer-events: auto;">
-            <span class="fab-option-icon">🐷</span>
-            <span class="fab-option-label">Bolsillos</span>
-        </button>
-        <button type="button" class="fab-option" id="nav-cards" style="pointer-events: auto;">
-            <span class="fab-option-icon">💳</span>
-            <span class="fab-option-label">Tarjetas</span>
-        </button>
-        <button type="button" class="fab-option" id="nav-debts" style="pointer-events: auto;">
-            <span class="fab-option-icon">💸</span>
-            <span class="fab-option-label">Deudas</span>
-        </button>
-        <button type="button" class="fab-option" id="nav-assets" style="pointer-events: auto;">
-            <span class="fab-option-icon">💎</span>
-            <span class="fab-option-label">Activos</span>
-        </button>
-        <button type="button" class="fab-option" id="nav-expenses" style="pointer-events: auto;">
-            <span class="fab-option-icon">💲</span>
-            <span class="fab-option-label">Gastos</span>
-        </button>
-    </div>
 
     <!-- SCRIPTS -->
     <script src="core.js"></script>

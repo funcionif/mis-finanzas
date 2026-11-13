@@ -141,11 +141,31 @@ document.addEventListener('change', (e) => {
     if (parentForm && parentForm.classList.contains('data-form') && isAnyModalOpen()) hasUnsavedChanges = true;
 });
 
+const sideDrawer = document.getElementById('side-drawer');
+const sideDrawerBackdrop = document.getElementById('side-drawer-backdrop');
+
+function openSideDrawer() {
+    if (fabMenu && !fabMenu.classList.contains('hidden')) {
+        fabMenu.classList.add('hidden');
+        fabBtn?.classList.remove('active');
+    }
+    document.getElementById('quick-calendar-popover')?.classList.add('hidden');
+    sideDrawerBackdrop?.classList.remove('hidden');
+    sideDrawer?.classList.remove('closed');
+    sideDrawer?.setAttribute('aria-hidden', 'false');
+}
+
+function closeSideDrawer() {
+    sideDrawerBackdrop?.classList.add('hidden');
+    sideDrawer?.classList.add('closed');
+    sideDrawer?.setAttribute('aria-hidden', 'true');
+}
+
 function forceCloseAllModals() {
     hasUnsavedChanges = false; quickActionHandler = null;
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
     document.getElementById('quick-calendar-popover')?.classList.add('hidden');
-    document.getElementById('more-menu-overlay')?.classList.add('hidden');
+    closeSideDrawer();
     document.getElementById('tx-calculator-panel')?.classList.add('hidden');
     document.getElementById('toggle-tx-calc-btn')?.classList.remove('active');
 
@@ -188,10 +208,9 @@ document.querySelectorAll('.modal').forEach(modalEl => {
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (authScreen && !authScreen.classList.contains('hidden')) return;
+    if (sideDrawer && !sideDrawer.classList.contains('closed')) { closeSideDrawer(); return; }
     const calPop = document.getElementById('quick-calendar-popover');
     if (calPop && !calPop.classList.contains('hidden')) { calPop.classList.add('hidden'); return; }
-    const moreOverlay = document.getElementById('more-menu-overlay');
-    if (moreOverlay && !moreOverlay.classList.contains('hidden')) { moreOverlay.classList.add('hidden'); setActiveNav(document.getElementById('nav-home')); return; }
     if (fabMenu && !fabMenu.classList.contains('hidden')) { fabMenu.classList.add('hidden'); fabBtn?.classList.remove('active'); return; }
     if (isAnyModalOpen()) attemptCloseModals();
 });
@@ -3654,10 +3673,42 @@ document.getElementById('health-goals-form')?.addEventListener('submit', (e) => 
     e.preventDefault(); financeData.healthGoals = { margin: parseFloat(document.getElementById('health-goal-margin').value) || 15, liquidity: parseFloat(document.getElementById('health-goal-liquidity').value) || 3, debt: parseFloat(document.getElementById('health-goal-debt').value) || 30, networth: parseFloat(document.getElementById('health-goal-networth').value) || 10 }; localStorage.setItem('myFinances', JSON.stringify(financeData)); alert("✅ Metas de Salud Financiera actualizadas."); document.getElementById('widget-financial-health')?.click(); updateDashboard();
 });
 
-// --- NAVEGACIÓN DOCK, PERFIL Y TEMAS ---
-const navHome = document.getElementById('nav-home'), navAnalytics = document.getElementById('nav-analytics'), navBudget = document.getElementById('nav-budget'), navMoreBtn = document.getElementById('nav-more-btn'), moreMenuOverlay = document.getElementById('more-menu-overlay');
-if (navMoreBtn && moreMenuOverlay) { navMoreBtn.addEventListener('click', (e) => { e.stopPropagation(); if (fabMenu && !fabMenu.classList.contains('hidden')) { fabMenu.classList.add('hidden'); fabBtn?.classList.remove('active'); } moreMenuOverlay.classList.toggle('hidden'); setActiveNav(navMoreBtn); }); document.addEventListener('click', (e) => { if (!moreMenuOverlay.classList.contains('hidden') && !moreMenuOverlay.contains(e.target) && !navMoreBtn.contains(e.target)) { moreMenuOverlay.classList.add('hidden'); } }); }
-if (fabBtn && fabMenu) { fabBtn.addEventListener('click', () => { if (moreMenuOverlay && !moreMenuOverlay.classList.contains('hidden')) { moreMenuOverlay.classList.add('hidden'); setActiveNav(navHome); } if (fabMenu.classList.contains('hidden')) { fabMenu.classList.remove('hidden'); fabBtn.classList.add('active'); } else { fabMenu.classList.add('hidden'); fabBtn.classList.remove('active'); } }); }
+// --- NAVEGACIÓN DOCK, MENÚ LATERAL, PERFIL Y TEMAS ---
+const navHome = document.getElementById('nav-home');
+const navAnalytics = document.getElementById('nav-analytics');
+const navBudget = document.getElementById('nav-budget');
+
+document.getElementById('open-drawer-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openSideDrawer();
+});
+document.getElementById('close-drawer-btn')?.addEventListener('click', closeSideDrawer);
+sideDrawerBackdrop?.addEventListener('click', closeSideDrawer);
+
+document.querySelectorAll('.drawer-accordion-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+        const group = trigger.closest('.drawer-accordion-group');
+        const targetId = trigger.getAttribute('data-target');
+        const content = targetId ? document.getElementById(targetId) : null;
+        if (group && content) {
+            group.classList.toggle('open');
+            content.classList.toggle('hidden');
+        }
+    });
+});
+
+if (fabBtn && fabMenu) {
+    fabBtn.addEventListener('click', () => {
+        closeSideDrawer();
+        if (fabMenu.classList.contains('hidden')) {
+            fabMenu.classList.remove('hidden');
+            fabBtn.classList.add('active');
+        } else {
+            fabMenu.classList.add('hidden');
+            fabBtn.classList.remove('active');
+        }
+    });
+}
 
 const profileModal = document.getElementById('profile-modal'), profileMainView = document.getElementById('profile-main-view'), profileSalaryView = document.getElementById('profile-salary-view'), profileTaxParamsView = document.getElementById('profile-tax-params-view'), profileBackupView = document.getElementById('profile-backup-view'), profileSecurityView = document.getElementById('profile-security-view'), profileThemeView = document.getElementById('profile-theme-view');
 const showProfileSubView = (viewElement) => { [profileMainView, profileSalaryView, profileTaxParamsView, profileBackupView, profileSecurityView, profileThemeView].forEach(v => v?.classList.add('hidden')); viewElement?.classList.remove('hidden'); hasUnsavedChanges = false; };
@@ -3678,15 +3729,31 @@ document.getElementById('custom-theme-color')?.addEventListener('input', (e) => 
 document.getElementById('profile-enable-pin')?.addEventListener('change', (e) => { const pinGroup = document.getElementById('profile-pin-group'); if (e.target.checked) pinGroup?.classList.remove('hidden'); else pinGroup?.classList.add('hidden'); });
 document.getElementById('profile-pin-form')?.addEventListener('submit', (e) => { e.preventDefault(); const usePin = document.getElementById('profile-enable-pin').checked, newPin = document.getElementById('profile-new-pin').value, confirmPin = document.getElementById('profile-new-pin-confirm').value, errorEl = document.getElementById('profile-pin-error'); if (usePin) { if (newPin || !authData.pinHash) { if (newPin.length < 4) { errorEl.innerText = "Mínimo 4 dígitos."; errorEl.classList.remove('hidden'); return; } if (newPin !== confirmPin) { errorEl.innerText = "No coinciden."; errorEl.classList.remove('hidden'); return; } authData.pinHash = hashSecret(newPin); } authData.pinEnabled = true; } else { authData.pinEnabled = false; } localStorage.setItem('myFinancesAuth', JSON.stringify(authData)); errorEl?.classList.add('hidden'); document.getElementById('profile-new-pin').value = ''; document.getElementById('profile-new-pin-confirm').value = ''; hasUnsavedChanges = false; syncUserUI(); alert("✅ Preferencias de seguridad actualizadas."); });
 document.getElementById('btn-lock-app-profile')?.addEventListener('click', () => initAuthUI(true));
+
 navHome?.addEventListener('click', attemptCloseModals);
 navAnalytics?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('analytics-modal')?.classList.remove('hidden'); setActiveNav(navAnalytics); } });
 navBudget?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(navBudget); } });
-document.getElementById('nav-accounts')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('account-detail-view')?.classList.add('hidden'); document.getElementById('accounts-list-view')?.classList.remove('hidden'); document.getElementById('accounts-modal')?.classList.remove('hidden'); setActiveNav(navMoreBtn); } });
-document.getElementById('nav-pockets')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('pockets-modal')?.classList.remove('hidden'); renderPocketsView(); setActiveNav(navMoreBtn); } });
-document.getElementById('nav-cards')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('cards-modal')?.classList.remove('hidden'); setActiveNav(navMoreBtn); } });
-document.getElementById('nav-debts')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('debts-modal')?.classList.remove('hidden'); setActiveNav(navMoreBtn); } });
-document.getElementById('nav-assets')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('assets-modal')?.classList.remove('hidden'); renderAssetsBreakdown(); setActiveNav(navMoreBtn); } });
-document.getElementById('nav-expenses')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('expenses-modal')?.classList.remove('hidden'); setActiveNav(navMoreBtn); } });
+
+// Accesos desde el Menú Lateral Desplegable (Side Drawer)
+document.getElementById('drawer-accounts')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('account-detail-view')?.classList.add('hidden'); document.getElementById('accounts-list-view')?.classList.remove('hidden'); document.getElementById('accounts-modal')?.classList.remove('hidden'); } });
+document.getElementById('drawer-cards')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('cards-modal')?.classList.remove('hidden'); } });
+document.getElementById('drawer-debts')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('debts-modal')?.classList.remove('hidden'); } });
+document.getElementById('drawer-debt-planner')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('debt-planner-modal')?.classList.remove('hidden'); renderDebtPlanner(); } });
+document.getElementById('drawer-pockets')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('pockets-modal')?.classList.remove('hidden'); renderPocketsView(); } });
+document.getElementById('drawer-assets')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('assets-modal')?.classList.remove('hidden'); renderAssetsBreakdown(); } });
+document.getElementById('drawer-budget')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(navBudget); } });
+document.getElementById('drawer-expenses')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('expenses-modal')?.classList.remove('hidden'); } });
+document.getElementById('drawer-analytics')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('analytics-modal')?.classList.remove('hidden'); setActiveNav(navAnalytics); } });
+document.getElementById('drawer-annual')?.addEventListener('click', () => { if (attemptCloseModals()) { annualViewYear = viewDate.getFullYear(); document.getElementById('annual-control-modal')?.classList.remove('hidden'); renderAnnualControlTable(); } });
+document.getElementById('drawer-health')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('widget-financial-health')?.click(); } });
+document.getElementById('drawer-salary')?.addEventListener('click', () => { if (attemptCloseModals()) { syncUserUI(); profileModal?.classList.remove('hidden'); renderSalaryUI(false); showProfileSubView(profileSalaryView); } });
+document.getElementById('drawer-tax')?.addEventListener('click', () => { if (attemptCloseModals()) { syncUserUI(); profileModal?.classList.remove('hidden'); renderTaxParamsUI(); showProfileSubView(profileTaxParamsView); } });
+document.getElementById('drawer-backup')?.addEventListener('click', () => { if (attemptCloseModals()) { syncUserUI(); profileModal?.classList.remove('hidden'); showProfileSubView(profileBackupView); } });
+
+// Accesos directos desde los widgets del Dashboard
+document.getElementById('widget-savings-goals')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('pockets-modal')?.classList.remove('hidden'); renderPocketsView(); } });
+document.getElementById('dashboard-budget-widget')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(navBudget); } });
+
 document.querySelectorAll('.btn-close-modal').forEach(btn => { btn.addEventListener('click', attemptCloseModals); });
 
 // --- LÓGICA DE SALARIO Y PARÁMETROS TRIBUTARIOS ---
