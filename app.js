@@ -1598,36 +1598,6 @@ const renderCardsBreakdown = (balances) => {
 };
 
 const renderDebtsBreakdown = (balances, totalLoansDebt) => {
-    // Actualizar Capacidad de Endeudamiento
-    const cap = calculateBorrowingCapacity(getMonthId(viewDate));
-    const capBadge = document.getElementById('cap-usage-badge');
-    const capBar = document.getElementById('cap-usage-bar');
-    if (capBadge && capBar) {
-        const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
-        capBadge.innerText = `${String(cap.usedPct).replace('.', ',')}% / ${cap.maxPct}%`;
-        capBadge.className = `widget-badge ${cap.availableMonthlyCapacity < 0 ? 'danger' : (ratio > 80 ? 'warn' : 'good')}`;
-        capBar.style.width = `${ratio}%`;
-        capBar.style.backgroundColor = cap.availableMonthlyCapacity < 0 ? 'var(--negative)' : (ratio > 80 ? '#f59e0b' : 'var(--positive)');
-    }
-    if (document.getElementById('cap-income-label')) document.getElementById('cap-income-label').innerText = cap.incomeSource;
-    if (document.getElementById('cap-base-income')) document.getElementById('cap-base-income').innerText = formatCompact(cap.baseIncome);
-    if (document.getElementById('cap-committed-quota')) document.getElementById('cap-committed-quota').innerText = formatCompact(cap.committedMonthly);
-    const availQuotaEl = document.getElementById('cap-available-quota');
-    if (availQuotaEl) {
-        availQuotaEl.innerText = formatCompact(cap.availableMonthlyCapacity);
-        availQuotaEl.className = cap.availableMonthlyCapacity >= 0 ? 'positive' : 'negative';
-    }
-    const estEl = document.getElementById('cap-loan-estimate');
-    if (estEl) {
-        if (cap.baseIncome <= 0) {
-            estEl.innerHTML = 'Configura tu <b>Salario</b> o registra ingresos para calcular tu capacidad.';
-        } else if (cap.availableMonthlyCapacity > 0) {
-            estEl.innerHTML = `💡 Cupo libre aprox.: <b>${formatCompact(cap.estLoan24m)}</b> (a 24m) o <b>${formatCompact(cap.estLoan36m)}</b> (a 36m).`;
-        } else {
-            estEl.innerHTML = `<span class="negative">⚠️ Excedes tu límite recomendado en <b>${formatMoney(Math.abs(cap.availableMonthlyCapacity))}/mes</b>.</span>`;
-        }
-    }
-
     const amountEl = document.getElementById('debts-total-amount');
     const combinedBar = document.getElementById('debts-combined-bar');
     const combinedLegend = document.getElementById('debts-combined-legend');
@@ -3653,7 +3623,8 @@ document.getElementById('amount')?.addEventListener('input', () => {
 // --- SALUD FINANCIERA MODAL (NUEVO V2.3) ---
 document.getElementById('widget-financial-health')?.addEventListener('click', () => {
     const hModal = document.getElementById('health-modal'); if (!hModal) return;
-    const currSnap = computeBalancesUpTo(getMonthId(viewDate)), hData = calculateFinancialHealth(getMonthId(viewDate), currSnap);
+    const monthId = getMonthId(viewDate);
+    const currSnap = computeBalancesUpTo(monthId), hData = calculateFinancialHealth(monthId, currSnap);
     if (document.getElementById('health-modal-score')) document.getElementById('health-modal-score').innerText = hData.scores.global;
     if (document.getElementById('pillar-score-flow')) document.getElementById('pillar-score-flow').innerText = `${hData.scores.flow}/100`;
     if (document.getElementById('pillar-score-liquidity')) document.getElementById('pillar-score-liquidity').innerText = `${hData.scores.liquidity}/100`;
@@ -3663,6 +3634,36 @@ document.getElementById('widget-financial-health')?.addEventListener('click', ()
     if (document.getElementById('health-goal-liquidity')) document.getElementById('health-goal-liquidity').value = hData.goals.liquidity;
     if (document.getElementById('health-goal-debt')) document.getElementById('health-goal-debt').value = hData.goals.debt;
     if (document.getElementById('health-goal-networth')) document.getElementById('health-goal-networth').value = hData.goals.networth;
+
+    // Actualizar tarjeta de Capacidad de Endeudamiento
+    const cap = calculateBorrowingCapacity(monthId);
+    const capBadge = document.getElementById('cap-usage-badge');
+    const capBar = document.getElementById('cap-usage-bar');
+    if (capBadge && capBar) {
+        const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
+        capBadge.innerText = `${String(cap.usedPct).replace('.', ',')}% / ${cap.maxPct}%`;
+        capBadge.className = `widget-badge ${cap.availableMonthlyCapacity < 0 ? 'danger' : (ratio > 80 ? 'warn' : 'good')}`;
+        capBar.style.width = `${ratio}%`;
+        capBar.style.backgroundColor = cap.availableMonthlyCapacity < 0 ? 'var(--negative)' : (ratio > 80 ? '#f59e0b' : 'var(--positive)');
+    }
+    if (document.getElementById('cap-income-label')) document.getElementById('cap-income-label').innerText = cap.incomeSource;
+    if (document.getElementById('cap-base-income')) document.getElementById('cap-base-income').innerText = formatCompact(cap.baseIncome);
+    if (document.getElementById('cap-committed-quota')) document.getElementById('cap-committed-quota').innerText = formatCompact(cap.committedMonthly);
+    const availQuotaEl = document.getElementById('cap-available-quota');
+    if (availQuotaEl) {
+        availQuotaEl.innerText = formatCompact(cap.availableMonthlyCapacity);
+        availQuotaEl.className = cap.availableMonthlyCapacity >= 0 ? 'positive' : 'negative';
+    }
+    const estEl = document.getElementById('cap-loan-estimate');
+    if (estEl) {
+        if (cap.baseIncome <= 0) {
+            estEl.innerHTML = 'Configura tu <b>Salario</b> o registra ingresos para calcular tu capacidad.';
+        } else if (cap.availableMonthlyCapacity > 0) {
+            estEl.innerHTML = `💡 Cupo libre aprox.: <b>${formatCompact(cap.estLoan24m)}</b> (a 24m) o <b>${formatCompact(cap.estLoan36m)}</b> (a 36m).`;
+        } else {
+            estEl.innerHTML = `<span class="negative">⚠️ Excedes tu límite recomendado en <b>${formatMoney(Math.abs(cap.availableMonthlyCapacity))}/mes</b>.</span>`;
+        }
+    }
 
     const badgeEl = document.getElementById('health-modal-badge'), circleEl = document.getElementById('health-modal-circle'); let hColor = 'var(--positive)';
     if (hData.scores.global >= 80) { if (badgeEl) { badgeEl.innerText = "Excelente 🟢"; badgeEl.className = "widget-badge good"; } hColor = 'var(--positive)'; }

@@ -531,9 +531,8 @@ const getMonthlyFlow = (targetMonthId, includePending = false) => {
     return { inc, exp, net: round2(inc - exp) };
 };
 
-// --- 6. CÁLCULO DE SALUD FINANCIERA (V2.3) ---
-const calculateFinancialHealth = (monthId, snap) => {
-    const calculateBorrowingCapacity = (monthId, customMaxPct = null) => {
+// --- 6. CÁLCULO DE SALUD FINANCIERA Y CAPACIDAD DE ENDEUDAMIENTO ---
+const calculateBorrowingCapacity = (monthId, customMaxPct = null) => {
     const snap = computeBalancesUpTo(monthId);
     const maxPct = customMaxPct !== null ? customMaxPct : (financeData.healthGoals?.debt || 30);
 
@@ -608,6 +607,8 @@ const calculateFinancialHealth = (monthId, snap) => {
         estLoan36m: calcMaxPrincipal(36)
     };
 };
+
+const calculateFinancialHealth = (monthId, snap) => {
     const goals = financeData.healthGoals || { margin: 15, liquidity: 3, debt: 30, networth: 10 };
     const flow = getMonthlyFlow(monthId, false);
     
