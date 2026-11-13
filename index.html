@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis Finanzas</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+    <!-- PANTALLA DE SEGURIDAD (REGISTRO Y BLOQUEO) -->
+    <div id="auth-screen" class="auth-overlay">
+        <div class="auth-card" id="auth-card">
+            <div class="lock-icon">🔒</div>
+            <div id="register-view" class="hidden">
+                <h2>Protege tus Finanzas</h2>
+                <p class="auth-subtitle">Crea tu perfil y un PIN o contraseña para proteger tus datos financieros.</p>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="reg-name">Tu Nombre</label>
+                        <input type="text" id="reg-name" placeholder="Ej. Carlos" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-pin">Crea tu PIN o Contraseña</label>
+                        <input type="password" id="reg-pin" inputmode="numeric" minlength="4" placeholder="Mínimo 4 dígitos o letras" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-pin-confirm">Confirma tu PIN o Contraseña</label>
+                        <input type="password" id="reg-pin-confirm" inputmode="numeric" minlength="4" placeholder="Repite tu clave" required>
+                    </div>
+                    <p id="reg-error" class="auth-error hidden"></p>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Guardar y Entrar</button>
+                </form>
+            </div>
+
+            <div id="login-view" class="hidden">
+                <h2 id="welcome-user">Hola de nuevo</h2>
+                <p class="auth-subtitle">Ingresa tu PIN o contraseña para ver tus finanzas.</p>
+                <form id="login-form">
+                    <div class="form-group">
+                        <input type="password" id="login-pin" inputmode="numeric" placeholder="••••" style="text-align: center; font-size: 22px; letter-spacing: 6px;" required>
+                    </div>
+                    <p id="login-error" class="auth-error hidden">PIN o contraseña incorrecta</p>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Desbloquear</button>
+                </form>
+                <button type="button" id="reset-auth-btn" class="btn-link">¿Olvidaste tu clave? Restablecer app</button>
+            </div>
+        </div>
+    </div>
+
+    <header>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1 id="app-title">Mis Finanzas</h1>
+                <p class="subtitle">Salud Financiera: <span id="health-status">Calculando...</span></p>
+            </div>
+            <button id="manual-lock-btn" class="lock-btn" title="Bloquear aplicación">🔒</button>
+        </div>
+        
+        <div class="month-selector">
+            <button type="button" id="prev-month" title="Mes anterior">◀</button>
+            
+            <div class="month-center-group">
+                <button type="button" id="calendar-trigger-btn" class="month-trigger" title="Abrir calendario y selector rápido">
+                    <span class="cal-trigger-icon">📅</span>
+                    <h2 id="month-display">Cargando...</h2>
+                    <span id="period-context-badge" class="period-badge">Actual</span>
+                    <span class="cal-caret">▾</span>
+                </button>
+                <button type="button" id="today-btn" class="today-pill-btn hidden" title="Regresar al mes actual">↺ Hoy</button>
+            </div>
+
+            <button type="button" id="next-month" title="Mes siguiente">▶</button>
+        </div>
+
+        <!-- PANEL DESPLEGABLE DE CALENDARIO Y SALTO RÁPIDO -->
+        <div id="quick-calendar-popover" class="quick-cal-popover hidden">
+            <div class="quick-cal-top">
+                <div class="quick-month-picker-wrap">
+                    <label for="quick-month-input">Ir a mes/año:</label>
+                    <input type="month" id="quick-month-input" class="quick-month-input">
+                </div>
+                <button type="button" id="popover-today-btn" class="btn-back" style="padding: 5px 10px; font-size: 11px;">↺ Volver a Hoy</button>
+            </div>
+
+            <div class="quick-jump-pills">
+                <button type="button" class="pill-btn quick-jump-btn" data-offset="-1">Mes ant.</button>
+                <button type="button" class="pill-btn quick-jump-btn" data-offset="0">Mes actual</button>
+                <button type="button" class="pill-btn quick-jump-btn" data-offset="3">+3 Meses</button>
+                <button type="button" class="pill-btn quick-jump-btn" data-offset="6">+6 Meses</button>
+                <button type="button" class="pill-btn quick-jump-btn" data-offset="12">+1 Año</button>
+            </div>
+
+            <div class="cal-weekdays" style="margin-top: 8px;">
+                <span>dom</span><span>lun</span><span>mar</span><span>mié</span><span>jue</span><span>vie</span><span>sáb</span>
+            </div>
+            <div id="header-cal-grid" class="calendar-grid"></div>
+
+            <div class="quick-cal-footer">
+                <div class="cal-legend-row" style="margin: 0; padding: 0; border: none;">
+                    <span><i class="dot" style="background:#10b981;"></i>Ing.</span>
+                    <span><i class="dot" style="background:#ff3b30;"></i>Gas.</span>
+                    <span><i class="dot" style="background:#007aff;"></i>Trf.</span>
+                </div>
+                <small style="color: var(--text-muted); font-size: 10px;">Toca un día para filtrar</small>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- PANTALLA PRINCIPAL: RESUMEN -->
+        <section class="card main-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Patrimonio Neto</h2>
+                <span id="networth-delta-badge" class="delta-badge">0% vs mes ant.</span>
+            </div>
+            <h3 id="net-worth">$0.00</h3>
+        </section>
+
+        <div class="grid">
+            <div class="card mini-card">
+                <p>Flujo de Caja (Mes)</p>
+                <h4 id="cash-flow" class="positive">$0.00</h4>
+            </div>
+            <div class="card mini-card">
+                <p>Capacidad Endeudamiento</p>
+                <h4 id="debt-capacity">$0.00</h4>
+            </div>
+            <div class="card mini-card">
+                <p>Total Deudas (TC + Prést.)</p>
+                <h4 id="total-debt" class="negative">$0.00</h4>
+            </div>
+            <div class="card mini-card">
+                <p>Liquidez (Total)</p>
+                <h4 id="liquidity">$0.00</h4>
+            </div>
+        </div>
+
+        <section class="card dashboard-widget">
+            <div class="widget-header">
+                <h2>Hoja de Balance</h2>
+                <span id="balance-sheet-date" class="widget-badge">Hoy</span>
+            </div>
+            <div id="balance-sheet-list" class="balance-sheet-list"></div>
+            <div class="balance-sheet-footer">
+                <span>Balance Neto Consolidado</span>
+                <strong id="balance-sheet-total">$0</strong>
+            </div>
+        </section>
+
+        <section class="card dashboard-widget" id="dashboard-tc-widget">
+            <div class="widget-header">
+                <h2>Resumen Tarjetas de Crédito</h2>
+                <span id="dashboard-tc-health" class="widget-badge">Cupo & Ciclo</span>
+            </div>
+            <div id="dashboard-tc-summary" class="dash-summary-strip"></div>
+            <div id="dashboard-tc-list"></div>
+        </section>
+
+        <section class="card dashboard-widget" id="dashboard-debts-widget">
+            <div class="widget-header">
+                <h2>Resumen Deudas y Préstamos</h2>
+                <span id="dashboard-debts-badge" class="widget-badge">Amortización</span>
+            </div>
+            <div id="dashboard-debts-summary" class="dash-summary-strip"></div>
+            <div id="dashboard-debts-list"></div>
+        </section>
+
+        <section class="card history-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
+                <h2 id="history-title" style="margin: 0;">Movimientos del mes</h2>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" id="clear-day-filter-btn" class="btn-back hidden" style="padding: 4px 9px; font-size: 11px;">✕ Quitar día</button>
+                    <span id="history-count-badge" class="category-pill">0</span>
+                </div>
+            </div>
+            <div class="filter-pills" id="history-filter-pills">
+                <button type="button" class="pill-btn active" data-filter="all">Todos</button>
+                <button type="button" class="pill-btn" data-filter="expense">Gastos</button>
+                <button type="button" class="pill-btn" data-filter="income">Ingresos</button>
+                <button type="button" class="pill-btn" data-filter="transfer">Transferencias</button>
+            </div>
+            <ul id="history-list" class="history-list"></ul>
+        </section>
+
+        <!-- MENÚ FLOTANTE DE ACCIONES (FAB) -->
+        <div class="fab-container">
+            <div id="fab-menu" class="fab-menu hidden">
+                <button type="button" class="fab-option" data-type="expense">
+                    <span class="fab-option-icon" style="color: var(--negative);">↓</span>
+                    <span class="fab-option-label">Gasto</span>
+                </button>
+                <button type="button" class="fab-option" data-type="income">
+                    <span class="fab-option-icon" style="color: var(--positive);">↑</span>
+                    <span class="fab-option-label">Ingreso</span>
+                </button>
+                <button type="button" class="fab-option" data-type="transfer">
+                    <span class="fab-option-icon" style="color: var(--accent);">⇄</span>
+                    <span class="fab-option-label">Transferencia</span>
+                </button>
+            </div>
+            <button id="add-btn" class="fab">+</button>
+        </div>
+
+        <!-- VENTANA DE NUEVA / EDITAR TRANSACCIÓN -->
+        <div id="transaction-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="modal-title">Nueva Transacción</h3>
+                <form id="transaction-form">
+                    <input type="hidden" id="edit-id">
+
+                    <div class="form-group hidden"> 
+                        <label for="type">Tipo de movimiento</label>
+                        <select id="type" required>
+                            <option value="expense">Gasto (Resta)</option>
+                            <option value="income">Ingreso (Suma)</option>
+                            <option value="transfer">🔄 Transferencia / Pago Tarjeta</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group row-group">
+                        <div class="half">
+                            <label for="account" id="label-account">Cuenta / Tarjeta</label>
+                            <select id="account" required></select>
+                        </div>
+                        <div class="half hidden" id="group-to-account">
+                            <label for="to-account">Cuenta Destino</label>
+                            <select id="to-account"></select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="group-category">
+                        <label for="trans-category">Categoría</label>
+                        <select id="trans-category" required></select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Descripción</label>
+                        <input type="text" id="description" placeholder="Ej. Mercado, Salario, Cuota..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="amount">Monto ($)</label>
+                        <input type="number" id="amount" step="any" inputmode="decimal" placeholder="0,00" required>
+                    </div>
+
+                    <!-- BLOQUE EXCLUSIVO: DIFERIDO A CUOTAS EN TARJETA DE CRÉDITO -->
+                    <div id="cc-installments-box" class="cc-tx-box hidden">
+                        <div class="cc-tx-header">
+                            <span>💳 Diferido y Amortización TC</span>
+                            <button type="button" id="toggle-tx-amort-btn" class="btn-back" style="padding: 3px 8px; font-size: 11px;">📊 Ver Tabla</button>
+                        </div>
+
+                        <label class="zero-interest-toggle" id="zero-interest-toggle-label">
+                            <input type="checkbox" id="trans-zero-interest">
+                            <div class="zero-interest-text">
+                                <strong>✨ Compra aplica a cuotas sin interés (0%)</strong>
+                                <small id="zero-interest-hint">Marca si esta compra tiene beneficio 0% interés</small>
+                            </div>
+                        </label>
+
+                        <div class="row-group" style="margin-bottom: 8px;">
+                            <div style="flex: 0.9;">
+                                <label style="font-size: 11px;">Cuotas</label>
+                                <input type="number" id="trans-installments" min="1" max="60" value="1" class="modal-input">
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="font-size: 11px;">Tasa (%)</label>
+                                <input type="number" id="trans-rate" step="any" inputmode="decimal" value="0" placeholder="0" class="modal-input">
+                            </div>
+                            <div style="flex: 1.2;">
+                                <label style="font-size: 11px;">Periodicidad</label>
+                                <select id="trans-rate-type" class="modal-input">
+                                    <option value="monthly">% Mensual</option>
+                                    <option value="annual">% Anual E.A.</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="cc-tx-metrics">
+                            <div>
+                                <small>Cuota Aprox.</small>
+                                <strong id="cc-preview-quota">$0</strong>
+                            </div>
+                            <div style="text-align: center;">
+                                <small>Total Interés</small>
+                                <strong id="cc-preview-interest" class="negative">$0</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <small>Total + Interés</small>
+                                <strong id="cc-preview-total">$0</strong>
+                            </div>
+                        </div>
+                        <div id="tx-amortization-box" class="amortization-scroll hidden" style="margin-top: 8px; max-height: 150px;">
+                            <table class="amort-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Cuota</th>
+                                        <th>Capital</th>
+                                        <th>Interés</th>
+                                        <th>Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tx-amortization-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE EXCLUSIVO: TRASPASO / ABONO A TARJETA DE CRÉDITO O DEUDA -->
+                    <div id="transfer-debt-allocation-box" class="transfer-alloc-box hidden">
+                        <div class="cc-tx-header">
+                            <span>🎯 Destino del Pago / Abono</span>
+                            <span id="transfer-alloc-badge" class="widget-badge">0 selec.</span>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label style="font-size: 11px;">Modalidad del Pago</label>
+                            <select id="transfer-payment-mode" class="modal-input">
+                                <option value="installments">📅 Pago de Cuotas / Extracto</option>
+                                <option value="extraordinary">🚀 Abono Extraordinario a Capital</option>
+                            </select>
+                        </div>
+                        <div id="extraordinary-strategy-group" class="form-group hidden" style="margin-bottom: 8px;">
+                            <label style="font-size: 11px;">Efecto del Abono Extraordinario</label>
+                            <select id="transfer-extra-strategy" class="modal-input">
+                                <option value="reduce_term">⏱️ Reducir plazo (menos cuotas restantes)</option>
+                                <option value="reduce_quota">📉 Reducir valor de la cuota mensual</option>
+                            </select>
+                        </div>
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Marca las compras o cuotas que cubre este pago:</label>
+                        <div id="transfer-pending-items-list" class="alloc-items-list"></div>
+                        <div id="transfer-allocation-summary" class="alloc-summary-footer">
+                            Selecciona cuotas para calcular cobertura y saldo restante.
+                        </div>
+                    </div>
+
+                    <div class="form-group row-group">
+                        <div class="half">
+                            <label for="trans-date">Fecha</label>
+                            <input type="date" id="trans-date" required>
+                        </div>
+                        <div class="half">
+                            <label for="trans-time">Hora</label>
+                            <input type="time" id="trans-time" required>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" id="delete-btn" class="btn btn-danger hidden">Eliminar</button>
+                        <button type="button" id="cancel-btn" class="btn btn-secondary">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VENTANA: ANÁLISIS Y GRÁFICOS -->
+        <div id="analytics-modal" class="modal hidden">
+            <div class="modal-content analytics-modal-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 22px;">Análisis Financiero</h3>
+                        <small id="analytics-month-label" style="color: var(--text-muted); font-size: 12px; text-transform: capitalize;">Mes actual</small>
+                    </div>
+                    <button type="button" id="close-analytics-btn" class="btn-back">Cerrar</button>
+                </div>
+
+                <div class="sub-widget">
+                    <div class="widget-header">
+                        <h2>Patrimonio Neto (6M)</h2>
+                        <div class="mini-legend">
+                            <span><i class="dot" style="background:#10b981;"></i>Act.</span>
+                            <span><i class="dot" style="background:#ff3b30;"></i>Pas.</span>
+                            <span><i class="dot" style="background:#007aff;"></i>Neto</span>
+                        </div>
+                    </div>
+                    <div id="networth-chart-container" class="svg-chart-box"></div>
+                    <table class="comp-table">
+                        <thead>
+                            <tr><th>Tipo</th><th id="nw-prev-col">Ant.</th><th id="nw-curr-col">Act.</th></tr>
+                        </thead>
+                        <tbody id="nw-comp-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="sub-widget">
+                    <div class="widget-header">
+                        <h2>Flujo de Caja (3M)</h2>
+                        <div class="mini-legend">
+                            <span><i class="dot" style="background:#10b981;"></i>Ing.</span>
+                            <span><i class="dot" style="background:#ff3b30;"></i>Gas.</span>
+                        </div>
+                    </div>
+                    <div id="cashflow-chart-container" class="svg-chart-box"></div>
+                    <table class="comp-table">
+                        <thead>
+                            <tr><th>Tipo</th><th id="cf-prev-col">Ant.</th><th id="cf-curr-col">Act.</th></tr>
+                        </thead>
+                        <tbody id="cf-comp-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="sub-widget">
+                    <div class="widget-header">
+                        <h2>Resumen Diario (7 Días)</h2>
+                        <span class="widget-badge">Actividad</span>
+                    </div>
+                    <div id="daily-chart-container" class="svg-chart-box" style="min-height: 105px;"></div>
+                    <div class="avg-grid">
+                        <div class="avg-item"><span>Promedio 7 días</span><strong id="avg-7-days">$0</strong></div>
+                        <div class="avg-item"><span>Promedio 30 días</span><strong id="avg-30-days">$0</strong></div>
+                    </div>
+                </div>
+
+                <div class="sub-widget">
+                    <div class="widget-header">
+                        <h2>Distribución de Gastos</h2>
+                        <span class="widget-badge">Mes Actual</span>
+                    </div>
+                    <div class="donut-section">
+                        <div id="budget-donut-container" class="donut-box"></div>
+                        <div id="budget-legend-list" class="donut-legend"></div>
+                    </div>
+                </div>
+
+                <div class="sub-widget" style="margin-bottom: 0;">
+                    <div class="widget-header">
+                        <h2>Calendario de Actividad</h2>
+                        <span class="widget-badge">Toca un día</span>
+                    </div>
+                    <div class="cal-weekdays">
+                        <span>dom</span><span>lun</span><span>mar</span><span>mié</span><span>jue</span><span>vie</span><span>sáb</span>
+                    </div>
+                    <div id="calendar-days-grid" class="calendar-grid"></div>
+                    <div class="cal-legend-row">
+                        <span><i class="dot" style="background:#10b981;"></i>Ing.</span>
+                        <span><i class="dot" style="background:#ff3b30;"></i>Gas.</span>
+                        <span><i class="dot" style="background:#007aff;"></i>Trf.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VENTANA: MIS CUENTAS Y DETALLE UNIVERSAL -->
+        <div id="accounts-modal" class="modal hidden">
+            <div class="modal-content">
+                <div id="accounts-list-view">
+                    <h3 style="margin: 0 0 15px 0; font-size: 24px;">Mis Cuentas</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <span style="color: var(--text-muted); font-size: 14px;">Total liquidez</span>
+                        <h2 id="accounts-total-liquidity" style="font-size: 22px; margin: 0;">$0.00</h2>
+                    </div>
+                    
+                    <div class="combined-bar-container">
+                        <div class="combined-bar" id="combined-bar"></div>
+                        <div class="combined-legend" id="combined-legend"></div>
+                    </div>
+                    <h4 style="margin: 20px 0 5px 0; font-size: 14px; color: var(--text-muted); font-weight: 500;">Toca una cuenta para ver movimientos</h4>
+                    <div id="accounts-breakdown-list" style="margin-bottom: 20px;"></div>
+                    <hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 15px 0;">
+                    
+                    <form id="new-account-form">
+                        <div class="row-group" style="margin-bottom: 10px;">
+                            <input type="text" id="new-account-name" placeholder="Nombre (ej. Nequi)" class="modal-input" style="flex: 1.3;" required>
+                            <input type="number" id="new-account-initial" step="any" inputmode="decimal" placeholder="Saldo inicial ($)" class="modal-input" style="flex: 1;">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">+ Crear Cuenta</button>
+                    </form>
+                    <button type="button" id="close-accounts-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+                </div>
+
+                <!-- VISTA DE DETALLE (CUENTA, TARJETA O DEUDA/PRÉSTAMO) -->
+                <div id="account-detail-view" class="hidden">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button type="button" id="back-to-accounts-btn" class="btn-back">← Volver</button>
+                            <h3 id="detail-account-name" style="margin: 0; font-size: 20px;">Detalle</h3>
+                        </div>
+                        <button type="button" id="edit-card-settings-btn" class="btn-back hidden">⚙️ Cupo/Tasa</button>
+                        <button type="button" id="edit-debt-settings-btn" class="btn-back hidden">⚙️ Crédito</button>
+                    </div>
+
+                    <!-- FICHA EXCLUSIVA PARA TARJETA DE CRÉDITO -->
+                    <div id="card-extra-info" class="card-specs-box hidden">
+                        <div class="specs-grid">
+                            <div><small>Cupo Total</small><strong id="detail-card-limit">$0</strong></div>
+                            <div><small>Saldo Disponible</small><strong id="detail-card-available" class="positive">$0</strong></div>
+                        </div>
+                        <div class="specs-dates" id="detail-card-dates">📅 Corte: -- • Pago: --</div>
+                        
+                        <!-- MONITOR DE COMPRAS DIFERIDAS ACTIVAS EN ESTA TARJETA -->
+                        <div id="card-deferred-section" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.25);">
+                            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">🧾 Compras Diferidas y Saldos Pendientes:</span>
+                            <div id="card-deferred-list"></div>
+                        </div>
+
+                        <form id="edit-card-form" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 11px;">Nuevo Cupo Total ($)</label>
+                                <input type="number" id="edit-card-limit" step="any" inputmode="decimal" class="modal-input" required>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half"><label style="font-size: 11px;">Día de corte</label><input type="number" id="edit-card-cutoff" min="1" max="31" class="modal-input" required></div>
+                                <div class="half"><label style="font-size: 11px;">Día de pago</label><input type="number" id="edit-card-payment" min="1" max="31" class="modal-input" required></div>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half"><label style="font-size: 11px;">Tasa Habitual (%)</label><input type="number" id="edit-card-rate" step="any" inputmode="decimal" class="modal-input"></div>
+                                <div class="half">
+                                    <label style="font-size: 11px;">Periodicidad</label>
+                                    <select id="edit-card-rate-type" class="modal-input">
+                                        <option value="monthly">% Mensual</option>
+                                        <option value="annual">% Anual E.A.</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label style="font-size: 11px;">Máx. cuotas sin interés (0%)</label>
+                                <input type="number" id="edit-card-zero-interest-max" min="0" max="60" placeholder="0" class="modal-input">
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 13px;">Guardar Cambios</button>
+                        </form>
+                    </div>
+
+                    <!-- FICHA EXCLUSIVA PARA DEUDAS / PRÉSTAMOS CON AMORTIZACIÓN REAL -->
+                    <div id="debt-extra-info" class="debt-specs-box hidden">
+                        <div class="specs-grid">
+                            <div>
+                                <small>Préstamo Inicial</small>
+                                <strong id="detail-debt-original">$0</strong>
+                            </div>
+                            <div style="text-align: right;">
+                                <small>Capital Amortizado</small>
+                                <strong id="detail-debt-progress-pct" class="positive">0%</strong>
+                            </div>
+                        </div>
+                        <div class="tc-mini-bar" style="margin-bottom: 10px;">
+                            <div id="detail-debt-progress-fill" class="tc-mini-bar-fill" style="width: 0%; background-color: var(--positive);"></div>
+                        </div>
+
+                        <div class="debt-metrics-grid">
+                            <div class="debt-metric-cell">
+                                <small>Cuota Mensual</small>
+                                <strong id="detail-debt-payment">$0</strong>
+                            </div>
+                            <div class="debt-metric-cell">
+                                <small>Cuotas (Pag. / Tot.)</small>
+                                <strong id="detail-debt-installments">0 / 0</strong>
+                            </div>
+                            <div class="debt-metric-cell">
+                                <small>Tasa de Interés</small>
+                                <strong id="detail-debt-rate">0%</strong>
+                            </div>
+                            <div class="debt-metric-cell">
+                                <small>Intereses Restantes</small>
+                                <strong id="detail-debt-total-interest" class="negative">$0</strong>
+                            </div>
+                        </div>
+
+                        <!-- DESGLOSE DE LA PRÓXIMA CUOTA -->
+                        <div class="next-quota-box">
+                            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 5px;">📌 Proyección Próxima Cuota:</span>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                <span>Abono Capital: <b id="detail-debt-next-principal" class="positive">$0</b></span>
+                                <span>Interés Mes: <b id="detail-debt-next-interest" class="negative">$0</b></span>
+                            </div>
+                        </div>
+
+                        <!-- BOTONES DE ACCIÓN RÁPIDA DE AMORTIZACIÓN -->
+                        <div class="row-group" style="margin-top: 10px;">
+                            <button type="button" id="open-pay-installment-btn" class="btn btn-primary" style="flex: 1; padding: 9px 10px; font-size: 12px;">💸 Pagar Cuota</button>
+                            <button type="button" id="toggle-amortization-btn" class="btn btn-secondary" style="flex: 1; padding: 9px 10px; font-size: 12px;">📊 Amortización</button>
+                        </div>
+
+                        <!-- FORMULARIO PAGO DE CUOTA (SEPARA CAPITAL E INTERESES AUTOMÁTICAMENTE) -->
+                        <div id="pay-installment-box" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
+                            <form id="pay-installment-form">
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label style="font-size: 11px;">Cuenta desde donde pagas:</label>
+                                    <select id="pay-debt-source-acc" class="modal-input" required></select>
+                                </div>
+                                <div class="row-group" style="margin-bottom: 8px;">
+                                    <div class="half">
+                                        <label style="font-size: 11px;">Abono Capital ($)</label>
+                                        <input type="number" id="pay-debt-principal" step="any" inputmode="decimal" class="modal-input" required>
+                                    </div>
+                                    <div class="half">
+                                        <label style="font-size: 11px;">Interés del Mes ($)</label>
+                                        <input type="number" id="pay-debt-interest" step="any" inputmode="decimal" class="modal-input" required>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label style="font-size: 11px;">Fecha de pago:</label>
+                                    <input type="date" id="pay-debt-date" class="modal-input" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 9px; font-size: 13px;">Confirmar Pago y Descontar Cuota</button>
+                            </form>
+                        </div>
+
+                        <!-- TABLA DE AMORTIZACIÓN PROYECTADA + SIMULADOR ABONO EXTRA -->
+                        <div id="amortization-panel" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 11px;">🚀 Simular Abono Extra a Capital hoy ($):</label>
+                                <input type="number" id="sim-extra-payment" step="any" inputmode="decimal" placeholder="Ej. 1000000" class="modal-input">
+                                <small id="sim-savings-result" style="display: block; font-size: 11px; color: var(--positive); margin-top: 4px; font-weight: 600;"></small>
+                            </div>
+                            <div class="amortization-scroll">
+                                <table class="amort-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Cuota</th>
+                                            <th>Capital</th>
+                                            <th>Interés</th>
+                                            <th>Saldo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="amortization-table-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- FORMULARIO EDITAR PARÁMETROS DEL CRÉDITO -->
+                        <form id="edit-debt-form" class="hidden" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.25);">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 11px;">Saldo Inicial del Préstamo ($)</label>
+                                <input type="number" id="edit-debt-original" step="any" inputmode="decimal" class="modal-input" required>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half">
+                                    <label style="font-size: 11px;">Cuotas Totales</label>
+                                    <input type="number" id="edit-debt-total-quotes" min="1" class="modal-input" required>
+                                </div>
+                                <div class="half">
+                                    <label style="font-size: 11px;">Cuotas Pagadas</label>
+                                    <input type="number" id="edit-debt-paid-quotes" min="0" class="modal-input" required>
+                                </div>
+                            </div>
+                            <div class="row-group" style="margin-bottom: 8px;">
+                                <div class="half">
+                                    <label style="font-size: 11px;">Interés (%)</label>
+                                    <input type="number" id="edit-debt-rate" step="any" inputmode="decimal" class="modal-input" required>
+                                </div>
+                                <div class="half">
+                                    <label style="font-size: 11px;">Tipo de Tasa</label>
+                                    <select id="edit-debt-rate-type" class="modal-input">
+                                        <option value="monthly">% Mensual</option>
+                                        <option value="annual">% Anual (E.A.)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label style="font-size: 11px;">Valor Cuota Mensual ($)</label>
+                                <input type="number" id="edit-debt-monthly-payment" step="any" inputmode="decimal" class="modal-input" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 8px; font-size: 13px;">Guardar Parámetros del Crédito</button>
+                        </form>
+                    </div>
+
+                    <div class="reconcile-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span id="detail-balance-label" style="color: var(--text-muted); font-size: 13px;">Saldo registrado:</span>
+                            <strong id="detail-account-balance" style="font-size: 20px;">$0.00</strong>
+                        </div>
+                        <form id="reconcile-form">
+                            <input type="hidden" id="reconcile-account-id">
+                            <label id="reconcile-input-label" style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">⚖️ Ajustar saldo real:</label>
+                            <div class="row-group">
+                                <input type="number" id="reconcile-real-amount" step="any" inputmode="decimal" placeholder="Monto real actual ($)" class="modal-input" style="flex: 1;" required>
+                                <button type="submit" class="btn btn-primary" style="padding: 10px 15px;">Ajustar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <h4 style="margin: 15px 0 10px 0; font-size: 15px; color: var(--text-muted);">Historial de movimientos</h4>
+                    <ul id="detail-account-history" class="history-list" style="max-height: 220px; overflow-y: auto;"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- VENTANA: ACTIVOS FIJOS Y BIENES -->
+        <div id="assets-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 style="margin: 0 0 15px 0; font-size: 24px;">Mis Activos</h3>
+                
+                <div class="tc-summary-banner" style="margin-bottom: 15px;">
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 12px; display: block;">Valor Actual Total</span>
+                        <strong id="assets-total-value" style="font-size: 19px; color: var(--accent);">$0</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: var(--text-muted); font-size: 12px; display: block;">Diferencia (vs Compra)</span>
+                        <strong id="assets-total-diff" style="font-size: 19px;">$0</strong>
+                    </div>
+                </div>
+
+                <div class="filter-pills" id="assets-type-pills">
+                    <button type="button" class="pill-btn active" data-type="active">Vigentes</button>
+                    <button type="button" class="pill-btn" data-type="sold">Vendidos</button>
+                </div>
+
+                <div id="assets-list" style="margin-bottom: 20px; max-height: 35vh; overflow-y: auto; padding-right: 5px;"></div>
+                
+                <hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 15px 0;">
+                
+                <h4 style="margin: 0 0 10px 0; font-size: 15px;">Añadir Nuevo Activo</h4>
+                <form id="new-asset-form">
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div style="flex: 1.2;">
+                            <input type="text" id="new-asset-name" placeholder="Nombre (Ej. Moto, Casa...)" class="modal-input" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <select id="new-asset-category" class="modal-input" required>
+                                <option value="" disabled selected>Categoría...</option>
+                                <option value="Inmueble">🏠 Inmueble</option>
+                                <option value="Vehículo">🚗 Vehículo</option>
+                                <option value="Inversión">📈 Inversión</option>
+                                <option value="Tecnología">💻 Tecnología</option>
+                                <option value="Coleccionable">💎 Coleccionable</option>
+                                <option value="Otro">📦 Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Valor Actual ($)</label>
+                            <input type="number" id="new-asset-current" step="any" inputmode="decimal" placeholder="0,00" class="modal-input" required>
+                        </div>
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Valor de Compra ($)</label>
+                            <input type="number" id="new-asset-purchase" step="any" inputmode="decimal" placeholder="0,00 (Opcional)" class="modal-input">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">+ Guardar Activo</button>
+                </form>
+                
+                <button type="button" id="close-assets-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- VENTANA: DETALLE DE ACTIVO INDIVIDUAL -->
+        <div id="asset-detail-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                    <button type="button" id="back-to-assets-btn" class="btn-back">← Volver</button>
+                    <button type="button" id="edit-asset-settings-btn" class="btn-back">⚙️ Editar</button>
+                </div>
+                
+                <h3 id="detail-asset-name" style="margin: 0 0 5px 0; font-size: 22px;">Nombre Activo</h3>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="detail-asset-status" class="period-badge">Vigente</span>
+                    <span id="detail-asset-category" style="font-size: 12px; color: var(--text-muted); font-weight: 600;"></span>
+                </div>
+
+                <div class="debt-specs-box" style="margin-top: 15px; background-color: rgba(16, 185, 129, 0.06); border-color: rgba(16, 185, 129, 0.22);">
+                    <div class="specs-grid">
+                        <div>
+                            <small>Valor Actual</small>
+                            <strong id="detail-asset-current" class="positive">$0</strong>
+                        </div>
+                        <div style="text-align: right;">
+                            <small>Valor de Compra</small>
+                            <strong id="detail-asset-purchase">$0</strong>
+                        </div>
+                    </div>
+                    <div class="specs-grid" style="margin-top: 10px;">
+                        <div>
+                            <small>Diferencia (Gan/Pérdida)</small>
+                            <strong id="detail-asset-diff">$0</strong>
+                        </div>
+                        <div style="text-align: right;">
+                            <small>Gastos Vinculados</small>
+                            <strong id="detail-asset-expenses" class="negative">$0</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="asset-action-buttons" class="grid" style="margin-top: 15px;">
+                    <button type="button" id="btn-asset-sell" class="btn btn-primary" style="padding: 10px; font-size: 13px;">💰 Vender</button>
+                    <button type="button" id="btn-asset-expense" class="btn btn-secondary" style="padding: 10px; font-size: 13px;">📉 Registrar Gasto</button>
+                </div>
+
+                <form id="edit-asset-form" class="hidden" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(148,163,184,0.25);">
+                    <input type="hidden" id="edit-asset-id">
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half">
+                            <label style="font-size: 11px;">Categoría</label>
+                            <select id="edit-asset-category" class="modal-input">
+                                <option value="Inmueble">🏠 Inmueble</option>
+                                <option value="Vehículo">🚗 Vehículo</option>
+                                <option value="Inversión">📈 Inversión</option>
+                                <option value="Tecnología">💻 Tecnología</option>
+                                <option value="Coleccionable">💎 Coleccionable</option>
+                                <option value="Otro">📦 Otro</option>
+                            </select>
+                        </div>
+                        <div class="half">
+                            <label style="font-size: 11px;">Valor Actual ($)</label>
+                            <input type="number" id="edit-asset-val-current" step="any" inputmode="decimal" class="modal-input" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-size: 13px;">Guardar Cambios</button>
+                    <button type="button" id="btn-asset-delete" class="btn btn-danger" style="width: 100%; padding: 10px; font-size: 13px; margin-top: 8px;">🗑️ Eliminar Activo</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- VENTANA: TARJETAS DE CRÉDITO -->
+        <div id="cards-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 style="margin: 0 0 15px 0; font-size: 24px;">Tarjetas de Crédito</h3>
+                <div class="tc-summary-banner">
+                    <div><span style="color: var(--text-muted); font-size: 12px; display: block;">Deuda utilizada</span><strong id="cards-total-debt" class="negative" style="font-size: 19px;">$0</strong></div>
+                    <div style="text-align: right;"><span style="color: var(--text-muted); font-size: 12px; display: block;">Cupo disponible</span><strong id="cards-total-available" class="positive" style="font-size: 19px;">$0</strong></div>
+                </div>
+                <div class="combined-bar-container">
+                    <div class="combined-bar" id="cards-combined-bar"></div>
+                    <div class="combined-legend" id="cards-combined-legend"></div>
+                </div>
+                <h4 style="margin: 15px 0 5px 0; font-size: 14px; color: var(--text-muted); font-weight: 500;">Tus tarjetas (toca para ver detalle)</h4>
+                <div id="cards-breakdown-list" style="margin-bottom: 18px;"></div>
+                <hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 15px 0;">
+                
+                <h4 style="margin: 0 0 10px 0; font-size: 15px;">Nueva Tarjeta de Crédito</h4>
+                <form id="new-card-form">
+                    <div class="form-group" style="margin-bottom: 10px;"><input type="text" id="new-card-name" placeholder="Nombre (ej. Visa)" class="modal-input" required></div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half"><label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cupo Total ($)</label><input type="number" id="new-card-limit" step="any" inputmode="decimal" placeholder="Ej. 5000000" class="modal-input" required></div>
+                        <div class="half"><label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Deuda actual ($)</label><input type="number" id="new-card-debt" step="any" inputmode="decimal" placeholder="0,00" class="modal-input"></div>
+                    </div>
+                    <p id="new-card-available-preview" style="font-size: 12px; color: var(--positive); font-weight: 600; margin-bottom: 10px;">Saldo disponible inicial: $ 0</p>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half"><label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Fecha corte</label><input type="number" id="new-card-cutoff" min="1" max="31" class="modal-input" required></div>
+                        <div class="half"><label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Fecha pago</label><input type="number" id="new-card-payment" min="1" max="31" class="modal-input" required></div>
+                    </div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half"><label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Tasa habitual (%)</label><input type="number" id="new-card-rate" step="any" inputmode="decimal" placeholder="Ej. 2.1" class="modal-input"></div>
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Periodicidad</label>
+                            <select id="new-card-rate-type" class="modal-input">
+                                <option value="monthly">% Mensual</option>
+                                <option value="annual">% Anual E.A.</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Máx. cuotas sin interés (0% en comercios aliados)</label>
+                        <input type="number" id="new-card-zero-interest-max" min="0" max="60" placeholder="Ej. 3, 6 o 12 (0 si no tiene)" class="modal-input">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">+ Crear Tarjeta</button>
+                </form>
+                <button type="button" id="close-cards-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- VENTANA: DEUDAS Y PRÉSTAMOS -->
+        <div id="debts-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 style="margin: 0 0 15px 0; font-size: 24px;">Deudas y Préstamos</h3>
+                <div class="tc-summary-banner">
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 12px; display: block;">Deuda Vigente</span>
+                        <strong id="debts-total-amount" class="negative" style="font-size: 19px;">$0</strong>
+                    </div>
+                </div>
+                
+                <div class="combined-bar-container">
+                    <div class="combined-bar" id="debts-combined-bar"></div>
+                    <div class="combined-legend" id="debts-combined-legend"></div>
+                </div>
+                
+                <h4 style="margin: 15px 0 5px 0; font-size: 14px; color: var(--text-muted); font-weight: 500;">Tus créditos (toca para ver detalle)</h4>
+                <div id="debts-breakdown-list" style="margin-bottom: 18px;"></div>
+                
+                <hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 15px 0;">
+                
+                <h4 style="margin: 0 0 10px 0; font-size: 15px;">Registrar Préstamo o Deuda</h4>
+                <form id="new-debt-form">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="new-debt-name" placeholder="Nombre (ej. Crédito Vehículo)" class="modal-input" required>
+                    </div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Monto Original ($)</label>
+                            <input type="number" id="new-debt-original" step="any" inputmode="decimal" placeholder="Ej. 10000000" class="modal-input" required>
+                        </div>
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Deuda Actual ($)</label>
+                            <input type="number" id="new-debt-current" step="any" inputmode="decimal" placeholder="Igual al original si es nuevo" class="modal-input">
+                        </div>
+                    </div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cuotas Totales</label>
+                            <input type="number" id="new-debt-total-quotes" min="1" placeholder="Ej. 60" class="modal-input" required>
+                        </div>
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Cuotas Pagadas</label>
+                            <input type="number" id="new-debt-paid-quotes" min="0" placeholder="Ej. 0" class="modal-input" required>
+                        </div>
+                    </div>
+                    <div class="row-group" style="margin-bottom: 8px;">
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Tasa de Interés (%)</label>
+                            <input type="number" id="new-debt-rate" step="any" inputmode="decimal" placeholder="Ej. 1.5" class="modal-input" required>
+                        </div>
+                        <div class="half">
+                            <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Tipo de Tasa</label>
+                            <select id="new-debt-rate-type" class="modal-input">
+                                <option value="monthly">% Mensual</option>
+                                <option value="annual">% Anual E.A.</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Valor Cuota (Opcional - Se calcula auto si dejas vacío)</label>
+                        <input type="number" id="new-debt-monthly-payment" step="any" inputmode="decimal" placeholder="Ej. 350000" class="modal-input">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">+ Crear Deuda</button>
+                </form>
+                <button type="button" id="close-debts-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- VENTANA: RADIOGRAFÍA DE GASTOS -->
+        <div id="expenses-modal" class="modal hidden">
+            <div class="modal-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <h3 style="margin: 0; font-size: 24px;">Gastos del Mes</h3>
+                    <span id="expenses-month-badge" class="category-pill">Mes</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <span style="color: var(--text-muted); font-size: 14px;">Total gastado</span>
+                    <h2 id="expenses-total-amount" class="negative" style="font-size: 22px; margin: 0;">$0.00</h2>
+                </div>
+                <div class="combined-bar-container">
+                    <div class="combined-bar" id="expenses-combined-bar"></div>
+                    <div class="combined-legend" id="expenses-combined-legend"></div>
+                </div>
+                <h4 style="margin: 15px 0 8px 0; font-size: 14px; color: var(--text-muted); font-weight: 500;">Desglose por categoría</h4>
+                <div id="expenses-category-list" style="margin-bottom: 15px;"></div>
+                <button type="button" id="close-expenses-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+            </div>
+        </div>
+
+        <!-- VENTANA: PRESUPUESTOS Y CATEGORÍAS -->
+        <div id="budget-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3 style="margin: 0 0 15px 0; font-size: 24px;">Presupuesto y Categorías</h3>
+                
+                <div class="tc-summary-banner" style="margin-bottom: 15px;" id="budget-summary-box">
+                    <div>
+                        <span style="color: var(--text-muted); font-size: 12px; display: block;">Total Presupuestado</span>
+                        <strong id="budget-total-limit" style="font-size: 19px;">$0</strong>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="color: var(--text-muted); font-size: 12px; display: block;">Total Gastado</span>
+                        <strong id="budget-total-spent" class="negative" style="font-size: 19px;">$0</strong>
+                    </div>
+                </div>
+
+                <div class="filter-pills" id="budget-type-pills">
+                    <button type="button" class="pill-btn active" data-type="expense">Gastos</button>
+                    <button type="button" class="pill-btn" data-type="income">Ingresos</button>
+                </div>
+
+                <div id="budget-categories-list" style="margin-bottom: 20px; max-height: 40vh; overflow-y: auto; padding-right: 5px;"></div>
+                
+                <hr style="border: 0; border-top: 1px solid rgba(148,163,184,0.25); margin: 15px 0;">
+                
+                <h4 id="new-cat-title" style="margin: 0 0 10px 0; font-size: 15px;">Añadir Nuevo Sobre / Categoría</h4>
+                <form id="new-category-form">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <input type="text" id="new-cat-name" placeholder="Nombre de la Categoría (Ej. 🏠 Vivienda o 💼 Salario)" class="modal-input" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;" id="new-cat-limit-group">
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Límite o Tope Mensual ($) - Opcional</label>
+                        <input type="number" id="new-cat-limit" step="any" inputmode="decimal" placeholder="Dejar vacío si no hay límite" class="modal-input">
+                    </div>
+                    <button type="submit" id="new-cat-submit-btn" class="btn btn-primary" style="width: 100%; padding: 12px;">+ Crear Sobre</button>
+                </form>
+                
+                <button type="button" id="close-budget-btn" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cerrar</button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BARRA DE NAVEGACIÓN INFERIOR (TIPO DOCK iOS) -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-home">
+            <span class="nav-icon">📊</span><span class="nav-text">Resumen</span>
+        </div>
+        <div class="nav-item" id="nav-analytics">
+            <span class="nav-icon">📈</span><span class="nav-text">Análisis</span>
+        </div>
+        <div class="nav-item" id="nav-budget">
+            <span class="nav-icon">🎯</span><span class="nav-text">Presup.</span>
+        </div>
+        <div class="nav-item" id="nav-more-btn">
+            <span class="nav-icon">📁</span><span class="nav-text">Menú</span>
+        </div>
+    </nav>
+
+    <!-- MENÚ DESPLEGABLE DEL DOCK (SUBIDA VERTICAL) -->
+    <div id="more-menu-overlay" class="more-menu-overlay hidden">
+        <button type="button" class="fab-option" id="nav-accounts">
+            <span class="fab-option-icon">🏦</span>
+            <span class="fab-option-label">Cuentas</span>
+        </button>
+        <button type="button" class="fab-option" id="nav-cards">
+            <span class="fab-option-icon">💳</span>
+            <span class="fab-option-label">Tarjetas</span>
+        </button>
+        <button type="button" class="fab-option" id="nav-debts">
+            <span class="fab-option-icon">💸</span>
+            <span class="fab-option-label">Deudas</span>
+        </button>
+        <button type="button" class="fab-option" id="nav-assets">
+            <span class="fab-option-icon">💎</span>
+            <span class="fab-option-label">Activos</span>
+        </button>
+        <button type="button" class="fab-option" id="nav-expenses">
+            <span class="fab-option-icon">💲</span>
+            <span class="fab-option-label">Gastos</span>
+        </button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
