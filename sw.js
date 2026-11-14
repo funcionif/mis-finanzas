@@ -1,15 +1,16 @@
 // ==========================================
-// SW.JS - SERVICE WORKER INTELIGENTE (v3.0)
+// SW.JS - SERVICE WORKER INTELIGENTE (v3.2)
 // Optimizado para Safari iOS y GitHub Pages
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v3.0';
+const CACHE_NAME = 'mis-finanzas-v3.2';
 
 const CORE_ASSETS = [
     './',
     './index.html',
     './styles.css',
     './core.js',
+    './info.js',
     './app.js',
     './manifest.json',
     './icon.png'
@@ -49,11 +50,12 @@ self.addEventListener('message', (event) => {
 });
 
 // 4. INTERCEPTOR DE RED:
-// - Network-First para código y navegación
+// - Network-First para código y navegación (evita quedarse pegado en versiones viejas)
 // - Cache-First para imágenes e íconos estáticos
 self.addEventListener('fetch', (event) => {
     const req = event.request;
 
+    // Solo interceptar peticiones GET
     if (req.method !== 'GET') return;
 
     const url = new URL(req.url);
@@ -86,6 +88,7 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Cache-First para activos multimedia (íconos, fuentes, imágenes)
     event.respondWith(
         caches.match(req).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;

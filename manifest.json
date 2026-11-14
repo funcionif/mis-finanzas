@@ -1,10 +1,10 @@
 {
-    "name": "Control Financiero",
-    "short_name": "Finanzas",
+    "name": "Mis Finanzas",
+    "short_name": "Mis Finanzas",
     "start_url": "./index.html",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
+    "background_color": "#eef4fa",
+    "theme_color": "#8b5cf6",
     "icons": [
       {
         "src": "icon.png",
