@@ -828,8 +828,8 @@ const updateDashboard = () => {
 
     const headerBalEl = document.getElementById('net-worth-header');
     if (headerBalEl) {
-        headerBalEl.innerText = formatMoney(currSnap.accountsTotal);
-        headerBalEl.style.color = currSnap.accountsTotal < 0 ? 'var(--negative)' : 'var(--text-main)';
+        headerBalEl.innerText = formatMoney(currSnap.assetsTotal);
+        headerBalEl.style.color = currSnap.assetsTotal < 0 ? 'var(--negative)' : 'var(--text-main)';
     }
 
     const headerLiqBtn = document.getElementById('header-liquidity-trigger');
