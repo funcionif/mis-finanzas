@@ -1,5 +1,5 @@
 // ==========================================
-// app.js (v3.2.5) - VERSIÓN OFICIAL
+// app.js (v3.3.0) - VERSIÓN OFICIAL
 // EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO
 // ==========================================
 
@@ -371,6 +371,26 @@ document.getElementById('reset-auth-btn-profile')?.addEventListener('click', () 
         localStorage.removeItem('myFinancesColorMode');
         localStorage.removeItem('myFinancesWidgetOrder');
         location.reload();
+    }
+});
+
+// --- 4.5 AUTO-BLOQUEO POR SEGUNDO PLANO (VISIBILITY API) ---
+let lastHiddenTime = null;
+const LOCK_GRACE_PERIOD = 2 * 60 * 1000; // 2 minutos de tolerancia (en milisegundos)
+
+document.addEventListener('visibilitychange', () => {
+    // Si no hay PIN configurado o activo, no hacemos nada
+    if (!authData || !authData.pinEnabled) return;
+    
+    if (document.visibilityState === 'hidden') {
+        // La app se fue al fondo (cambio de app, pantalla apagada)
+        lastHiddenTime = Date.now();
+    } else if (document.visibilityState === 'visible' && lastHiddenTime) {
+        // La app regresó a primer plano, comprobamos cuánto tiempo pasó
+        if (Date.now() - lastHiddenTime > LOCK_GRACE_PERIOD) {
+            initAuthUI(true); // Fuerza el bloqueo de seguridad
+        }
+        lastHiddenTime = null; // Reiniciar contador
     }
 });
 
@@ -762,16 +782,24 @@ const renderAccountSelects = (onlyAssetsForMain = false, forcedSelectedId = null
     const prevFrom = forcedSelectedId || accountSelect.value;
     const prevTo = toAccountSelect ? toAccountSelect.value : '';
 
-    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const allAssets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const standardAssets = allAssets.filter(a => !a.id.startsWith('CxC_'));
+    const cxcAssets = allAssets.filter(a => a.id.startsWith('CxC_'));
+    
     const cards = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
     const debts = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'debt'));
     const pockets = [...(financeData.pockets || [])].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
     const buildOptionsHtml = (includeLiabilities = true, includePockets = false) => {
         let html = '';
-        if (assets.length > 0) {
+        if (standardAssets.length > 0) {
             html += `<optgroup label="💵 Liquidez (Cuentas y Efectivo)">`;
-            assets.forEach(a => { html += `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`; });
+            standardAssets.forEach(a => { html += `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`; });
+            html += `</optgroup>`;
+        }
+        if (cxcAssets.length > 0) {
+            html += `<optgroup label="🤝 Deudas a Favor (Por Cobrar)">`;
+            cxcAssets.forEach(a => { html += `<option value="${a.id}">${a.name}</option>`; });
             html += `</optgroup>`;
         }
         if (includePockets && pockets.length > 0) {
@@ -796,7 +824,9 @@ const renderAccountSelects = (onlyAssetsForMain = false, forcedSelectedId = null
     };
 
     const isTransfer = typeSelect && typeSelect.value === 'transfer';
-    accountSelect.innerHTML = buildOptionsHtml(!onlyAssetsForMain, isTransfer);
+    const isExpense = typeSelect && typeSelect.value === 'expense';
+    // Permitir elegir bolsillos (como la alcancía) para pagar gastos
+    accountSelect.innerHTML = buildOptionsHtml(!onlyAssetsForMain, isTransfer || isExpense);
     if (prevFrom && Array.from(accountSelect.options).some(o => o.value === String(prevFrom))) {
         accountSelect.value = String(prevFrom);
     }
@@ -1210,7 +1240,8 @@ const renderBalanceSheet = (balances, netWorth, snap) => {
     list.innerHTML = '';
     let hiddenCount = 0;
 
-    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset' && !a.id.startsWith('CxC_')));
+    const cxcAccounts = financeData.customAccounts.filter(a => a.id.startsWith('CxC_'));
     const cards = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
     const debts = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'debt'));
 
@@ -1251,6 +1282,21 @@ const renderBalanceSheet = (balances, netWorth, snap) => {
         } else {
             toggleZeroBtn.innerText = '👁️ Ocultar $0';
         }
+    }
+
+    const cxcTotal = round2(cxcAccounts.reduce((sum, a) => sum + Math.max(0, round2(balances[a.id] || 0)), 0));
+    if (cxcTotal > 0) {
+        const cxcRow = document.createElement('div');
+        cxcRow.className = 'bs-row';
+        cxcRow.onclick = (e) => {
+            e.stopPropagation();
+            if (attemptCloseModals()) {
+                document.getElementById('debts-modal')?.classList.remove('hidden');
+                document.querySelector('#debts-type-pills .pill-btn[data-type="receivable"]')?.click();
+            }
+        };
+        cxcRow.innerHTML = `<span>🤝 Deudas a Favor</span><strong class="positive">${formatMoney(cxcTotal)}</strong>`;
+        list.appendChild(cxcRow);
     }
 
     if (snap.pocketsTotal > 0) {
@@ -1961,7 +2007,7 @@ const renderAccountsBreakdown = (balances, totalLiquidity) => {
     combinedLegend.innerHTML = '';
     list.innerHTML = '';
 
-    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset' && !a.id.startsWith('CxC_')));
 
     assets.forEach((acc, index) => {
         const balance = round2(balances[acc.id] || 0);
@@ -2225,6 +2271,8 @@ const renderBudgetView = () => {
         const hasSubLimits = subcatsTotalLimit > 0;
         globalSpent = round2(globalSpent + spent);
         globalLimit = round2(globalLimit + limit);
+        
+        const catFixedBadge = catObj.isFixed ? ' <span class="widget-badge" style="font-size:9px; background:rgba(239,68,68,0.1); color:var(--negative);">📌 Fijo</span>' : '';
 
         let progressHtml = '';
         if (limit > 0) {
@@ -2250,6 +2298,7 @@ const renderBudgetView = () => {
             const sortedSubs = [...catObj.subcategories].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
             sortedSubs.forEach(subObj => {
                 const subName = subObj.name, subLimit = round2(subObj.limit || 0), subSpent = totalsBySubcat[`${cat}::${subName}`] || 0;
+                const subFixedIcon = subObj.isFixed ? ' <span title="Gasto Fijo" style="font-size:11px;">📌</span>' : '';
                 const subProgressHtml = subLimit > 0
                     ? `<div class="tc-mini-bar" style="margin-top:4px; height:4px;"><div class="tc-mini-bar-fill" style="width:${Math.min(100, (subSpent / subLimit) * 100)}%; background-color:${currentBudgetType === 'expense' && subSpent > subLimit ? 'var(--negative)' : 'var(--positive)'};"></div></div>
                        <div style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">${formatMoney(subSpent)} / ${formatMoney(subLimit)}</div>`
@@ -2258,7 +2307,7 @@ const renderBudgetView = () => {
                 subcatsHtml += `
                     <div style="margin-bottom:8px; font-size:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-weight:600; color:var(--text-main);">↳ ${subName}</span>
+                            <span style="font-weight:600; color:var(--text-main);">↳ ${subName}${subFixedIcon}</span>
                             <button type="button" onclick="deleteSubcategory('${cat}', '${subName}', '${currentBudgetType}')" style="background:rgba(255,59,48,0.1); border:none; color:var(--negative); font-size:10px; font-weight:bold; cursor:pointer; padding:2px 6px; border-radius:6px;">X</button>
                         </div>
                         ${subProgressHtml}
@@ -2267,10 +2316,13 @@ const renderBudgetView = () => {
         }
 
         const metaPlaceholder = currentBudgetType === 'expense' ? 'Límite ($)' : 'Meta ($)';
+        const fixedCheckHtml = currentBudgetType === 'expense' ? `<label style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="subcat-fixed-check" style="accent-color:var(--negative);"> Fijo</label>` : '';
+        
         subcatsHtml += `
-            <form onsubmit="event.preventDefault(); addSubcategory('${cat}', '${currentBudgetType}', this.querySelector('.subcat-name-input').value, this.querySelector('.subcat-limit-input').value); this.reset();" style="display:flex; gap:6px; margin-top:10px; align-items:center;">
-                <input type="text" class="subcat-name-input modal-input" placeholder="Nueva subcategoría..." required style="flex:1.4; padding:7px 10px; font-size:12.5px !important; min-height:36px !important;">
-                <input type="text" inputmode="decimal" class="subcat-limit-input money-input modal-input" placeholder="${metaPlaceholder}" style="flex:1; padding:7px 10px; font-size:12.5px !important; min-height:36px !important;">
+            <form onsubmit="event.preventDefault(); addSubcategory('${cat}', '${currentBudgetType}', this.querySelector('.subcat-name-input').value, this.querySelector('.subcat-limit-input').value, this.querySelector('.subcat-fixed-check')?.checked || false); this.reset();" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center;">
+                <input type="text" class="subcat-name-input modal-input" placeholder="Nueva subcategoría..." required style="flex:1; min-width:120px; padding:7px 10px; font-size:12.5px !important; min-height:36px !important;">
+                <input type="text" inputmode="decimal" class="subcat-limit-input money-input modal-input" placeholder="${metaPlaceholder}" style="width:90px; padding:7px 10px; font-size:12.5px !important; min-height:36px !important;">
+                ${fixedCheckHtml}
                 <button type="submit" class="btn btn-primary" style="padding:6px 12px; font-size:16px; border-radius:10px; min-height:36px !important;">+</button>
             </form></div>`;
 
@@ -2280,7 +2332,7 @@ const renderBudgetView = () => {
         listContainer.innerHTML += `
             <div class="budget-cat-item">
                 <div class="budget-cat-top">
-                    <span>${cat}</span>
+                    <span>${cat}${catFixedBadge}</span>
                     <div style="display:flex; align-items:center;">
                         <span class="${amountColorClass}" style="font-size:15.5px; font-weight:800;">${formatMoney(spent)}</span>
                         ${configBtnHtml}
@@ -2394,12 +2446,12 @@ window.deleteCategory = (catName, type) => {
     }
 };
 
-window.addSubcategory = (catName, type, subName, limitVal) => {
+window.addSubcategory = (catName, type, subName, limitVal, isFixed = false) => {
     const cleanName = subName.trim(), limit = parseMoneyInput(limitVal);
     if (!cleanName) return;
     const cat = financeData.categories[type].find(c => c.name === catName);
     if (cat && !cat.subcategories.some(s => s.name === cleanName)) {
-        cat.subcategories.push({ name: cleanName, limit });
+        cat.subcategories.push({ name: cleanName, limit, isFixed });
         localStorage.setItem('myFinances', JSON.stringify(financeData));
         renderCategoryOptions(document.getElementById('type')?.value || 'expense');
         renderBudgetView();
@@ -2424,6 +2476,7 @@ document.getElementById('add-category-form')?.addEventListener('submit', (e) => 
     e.preventDefault();
     const nameInput = document.getElementById('new-cat-name').value.trim();
     const limitInput = parseMoneyInput(document.getElementById('new-cat-limit').value);
+    const isFixed = !!document.getElementById('new-cat-is-fixed')?.checked;
     if (!nameInput) return;
 
     if (financeData.categories[currentBudgetType].some(c => c.name.toLowerCase() === nameInput.toLowerCase())) {
@@ -2431,7 +2484,7 @@ document.getElementById('add-category-form')?.addEventListener('submit', (e) => 
         return;
     }
 
-    financeData.categories[currentBudgetType].push({ name: nameInput, subcategories: [] });
+    financeData.categories[currentBudgetType].push({ name: nameInput, isFixed, subcategories: [] });
     if (limitInput > 0) financeData.categoryBudgets[nameInput] = limitInput;
 
     localStorage.setItem('myFinances', JSON.stringify(financeData));
@@ -2639,6 +2692,7 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
     document.getElementById('new-debt-form').reset();
     document.getElementById('new-debt-revolving-commerce-group')?.classList.add('hidden');
     hasUnsavedChanges = false;
+    renderSalaryUI(true); // <-- FUERZA LA SINCRONIZACIÓN DEL PRESUPUESTO
     updateDashboard();
     renderAccountSelects();
 });
@@ -3266,7 +3320,10 @@ document.getElementById('edit-debt-form')?.addEventListener('submit', (e) => {
     acc.debtMonthlyPayment = parseMoneyInput(document.getElementById('edit-debt-monthly-payment').value);
     acc.payrollDeduction = !!document.getElementById('edit-debt-payroll').checked;
     localStorage.setItem('myFinances', JSON.stringify(financeData));
-    hasUnsavedChanges = false; updateDashboard(); openAccountDetail(accountId, lastAccountViewOrigin);
+    hasUnsavedChanges = false; 
+    renderSalaryUI(true); // <-- FUERZA LA SINCRONIZACIÓN DEL PRESUPUESTO
+    updateDashboard(); 
+    openAccountDetail(accountId, lastAccountViewOrigin);
 });
 
 document.getElementById('pay-installment-form')?.addEventListener('submit', (e) => {
@@ -3310,10 +3367,12 @@ document.getElementById('reconcile-form')?.addEventListener('submit', (e) => {
 
 window.deleteAccount = (accountId) => {
     if (accountId === 'Efectivo') return;
-    if (confirm(`¿Seguro que deseas eliminar "${accountId}"? Sus movimientos pasarán a "Efectivo".`)) {
+    const accName = getAccountObj(accountId).name;
+    if (confirm(`¿Seguro que deseas eliminar "${accName}"? Sus movimientos pasarán a "Efectivo".`)) {
         financeData.transactions.forEach(t => { if (t.account === accountId) t.account = 'Efectivo'; if (t.toAccount === accountId) t.toAccount = 'Efectivo'; });
         financeData.customAccounts = financeData.customAccounts.filter(a => a.id !== accountId);
         localStorage.setItem('myFinances', JSON.stringify(financeData));
+        renderSalaryUI(true); // <-- RECALCULA POR SI SE ELIMINÓ UNA LIBRANZA
         renderAccountSelects(); updateDashboard();
     }
 };
@@ -4057,6 +4116,15 @@ document.getElementById('trans-recurrence')?.addEventListener('change', (e) => {
 typeSelect?.addEventListener('change', () => {
     const accEl = document.getElementById('account'), budgetGroup = document.getElementById('group-budgeted-amount'), payrollShortcut = document.getElementById('quick-payroll-shortcut');
     const splitBtn = document.getElementById('btn-open-split-modal');
+    // Mostrar/Ocultar bloque de Gasto Compartido
+    const sharedWrap = document.getElementById('shared-expense-wrapper');
+    if (typeSelect.value === 'expense') {
+        sharedWrap?.classList.remove('hidden');
+    } else {
+        sharedWrap?.classList.add('hidden');
+        if(document.getElementById('is-shared-expense')) document.getElementById('is-shared-expense').checked = false;
+        document.getElementById('shared-expense-fields')?.classList.add('hidden');
+    }
     
     // Elementos visuales dinámicos del Omni-Modal
     const submitBtn = document.querySelector('#transaction-modal button[type="submit"]');
@@ -4091,15 +4159,113 @@ typeSelect?.addEventListener('change', () => {
 
 document.getElementById('amount')?.addEventListener('input', () => { updateCCInstallmentsPreview(false); renderTxBudgetVariancePreview(); });
 
+// --- 15F. MEMORIA PREDICTIVA LOCAL (AUTOCOMPLETADO INTELIGENTE) ---
+let predictTimeout;
+document.getElementById('description')?.addEventListener('input', (e) => {
+    clearTimeout(predictTimeout);
+    predictTimeout = setTimeout(() => {
+        const text = e.target.value.trim().toLowerCase();
+        const currentType = document.getElementById('type')?.value;
+        const editId = document.getElementById('edit-id')?.value;
+        
+        // Solo predecir si es nuevo registro, tiene más de 2 letras y no es transferencia
+        if (editId || text.length < 3 || currentType === 'transfer') return;
+
+        // 1. Filtrar historial buscando coincidencias exactas o parciales
+        const matches = financeData.transactions.filter(t => 
+            t.type === currentType && 
+            t.description && 
+            t.description.toLowerCase().includes(text)
+        );
+
+        if (matches.length === 0) return;
+
+        // 2. Calcular frecuencia (Moda estadística)
+        const catFreq = {}, accFreq = {};
+        matches.forEach(t => {
+            const catStr = t.subcategory && t.subcategory !== 'General' ? `${t.category}::${t.subcategory}` : `${t.category}::General`;
+            catFreq[catStr] = (catFreq[catStr] || 0) + 1;
+            if (t.account) accFreq[t.account] = (accFreq[t.account] || 0) + 1;
+        });
+
+        // 3. Obtener los más usados históricamente para ese texto
+        const bestCat = Object.keys(catFreq).sort((a, b) => catFreq[b] - catFreq[a])[0];
+        const bestAcc = Object.keys(accFreq).sort((a, b) => accFreq[b] - accFreq[a])[0];
+
+        const catSelect = document.getElementById('trans-category');
+        const accSelect = document.getElementById('account');
+        let aiActed = false;
+
+        // 4. Aplicar Cuenta Inteligente
+        if (bestAcc && accSelect && accSelect.value !== bestAcc && Array.from(accSelect.options).some(o => o.value === bestAcc)) {
+            accSelect.value = bestAcc;
+            accSelect.style.transition = 'box-shadow 0.3s ease';
+            accSelect.style.boxShadow = '0 0 0 2px var(--accent)'; // Resplandor IA
+            setTimeout(() => accSelect.style.boxShadow = 'none', 3000);
+            accSelect.dispatchEvent(new Event('change')); // Fuerza re-cálculo de cuotas de TC si aplica
+            aiActed = true;
+        }
+
+        // 5. Aplicar Categoría Inteligente
+        if (bestCat && catSelect && catSelect.value !== bestCat && Array.from(catSelect.options).some(o => o.value === bestCat)) {
+            catSelect.value = bestCat;
+            catSelect.style.transition = 'box-shadow 0.3s ease';
+            catSelect.style.boxShadow = '0 0 0 2px var(--accent)'; // Resplandor IA
+            setTimeout(() => catSelect.style.boxShadow = 'none', 3000);
+            catSelect.dispatchEvent(new Event('change')); // Fuerza cálculos de presupuesto
+            aiActed = true;
+        }
+        
+        // 6. Efecto visual en la descripción confirmando la acción
+        if (aiActed) {
+            e.target.style.transition = 'box-shadow 0.3s ease';
+            e.target.style.boxShadow = '0 0 0 2px var(--positive)';
+            setTimeout(() => e.target.style.boxShadow = 'none', 3000);
+        }
+    }, 450); // Espera 450ms después de que dejes de teclear para no saturar
+});
+
 document.getElementById('btn-tx-quick-payroll')?.addEventListener('click', () => {
     const salaryStr = localStorage.getItem('myFinancesSalary');
     if (!salaryStr) { alert("Configura tu Salario en 'Mi Perfil' primero."); return; }
     const config = JSON.parse(salaryStr), metrics = calculateLaborMetrics(config, currentDate), isBiweekly = config.frequency === 'biweekly';
-    const amt = isBiweekly ? (currentDate.getDate() <= 16 ? metrics.net1Q : metrics.net2Q) : metrics.net;
+    
+    // Buscar si hay anticipos registrados este mes
+    const mId = getMonthId(currentDate);
+    let advances = 0;
+    financeData.transactions.forEach(t => {
+        if (t.monthId === mId && t.type === 'income' && t.category === '💼 Salario / Nómina' && t.subcategory === 'Anticipo' && t.status !== 'pending') {
+            advances += round2(t.amount);
+        }
+    });
+
+    let amt = isBiweekly ? (currentDate.getDate() <= 16 ? metrics.net1Q : metrics.net2Q) : metrics.net;
+    
+    if (advances > 0) {
+        if (confirm(`Tienes anticipos registrados por ${formatMoney(advances)} este mes.\n\n¿Deseas descontarlos automáticamente de este pago de nómina?`)) {
+            amt = Math.max(0, round2(amt - advances));
+        }
+    }
+
     document.getElementById('trans-category').value = '💼 Salario / Nómina::General';
     document.getElementById('description').value = isBiweekly ? (currentDate.getDate() <= 16 ? '💼 Pago Nómina (1Q)' : '💼 Pago Nómina (2Q)') : '💼 Pago Nómina Mensual';
     document.getElementById('amount').value = formatNumberInput(amt);
     document.getElementById('amount').dispatchEvent(new Event('input'));
+});
+
+document.getElementById('btn-tx-advance-payroll')?.addEventListener('click', () => {
+    // Crear la subcategoría si no existe para no romper el presupuesto
+    const catObj = financeData.categories.income.find(c => c.name === '💼 Salario / Nómina');
+    if (catObj && !catObj.subcategories.some(s => s.name === 'Anticipo')) {
+        catObj.subcategories.push({ name: 'Anticipo', limit: 0, isFixed: false });
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        renderCategoryOptions('income');
+    }
+    
+    document.getElementById('trans-category').value = '💼 Salario / Nómina::Anticipo';
+    document.getElementById('description').value = '💸 Anticipo de Nómina';
+    document.getElementById('amount').focus();
+    document.getElementById('trans-category').dispatchEvent(new Event('change'));
 });
 
 // --- 15D. OMNI-MODAL: CENTRALIZACIÓN DE REGISTROS ---
@@ -4155,6 +4321,7 @@ window.openOmniModal = (config = {}) => {
         else delBtn.classList.add('hidden');
     }
 
+    document.getElementById('shared-expense-fields')?.classList.add('hidden');
     hasUnsavedChanges = false;
     tModal.classList.remove('hidden');
 };
@@ -4214,6 +4381,80 @@ form?.addEventListener('submit', (e) => {
     const budgetedVal = parseMoneyInput(document.getElementById('trans-budgeted-amount')?.value);
     const baseDateObj = new Date(`${document.getElementById('trans-date').value}T${document.getElementById('trans-time').value}`);
 
+    // --- LÓGICA DE GASTO COMPARTIDO ---
+    let finalAmount = amount;
+    const isShared = document.getElementById('is-shared-expense')?.checked;
+    const owedAmount = parseMoneyInput(document.getElementById('shared-owed-amount')?.value);
+    const debtorName = document.getElementById('shared-debtor-name')?.value.trim() || 'Alguien';
+
+    if (type === 'expense' && isShared && owedAmount > 0) {
+        if (owedAmount >= amount) { alert('El monto que te deben debe ser menor al total pagado.'); return; }
+        finalAmount = round2(amount - owedAmount); // Se resta tu gasto real
+        
+        // Crea la cuenta por cobrar si no existe
+        const accId = 'CxC_' + debtorName.replace(/\s+/g, '_');
+        if (!financeData.customAccounts.some(a => a.id === accId)) {
+            financeData.customAccounts.push({ id: accId, name: `🤝 Me debe: ${debtorName}`, category: 'asset', isDefault: false, showWhenZero: true });
+        }
+
+        // Crea la transferencia de deuda
+        financeData.transactions.push({
+            id: baseDateObj.getTime() + 999,
+            monthId: getMonthId(baseDateObj),
+            type: 'transfer',
+            status: status,
+            account: account,
+            toAccount: accId,
+            description: `👥 Préstamo a ${debtorName} (de: ${description})`,
+            amount: owedAmount,
+            date: `${baseDateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${baseDateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+            isAdjustment: false
+        });
+    }
+
+    // --- LÓGICA DE AHORRO DE MONEDAS (REDONDEO EXACTO) ---
+    const isCoinRound = document.getElementById('is-coin-round')?.checked;
+    const cleanFinalAmount = Math.round(finalAmount);
+    if (type === 'expense' && account === 'Efectivo' && isCoinRound && cleanFinalAmount > 0 && cleanFinalAmount % 1000 !== 0) {
+        const diff = 1000 - (cleanFinalAmount % 1000);
+        const rounded = cleanFinalAmount + diff;
+        
+        if (diff > 0) {
+            const coinPocketId = 'Pocket_Monedas';
+            // 1. Crear la alcancía automáticamente si no existe
+            let coinPocket = financeData.pockets.find(p => p.id === coinPocketId);
+            if (!coinPocket) {
+                coinPocket = {
+                    id: coinPocketId, name: '🪙 Alcancía Monedas', entity: 'Efectivo físico',
+                    goal: 0, startDate: baseDateObj.toLocaleDateString('en-CA'), targetDate: '',
+                    customQuota: 0, principal: 0, yields: 0, excludeFromBalance: true
+                };
+                financeData.pockets.push(coinPocket);
+            }
+
+            // 1.5 Si la transacción se marca como realizada ('closed'), sumamos el dinero a la alcancía inmediatamente
+            if (status === 'closed') {
+                coinPocket.principal = round2((coinPocket.principal || 0) + diff);
+            }
+
+            // 2. Transacción doble: Envía las monedas a la alcancía
+            financeData.transactions.push({
+                id: baseDateObj.getTime() + 998,
+                monthId: getMonthId(baseDateObj),
+                type: 'transfer',
+                status: status,
+                account: account,
+                toAccount: coinPocketId,
+                description: `🪙 Ahorro de vuelto (de: ${description})`,
+                amount: diff,
+                date: `${baseDateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${baseDateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+                isAdjustment: false
+            });
+            // 3. Incrementamos el monto del gasto principal para que cuadre la salida de caja
+            finalAmount = rounded; 
+        }
+    }
+
     if (editId) {
         const oldT = financeData.transactions.find(t => String(t.id) === String(editId));
         if (oldT && oldT.type === 'transfer') revertTransferAllocation(oldT);
@@ -4232,7 +4473,7 @@ form?.addEventListener('submit', (e) => {
             id: txDate.getTime() + step + Math.floor(Math.random() * 500), monthId: getMonthId(txDate), type, status: instStatus,
             account, category: savedCategory, subcategory: savedSubcategory,
             description: recCount > 1 ? `${description} (${step + 1}/${recCount})` : description,
-            amount, budgetedAmount: budgetedVal > 0 ? budgetedVal : (instStatus === 'pending' ? amount : 0),
+            amount: finalAmount, budgetedAmount: budgetedVal > 0 ? budgetedVal : (instStatus === 'pending' ? finalAmount : 0),
             date: `${txDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${txDate.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: false
         };
         const accObj = getAccountObj(account);
@@ -4240,7 +4481,7 @@ form?.addEventListener('submit', (e) => {
             const inst = Math.max(1, parseInt(document.getElementById('trans-installments').value, 10) || 1);
             const rate = inst === 1 ? 0 : parseMoneyInput(document.getElementById('trans-rate').value);
             const rateType = document.getElementById('trans-rate-type').value;
-            const amort = calculateAmortization(amount, inst, rate, rateType);
+            const amort = calculateAmortization(finalAmount, inst, rate, rateType);
             txData.installments = inst; txData.rate = rate; txData.rateType = rateType;
             txData.zeroInterest = document.getElementById('trans-zero-interest').checked || rate === 0;
             txData.paidInstallments = 0; txData.monthlyQuota = amort.payment; txData.totalWithInterest = amort.totalWithInterest;
@@ -4249,14 +4490,14 @@ form?.addEventListener('submit', (e) => {
         
         if (instStatus === 'closed') {
             if (type === 'transfer') {
-                if (accObj.category === 'pocket') adjustPocketBalance(accObj.id, -amount);
+                if (accObj.category === 'pocket') adjustPocketBalance(accObj.id, -finalAmount);
                 const toObj = getAccountObj(toAccount);
-                if (toObj && toObj.category === 'pocket') adjustPocketBalance(toObj.id, amount);
+                if (toObj && toObj.category === 'pocket') adjustPocketBalance(toObj.id, finalAmount);
             } else if (type === 'income' && accObj.category === 'pocket') {
                 const p = financeData.pockets.find(x => x.id === accObj.id);
-                if (p) p.yields = round2((p.yields || 0) + amount);
+                if (p) p.yields = round2((p.yields || 0) + finalAmount);
             } else if (type === 'expense' && accObj.category === 'pocket') {
-                adjustPocketBalance(accObj.id, -amount);
+                adjustPocketBalance(accObj.id, -finalAmount);
             }
         }
         financeData.transactions.push(txData);
@@ -4267,10 +4508,43 @@ form?.addEventListener('submit', (e) => {
 });
 
 // --- 15E. SALUD FINANCIERA, ACCESOS DESDE DASHBOARD Y COPIAR LIQUIDACIÓN ---
+// Cálculo de Tendencia Histórica
+const updateHealthTrend = () => {
+    const trendEl = document.getElementById('health-trend-indicator');
+    if (!trendEl) return;
+
+    const currentMonthId = getMonthId(viewDate);
+    const currSnap = computeBalancesUpTo(currentMonthId);
+    const currentHealth = calculateFinancialHealth(currentMonthId, currSnap);
+    
+    let [y, m] = currentMonthId.split('-').map(Number);
+    m -= 1;
+    if (m === 0) { m = 12; y -= 1; }
+    const prevMonthId = `${y}-${String(m).padStart(2, '0')}`;
+    
+    const prevSnap = computeBalancesUpTo(prevMonthId);
+    const prevHealth = calculateFinancialHealth(prevMonthId, prevSnap);
+
+    const diff = currentHealth.scores.global - prevHealth.scores.global;
+
+    if (currentHealth.isNeutral || prevHealth.isNeutral) {
+        trendEl.innerHTML = '';
+    } else if (diff > 0) {
+        trendEl.innerHTML = `<span style="color: var(--positive); background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 12px;">⬆️ +${diff} pts vs. mes anterior</span>`;
+    } else if (diff < 0) {
+        trendEl.innerHTML = `<span style="color: var(--negative); background: rgba(239, 68, 68, 0.1); padding: 4px 10px; border-radius: 12px;">⬇️ ${diff} pts vs. mes anterior</span>`;
+    } else {
+        trendEl.innerHTML = `<span style="color: var(--text-muted); background: rgba(148, 163, 184, 0.1); padding: 4px 10px; border-radius: 12px;">➖ Igual que el mes anterior</span>`;
+    }
+};
+
 document.getElementById('widget-financial-health')?.addEventListener('click', () => {
     const hModal = document.getElementById('health-modal');
     if (!hModal) return;
     const monthId = getMonthId(viewDate), currSnap = computeBalancesUpTo(monthId), hData = calculateFinancialHealth(monthId, currSnap);
+    
+    updateHealthTrend(); // Llamada al cálculo de tendencia
+    
     document.getElementById('health-modal-score').innerText = hData.isNeutral ? '--' : hData.scores.global;
     document.getElementById('pillar-score-flow').innerText = `${hData.scores.flow}/100`;
     document.getElementById('pillar-score-liquidity').innerText = `${hData.scores.liquidity}/100`;
@@ -4282,14 +4556,70 @@ document.getElementById('widget-financial-health')?.addEventListener('click', ()
     document.getElementById('health-goal-networth').value = hData.goals.networth;
 
     const cap = calculateBorrowingCapacity(monthId);
-    const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
+    
+    // 1. Sumar los Gastos Fijos marcados en el presupuesto
+    let totalFixedExpenses = 0;
+    const mIdx = viewDate.getMonth();
+    (financeData.categories.expense || []).forEach(c => {
+        if (c.isFixed) {
+            totalFixedExpenses += getCategoryLimitForMonth(c, mIdx) || 0;
+        } else if (c.subcategories) {
+            c.subcategories.forEach(sub => {
+                if (sub.isFixed) totalFixedExpenses += (sub.limit || 0);
+            });
+        }
+    });
+
+    // 2. Matemática del Flujo Libre
+    const healthyDebtLimit = (cap.baseIncome * cap.maxPct) / 100;
+    const freeCashFlow = cap.baseIncome - totalFixedExpenses - cap.committedMonthly;
+    
+    // El cupo real es el mínimo entre lo que el banco te presta (tope 30%) y lo que tu bolsillo aguanta (flujo libre)
+    const mathAvailableDebt = healthyDebtLimit - cap.committedMonthly;
+    const realSafeQuota = Math.max(0, Math.min(mathAvailableDebt, freeCashFlow));
+    const isDeficit = (freeCashFlow < 0 || mathAvailableDebt < 0);
+    
+    const visualQuota = isDeficit ? Math.min(mathAvailableDebt, freeCashFlow) : realSafeQuota;
+
     document.getElementById('cap-usage-badge').innerText = `${String(cap.usedPct).replace('.', ',')}% / ${cap.maxPct}%`;
-    document.getElementById('cap-usage-bar').style.width = `${ratio}%`;
-    document.getElementById('cap-income-label').innerText = cap.incomeSource;
-    document.getElementById('cap-base-income').innerText = formatCompact(cap.baseIncome);
-    document.getElementById('cap-committed-quota').innerText = formatCompact(cap.committedMonthly);
-    document.getElementById('cap-available-quota').innerText = formatCompact(cap.availableMonthlyCapacity);
-    document.getElementById('cap-loan-estimate').innerHTML = cap.baseIncome <= 0 ? 'Configura tu <b>Salario</b> o registra ingresos para calcular tu capacidad.' : (cap.availableMonthlyCapacity > 0 ? `💡 Cupo libre aprox.: <b>${formatCompact(cap.estLoan24m)}</b> (24m) o <b>${formatCompact(cap.estLoan36m)}</b> (36m).` : `⚠️ Excedes tu límite recomendado en <b>${formatMoney(Math.abs(cap.availableMonthlyCapacity))}/mes</b>.`);
+    const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
+    const barEl = document.getElementById('cap-usage-bar');
+    if (barEl) {
+        barEl.style.width = `${ratio}%`;
+        barEl.style.backgroundColor = cap.usedPct > cap.maxPct ? 'var(--negative)' : (cap.usedPct > (cap.maxPct - 10) ? '#f59e0b' : 'var(--positive)');
+    }
+    
+    document.getElementById('cap-income-label').innerText = cap.incomeSource + ':';
+    document.getElementById('cap-base-income').innerText = formatMoney(cap.baseIncome);
+    
+    if (document.getElementById('cap-fixed-expenses')) document.getElementById('cap-fixed-expenses').innerText = `-${formatMoney(totalFixedExpenses)}`;
+    if (document.getElementById('cap-healthy-limit')) document.getElementById('cap-healthy-limit').innerText = formatMoney(healthyDebtLimit);
+    document.getElementById('cap-committed-quota').innerText = `-${formatMoney(cap.committedMonthly)}`;
+    
+    const availEl = document.getElementById('cap-available-quota');
+    if (availEl) {
+        availEl.innerText = formatMoney(visualQuota);
+        availEl.className = visualQuota >= 0 ? 'positive' : 'negative';
+    }
+
+    const estEl = document.getElementById('cap-loan-estimate');
+    if (estEl) {
+        if (cap.baseIncome <= 0) {
+            estEl.innerHTML = '⚙️ Configura tu <b>Salario</b> o registra ingresos para calcular tu capacidad real.';
+            estEl.style.borderLeftColor = 'var(--text-muted)';
+        } else if (visualQuota > 0) {
+            const loan24 = visualQuota * 24 * 0.75; // Descuento conservador por intereses
+            const loan36 = visualQuota * 36 * 0.70;
+            estEl.innerHTML = `💡 Según tu flujo libre, los bancos te prestarían de forma segura aprox. <b>${formatCompact(loan24)}</b> (a 24 meses) o <b>${formatCompact(loan36)}</b> (a 36 meses).`;
+            estEl.style.borderLeftColor = 'var(--positive)';
+        } else if (freeCashFlow < 0 && mathAvailableDebt > 0) {
+            estEl.innerHTML = `⚠️ Tu límite bancario da espacio, pero <b>tu flujo de caja real es negativo</b> debido a tus altos gastos fijos. No tomes más deuda.`;
+            estEl.style.borderLeftColor = 'var(--negative)';
+        } else {
+            estEl.innerHTML = `⚠️ Estás sobreendeudado para los estándares bancarios (déficit de <b>${formatMoney(Math.abs(mathAvailableDebt))}</b> frente al tope del 30%).`;
+            estEl.style.borderLeftColor = 'var(--negative)';
+        }
+    }
 
     const circleEl = document.getElementById('health-modal-circle');
     if (circleEl) setTimeout(() => { circleEl.style.strokeDashoffset = 263.9 - (263.9 * (hData.isNeutral ? 0 : hData.scores.global) / 100); }, 120);
@@ -4298,17 +4628,66 @@ document.getElementById('widget-financial-health')?.addEventListener('click', ()
 
 window.showHealthTip = (pillar) => {
     const tipBox = document.getElementById('health-tip-box');
-    const hData = calculateFinancialHealth(getMonthId(viewDate), computeBalancesUpTo(getMonthId(viewDate)));
+    const monthId = getMonthId(viewDate);
+    const currSnap = computeBalancesUpTo(monthId);
+    const hData = calculateFinancialHealth(monthId, currSnap);
+    
     if (!tipBox) return;
     tipBox.classList.remove('hidden');
+
+    const m = hData.metrics;
+    const liqStr = formatMoney(currSnap.assetsTotal + currSnap.allPocketsTotal);
+    const expStr = formatMoney(m.effectiveExp || 0);
+    const incStr = formatMoney(m.effectiveInc || 0);
+    const debtStr = formatMoney(m.monthlyDebtPayments || 0);
+    const assetsStr = formatMoney(m.totalAssets || 0);
+    const liabStr = formatMoney(m.totalLiabilities || 0);
+    const freeFlow = formatMoney((m.effectiveInc || 0) - (m.effectiveExp || 0));
+
     const tips = {
-        flow: ['Flujo de Caja', `Tu margen actual es ${hData.metrics.margin}% (Meta: ${hData.goals.margin}%).`],
-        liquidity: ['Liquidez (Reserva)', `Cubre ${hData.metrics.monthsReserve} meses de gastos (Meta: ${hData.goals.liquidity}m).`],
-        debt: ['Carga de Deuda', `Tus cuotas usan ${hData.metrics.debtBurden}% de tus ingresos (Tope: ${hData.goals.debt}%).`],
-        networth: ['Patrimonio Neto', `Patrimonio consolidado actual: ${formatMoney(hData.metrics.netWorth)}.`]
+        flow: { 
+            t: 'Flujo de Caja', 
+            d: `Ingreso base evaluado: <b>${incStr}</b>.<br>Gasto base evaluado: <b>${expStr}</b>.<br>Flujo libre estimado: <b>${freeFlow}</b>.<br><br>Tu margen actual es <b>${m.margin}%</b> (Meta: ${hData.goals.margin}%).` 
+        },
+        liquidity: { 
+            t: 'Liquidez (Reserva)', 
+            d: `Fondo disponible para emergencias: <b>${liqStr}</b> (Cuentas + Todos tus Bolsillos).<br>Base de gasto mensual: <b>${expStr}</b>.<br><br>Tu dinero actual alcanza para cubrir <b>${m.monthsReserve} meses</b> de tus gastos (Meta: ${hData.goals.liquidity}m).` 
+        },
+        debt: { 
+            t: 'Carga de Deuda', 
+            d: `Cuotas mensuales comprometidas: <b>${debtStr}</b>.<br>Ingreso base evaluado: <b>${incStr}</b>.<br><br>Tus deudas consumen el <b>${m.debtBurden}%</b> de tu ingreso mensual (Tope: ${hData.goals.debt}%).` 
+        },
+        networth: { 
+            t: 'Patrimonio Neto', 
+            d: `Total Activos (Cuentas, Bolsillos, Fijos): <b>${assetsStr}</b>.<br>Total Pasivos (Deudas y Tarjetas): <b>${liabStr}</b>.<br><br>Tu Patrimonio consolidado (Activos menos Pasivos) es de <b>${formatMoney(m.netWorth)}</b>.` 
+        }
     };
-    document.getElementById('health-tip-title').innerText = tips[pillar][0];
-    document.getElementById('health-tip-desc').innerText = tips[pillar][1];
+
+    // --- INTELIGENCIA ACCIONABLE (COACH) ---
+    let cta = '';
+    if (pillar === 'flow') {
+        if (m.margin < 0) cta = "⚠️ Gastas más de lo que ingresas. Detén compras no esenciales temporalmente y revisa tus suscripciones.";
+        else if (m.margin < hData.goals.margin) cta = "💡 Tienes margen positivo, pero no llegas a la meta. Busca reducir un 10% tus gastos en salidas o antojos.";
+        else cta = "✅ ¡Excelente flujo! Retienes buena parte de tu ingreso. Ideal para inyectar excedentes a tus bolsillos de ahorro.";
+    } else if (pillar === 'liquidity') {
+        if (m.monthsReserve < 1) cta = "⚠️ Peligro de liquidez. Ante una emergencia, tendrás que endeudarte. Prioriza crear un fondo base de 1 mes.";
+        else if (m.monthsReserve < hData.goals.liquidity) cta = "💡 Tienes un colchón, pero aún no es suficiente. Sigue abonando a tus bolsillos hasta llegar a la meta.";
+        else cta = "✅ Tienes un fondo de emergencia sólido. Ya puedes enfocar tu flujo libre en inversiones o pago agresivo de deudas.";
+    } else if (pillar === 'debt') {
+        if (m.debtBurden >= 60) cta = "⚠️ Sobre-apalancamiento. Congela el uso de tus tarjetas de crédito y aplica el método 'Avalancha' (paga primero la deuda más cara).";
+        else if (m.debtBurden > hData.goals.debt) cta = "💡 Deuda alta pero manejable. Evita diferir consumo y abona a capital a deudas como Addi si te sobra flujo.";
+        else cta = "✅ Nivel de deuda sano. Mantén tus cuotas bajo control y usa tus tarjetas siempre a 1 sola cuota.";
+    } else if (pillar === 'networth') {
+        if (m.netWorth < 0) cta = "⚠️ Tu patrimonio es negativo (debes más de lo que tienes). Enfócate agresivamente en liquidar pasivos antes de adquirir nuevos activos.";
+        else cta = "✅ Patrimonio positivo. Estás construyendo riqueza real. Mantén el equilibrio entre ahorro y control de deuda.";
+    }
+
+    const ctaHtml = `<div style="margin-top:14px; padding:12px; background:rgba(0,0,0,0.03); border-radius:8px; border-left:4px solid var(--accent); font-size:11.5px; line-height:1.4;">
+        ${cta}
+    </div>`;
+    
+    document.getElementById('health-tip-title').innerText = tips[pillar].t;
+    document.getElementById('health-tip-desc').innerHTML = tips[pillar].d + ctaHtml;
 };
 
 document.getElementById('health-goals-form')?.addEventListener('submit', (e) => {
@@ -4751,9 +5130,28 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
         const biweeklyBreakdownHtml = isBiweekly ? `<div class="glass-sub-box" style="margin-top:10px; border-color:rgba(139,92,246,0.3);"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><span style="font-size:11.5px; font-weight:700; color:var(--accent);">🗓️ Distribución Quincenal</span><span class="widget-badge" style="font-size:9.5px;">${metrics.biweeklyRetMode === 'second_half' ? 'Ret. en 2Q' : '50% / 50%'}</span></div><div class="debt-metrics-grid" style="margin-bottom:0;"><div class="debt-metric-cell"><small>1ra Quincena (1Q)</small><strong class="positive">${formatMoney(metrics.net1Q)}</strong><small style="font-size:9.5px; margin-top:2px;">Retefuente: ${formatMoney(metrics.ret1Q)}</small></div><div class="debt-metric-cell"><small>2da Quincena (2Q)</small><strong class="positive">${formatMoney(metrics.net2Q)}</strong><small style="font-size:9.5px; margin-top:2px;">Retefuente: ${formatMoney(metrics.ret2Q)}</small></div></div></div>` : '';
         const debtDeductionHtml = metrics.payrollDebtDeductions > 0 ? `<div class="debt-metric-cell"><small>Deudas (Libranza)</small><strong class="negative">${formatMoney(metrics.payrollDebtDeductions)}</strong></div>` : '';
 
+        // Buscar anticipos visuales
+        const mId = getMonthId(currentDate);
+        let advances = 0;
+        financeData.transactions.forEach(t => {
+            if (t.monthId === mId && t.type === 'income' && t.category === '💼 Salario / Nómina' && t.subcategory === 'Anticipo' && t.status !== 'pending') advances += round2(t.amount);
+        });
+        
+        let advancesHtml = '';
+        if (advances > 0) {
+            advancesHtml = `<div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(16,185,129,0.3); display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:11px; color:var(--text-muted);">(-) Anticipos este mes:</span>
+                <strong class="negative">-${formatMoney(advances)}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                <span style="font-size:12px; font-weight:700;">Remanente a recibir:</span>
+                <strong class="positive" style="font-size:15px;">${formatMoney(Math.max(0, metrics.net - advances))}</strong>
+            </div>`;
+        }
+
         tabMonthly.innerHTML = `<h4 style="font-size:13px; margin-bottom:10px; color:var(--text-muted);">Desglose Mensual (${metrics.params.year})</h4><div class="debt-metrics-grid" style="grid-template-columns: repeat(2, 1fr);"><div class="debt-metric-cell"><small>Salud (4% IBC)</small><strong class="negative">${formatMoney(metrics.health)}</strong></div><div class="debt-metric-cell"><small>Pensión (4% IBC)</small><strong class="negative">${formatMoney(metrics.pension)}</strong></div><div class="debt-metric-cell"><small>FSP</small><strong class="${metrics.fsp > 0 ? 'negative' : ''}">${formatMoney(metrics.fsp)}</strong></div><div class="debt-metric-cell"><small>${retSubLabel}</small><strong class="${metrics.ret > 0 ? 'negative' : ''}">${formatMoney(metrics.ret)}</strong></div><div class="debt-metric-cell"><small>Aux. Transporte</small><strong class="positive">${formatMoney(metrics.effectiveTransport)}</strong></div><div class="debt-metric-cell"><small>No Salarial</small><strong class="positive">${formatMoney(metrics.nonSalary)}</strong></div>${debtDeductionHtml}</div>${ley1393AlertHtml}${biweeklyBreakdownHtml}
         <details class="changelog-accordion" style="margin-top:10px;"><summary style="font-size:11.5px; font-weight:700; color:var(--text-muted); cursor:pointer;">📋 Ver Depuración Retefuente</summary><div style="margin-top:8px; font-size:11px; display:flex; flex-direction:column; gap:4px;"><div style="display:flex; justify-content:space-between;"><span>Ingresos Brutos Laborales:</span><b>${formatMoney(metrics.ingresosBrutos)}</b></div><div style="display:flex; justify-content:space-between;"><span>(-) Salud/Pens/FSP:</span><span class="negative">-${formatMoney(metrics.incrngo)}</span></div><div style="display:flex; justify-content:space-between; border-top:1px dashed rgba(148,163,184,0.3); padding-top:3px;"><span>Renta Líquida:</span><b>${formatMoney(metrics.rentaLiquida)}</b></div><div style="display:flex; justify-content:space-between;"><span>(-) Alivios Art.387 + AFC:</span><span class="positive">-${formatMoney(round2(metrics.totalDeduccionesArt387 + metrics.dedVoluntary))}</span></div><div style="display:flex; justify-content:space-between;"><span>(-) Renta Exenta 25%:</span><span class="positive">-${formatMoney(metrics.exempt25)}</span></div><div style="display:flex; justify-content:space-between;"><span>Beneficios Limitados (Tope 40%):</span><b>-${formatMoney(metrics.beneficiosLimitados)}</b></div><div style="display:flex; justify-content:space-between; border-top:1px solid rgba(148,163,184,0.3); padding-top:4px; color:var(--accent);"><span>Base Gravable (${String(metrics.numeroUVT).replace('.', ',')} UVT):</span><b>${formatMoney(metrics.baseGravable)}</b></div><div style="display:flex; justify-content:space-between;"><span>Retención Mensual (${String(metrics.effectiveRetPct).replace('.', ',')}%):</span><b class="${metrics.ret > 0 ? 'negative' : ''}">${formatMoney(metrics.ret)}</b></div>${metrics.retPrima > 0 ? `<div style="display:flex; justify-content:space-between; color:var(--negative);"><span>Retención Prima Semestral:</span><b>${formatMoney(metrics.retPrima)}</b></div>` : ''}</div></details>
-        <div class="tc-summary-banner" style="margin-top:10px; background-color:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.25);"><div><span style="color:var(--text-muted); font-size:11px; display:block;">Salario Neto Mensual</span><strong id="calc-net-salary" class="positive" style="font-size:18px;">${formatMoney(metrics.net)}</strong></div><div style="text-align:right;"><span id="calc-pay-frequency-label" style="color:var(--text-muted); font-size:11px; display:block; margin-top:8px;">${!isBiweekly ? 'Pago mensual' : (metrics.net1Q === metrics.net2Q ? `Quincenal (${formatCompact(metrics.net1Q)} c/u)` : `1Q: ${formatCompact(metrics.net1Q)} • 2Q: ${formatCompact(metrics.net2Q)}`)}</span></div></div>
+        <div class="tc-summary-banner" style="margin-top:10px; background-color:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.25);"><div><span style="color:var(--text-muted); font-size:11px; display:block;">Salario Neto Base</span><strong id="calc-net-salary" class="positive" style="font-size:18px;">${formatMoney(metrics.net)}</strong></div><div style="text-align:right;"><span id="calc-pay-frequency-label" style="color:var(--text-muted); font-size:11px; display:block; margin-top:8px;">${!isBiweekly ? 'Pago mensual' : (metrics.net1Q === metrics.net2Q ? `Quincenal (${formatCompact(metrics.net1Q)} c/u)` : `1Q: ${formatCompact(metrics.net1Q)} • 2Q: ${formatCompact(metrics.net2Q)}`)}</span></div>${advancesHtml}</div>
         <button type="button" id="btn-quick-register-payroll" class="btn btn-secondary" style="width:100%; margin-top:10px; color:var(--positive); font-weight:700;">💸 Registrar Pago de Nómina</button>`;
         
         document.getElementById('btn-quick-register-payroll')?.addEventListener('click', () => {
@@ -4792,20 +5190,112 @@ const renderSalaryUI = (shouldSyncBudget = false) => {
     bindBenefitBtn('btn-reg-liq-vacaciones', { title: 'Vacaciones Compensadas', subtitle: `Pendientes a hoy (${metrics.vacDaysPending}d)`, category: '🏖️ Vacaciones', benefitType: 'vacaciones', description: `🏖️ Vacaciones Compensadas (${metrics.vacDaysPending}d)`, amount: metrics.liqVacaciones });
     renderBonusSimulator();
 
+    // Inicializar meses por defecto en el formulario de aumento
+    const defaultMonthStr = getMonthId(currentDate);
+    if (document.getElementById('raise-effective-month') && !document.getElementById('raise-effective-month').value) {
+        document.getElementById('raise-effective-month').value = defaultMonthStr;
+    }
+    if (document.getElementById('raise-retro-from-month') && !document.getElementById('raise-retro-from-month').value) {
+        document.getElementById('raise-retro-from-month').value = defaultMonthStr;
+    }
+    if (document.getElementById('raise-retro-pay-month') && !document.getElementById('raise-retro-pay-month').value) {
+        document.getElementById('raise-retro-pay-month').value = defaultMonthStr;
+    }
+
+    // Mostrar etiqueta del último aumento si existe
+    const raiseBanner = document.getElementById('last-raise-banner');
+    const raiseText = document.getElementById('last-raise-text');
+    const raiseSubtext = document.getElementById('last-raise-subtext');
+    if (raiseBanner && raiseText) {
+        if (config.lastRaise && config.lastRaise.diff > 0) {
+            raiseBanner.classList.remove('hidden');
+            raiseBanner.style.display = 'block';
+            raiseText.innerText = `+${formatMoney(config.lastRaise.diff)} (+${String(config.lastRaise.pct).replace('.', ',')}%)`;
+            if (raiseSubtext) {
+                const effLabel = config.lastRaise.effectiveMonth ? `Aplica desde ${config.lastRaise.effectiveMonth}${config.lastRaise.effectivePeriod && config.lastRaise.effectivePeriod !== 'M' ? ` (${config.lastRaise.effectivePeriod})` : ''}` : config.lastRaise.date;
+                const retroLabel = (config.lastRaise.isRetro && config.lastRaise.retroNetAmount > 0) ? ` • Retroactivo: +${formatMoney(config.lastRaise.retroNetAmount)} en ${config.lastRaise.retroPayMonth}` : '';
+                raiseSubtext.innerText = `${effLabel}${retroLabel}`;
+            }
+        } else {
+            raiseBanner.classList.add('hidden');
+            raiseBanner.style.display = 'none';
+        }
+    }
+
     if (shouldSyncBudget && config.syncBudget !== false) {
+        const currM = currentDate.getMonth();
+        const sched = config.raiseSchedule || null;
+
+        let effYear = currentDate.getFullYear();
+        let effMonthIdx = currM;
+        let effPeriod = 'M';
+
+        if (sched && sched.effectiveMonth && sched.effectiveMonth.includes('-')) {
+            const [ey, em] = sched.effectiveMonth.split('-').map(Number);
+            effYear = ey;
+            effMonthIdx = em - 1;
+            effPeriod = sched.effectivePeriod || 'M';
+        }
+
+        // 1. Sincronización inteligente de Salario respetando mes/quincena de vigencia
         const salCatName = '💼 Salario / Nómina';
         if (!financeData.categories.income.some(c => c.name === salCatName)) financeData.categories.income.unshift({ name: salCatName, subcategories: [] });
-        const salaryMonths = Array(12).fill(metrics.net);
-        if (metrics.startObj.getFullYear() === metrics.currentYear) { for (let m = 0; m < metrics.startObj.getMonth(); m++) salaryMonths[m] = 0; } else if (metrics.startObj.getFullYear() > metrics.currentYear) salaryMonths.fill(0);
+        
+        const oldSalCfg = financeData.categoryBudgets[salCatName];
+        const salaryMonths = (oldSalCfg && oldSalCfg.isMonthly && oldSalCfg.months) ? [...oldSalCfg.months] : Array(12).fill(oldSalCfg ? (oldSalCfg.general || 0) : 0);
+        
+        for (let m = 0; m < 12; m++) {
+            if (metrics.currentYear > effYear || (metrics.currentYear === effYear && m > effMonthIdx)) {
+                salaryMonths[m] = metrics.net;
+            } else if (metrics.currentYear === effYear && m === effMonthIdx) {
+                if (effPeriod === '2Q' && sched && sched.oldNet1Q > 0) {
+                    salaryMonths[m] = round2(sched.oldNet1Q + metrics.net2Q);
+                } else {
+                    salaryMonths[m] = metrics.net;
+                }
+            }
+            if (metrics.startObj.getFullYear() === metrics.currentYear && m < metrics.startObj.getMonth()) {
+                salaryMonths[m] = 0;
+            }
+        }
+
+        // Si hay retroactivo en este año, sumarlo al presupuesto del mes en que se paga
+        if (sched && sched.isRetro && sched.retroNetAmount > 0 && sched.retroPayMonth) {
+            const [rpy, rpm] = sched.retroPayMonth.split('-').map(Number);
+            if (rpy === metrics.currentYear && rpm >= 1 && rpm <= 12) {
+                salaryMonths[rpm - 1] = round2(salaryMonths[rpm - 1] + sched.retroNetAmount);
+            }
+        }
+
         financeData.categoryBudgets[salCatName] = { isMonthly: true, general: metrics.net, months: salaryMonths };
 
+        // 2. Sincronización inteligente de Primas
         const primaCatName = '🎁 Prima de Servicios';
         if (!financeData.categories.income.some(c => c.name === primaCatName)) financeData.categories.income.splice(1, 0, { name: primaCatName, subcategories: [] });
-        const primaMonths = Array(12).fill(0), junEnd = new Date(metrics.currentYear, 5, 30), decEnd = new Date(metrics.currentYear, 11, 30);
-        if (metrics.startObj <= junEnd) { const jan1 = new Date(metrics.currentYear, 0, 1), propRatio = Math.min(180, calcCommercialDays(metrics.startObj > jan1 ? metrics.startObj : jan1, junEnd)) / 180; primaMonths[5] = round2(metrics.halfPrimaNeta * propRatio); }
-        if (metrics.startObj <= decEnd) { const jul1 = new Date(metrics.currentYear, 6, 1), propRatio = Math.min(180, calcCommercialDays(metrics.startObj > jul1 ? metrics.startObj : jul1, decEnd)) / 180; primaMonths[11] = round2(metrics.halfPrimaNeta * propRatio); }
+        
+        const oldPrimaCfg = financeData.categoryBudgets[primaCatName];
+        const primaMonths = (oldPrimaCfg && oldPrimaCfg.isMonthly && oldPrimaCfg.months) ? [...oldPrimaCfg.months] : Array(12).fill(0);
+        const junEnd = new Date(metrics.currentYear, 5, 30), decEnd = new Date(metrics.currentYear, 11, 30);
+        
+        if (5 >= currM) {
+            if (metrics.startObj <= junEnd) { 
+                const jan1 = new Date(metrics.currentYear, 0, 1);
+                const propRatio = Math.min(180, calcCommercialDays(metrics.startObj > jan1 ? metrics.startObj : jan1, junEnd)) / 180; 
+                primaMonths[5] = round2(metrics.halfPrimaNeta * propRatio); 
+            } else { primaMonths[5] = 0; }
+        }
+        
+        if (11 >= currM) {
+            if (metrics.startObj <= decEnd) { 
+                const jul1 = new Date(metrics.currentYear, 6, 1);
+                const propRatio = Math.min(180, calcCommercialDays(metrics.startObj > jul1 ? metrics.startObj : jul1, decEnd)) / 180; 
+                primaMonths[11] = round2(metrics.halfPrimaNeta * propRatio); 
+            } else { primaMonths[11] = 0; }
+        }
+        
         financeData.categoryBudgets[primaCatName] = { isMonthly: true, general: 0, months: primaMonths };
-        localStorage.setItem('myFinances', JSON.stringify(financeData)); renderCategoryOptions(document.getElementById('type')?.value || 'expense');
+        localStorage.setItem('myFinances', JSON.stringify(financeData)); 
+        renderCategoryOptions(document.getElementById('type')?.value || 'expense');
     }
 };
 
@@ -4823,10 +5313,315 @@ document.getElementById('profile-vac-days-comp')?.addEventListener('input', (e) 
     renderSalaryUI(false);
 });
 
+// --- LÓGICA DE AUMENTO DE SUELDO CON VIGENCIA Y RETROACTIVO ---
+let isSyncingRaise = false;
+
+const parseCleanCOP = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return round2(val);
+    const clean = String(val).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+    return round2(parseFloat(clean) || 0);
+};
+
+const getHalfMonthIndex = (monthStr, period) => {
+    if (!monthStr || !monthStr.includes('-')) return 0;
+    const [y, m] = monthStr.split('-').map(Number);
+    return y * 24 + (m - 1) * 2 + (period === '2Q' ? 1 : 0);
+};
+
+const computeRaiseSimulation = (newBasic) => {
+    const currentBasic = parseCleanCOP(document.getElementById('profile-basic-salary')?.value);
+    if (currentBasic <= 0 || newBasic <= 0 || newBasic === currentBasic) return null;
+
+    const diff = round2(newBasic - currentBasic);
+    const pct = round2((diff / currentBasic) * 100);
+
+    const baseCfg = JSON.parse(localStorage.getItem('myFinancesSalary') || '{}');
+    const currentMetrics = calculateLaborMetrics({ ...baseCfg, basicSalary: currentBasic }, currentDate);
+    const newMetrics = calculateLaborMetrics({ ...baseCfg, basicSalary: newBasic }, currentDate);
+    const netDiff = round2(newMetrics.net - currentMetrics.net);
+
+    const effMonth = document.getElementById('raise-effective-month')?.value || getMonthId(currentDate);
+    const effPeriod = document.getElementById('raise-effective-period')?.value || 'M';
+    const isRetro = !!document.getElementById('raise-is-retro')?.checked;
+    const retroFromMonth = document.getElementById('raise-retro-from-month')?.value || effMonth;
+    const retroFromPeriod = document.getElementById('raise-retro-from-period')?.value || 'M';
+    const retroPayMonth = document.getElementById('raise-retro-pay-month')?.value || effMonth;
+    const retroPayPeriod = document.getElementById('raise-retro-pay-period')?.value || 'M';
+
+    let retroHalfMonths = 0;
+    let retroNetAmount = 0;
+
+    if (isRetro) {
+        const effIdx = getHalfMonthIndex(effMonth, effPeriod);
+        const fromIdx = getHalfMonthIndex(retroFromMonth, retroFromPeriod);
+        if (effIdx > fromIdx) {
+            retroHalfMonths = effIdx - fromIdx;
+            for (let h = fromIdx; h < effIdx; h++) {
+                const qDiff = (h % 2 === 0)
+                    ? round2(newMetrics.net1Q - currentMetrics.net1Q)
+                    : round2(newMetrics.net2Q - currentMetrics.net2Q);
+                retroNetAmount = round2(retroNetAmount + qDiff);
+            }
+        }
+    }
+
+    return {
+        currentBasic, newBasic, diff, pct,
+        currentMetrics, newMetrics, netDiff,
+        effMonth, effPeriod,
+        isRetro, retroFromMonth, retroFromPeriod,
+        retroPayMonth, retroPayPeriod,
+        retroHalfMonths, retroNetAmount
+    };
+};
+
+const renderSalaryRaisePreview = (newBasic) => {
+    const previewBox = document.getElementById('raise-preview-box');
+    if (!previewBox) return;
+
+    const sim = computeRaiseSimulation(newBasic);
+    if (!sim) {
+        previewBox.classList.add('hidden');
+        previewBox.innerHTML = '';
+        return;
+    }
+
+    const isIncrease = sim.diff > 0;
+    let retroHtml = '';
+    if (sim.isRetro) {
+        if (sim.retroHalfMonths > 0 && sim.retroNetAmount > 0) {
+            const monthsEq = sim.retroHalfMonths / 2;
+            const periodText = `${sim.retroHalfMonths} quincena${sim.retroHalfMonths !== 1 ? 's' : ''} (${String(monthsEq).replace('.', ',')} mes${monthsEq !== 1 ? 'es' : ''})`;
+            retroHtml = `
+                <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:4px; border-top:1px dashed rgba(139,92,246,0.35); color:var(--accent);">
+                    <span>🎁 Retroactivo (${periodText}):</span>
+                    <strong>+${formatMoney(sim.retroNetAmount)}</strong>
+                </div>`;
+        } else {
+            retroHtml = `<div style="margin-top:4px; font-size:10.5px; color:#d97706;">⚠️ La fecha retroactiva debe ser anterior a la fecha en que aplica el aumento.</div>`;
+        }
+    }
+
+    previewBox.classList.remove('hidden');
+    previewBox.innerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--text-muted);">Diferencia Bruta:</span>
+            <strong class="${isIncrease ? 'positive' : 'negative'}">${isIncrease ? '+' : ''}${formatMoney(sim.diff)} (${isIncrease ? '+' : ''}${String(sim.pct).replace('.', ',')}%)</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--text-muted);">Nuevo Neto Mensual:</span>
+            <strong style="color:var(--text-main);">${formatMoney(sim.newMetrics.net)}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-top:4px; border-top:1px dashed rgba(148,163,184,0.35);">
+            <span style="color:var(--text-muted);">Aumento Real en Bolsillo:</span>
+            <strong class="${sim.netDiff >= 0 ? 'positive' : 'negative'}">${sim.netDiff >= 0 ? '+' : ''}${formatMoney(sim.netDiff)}/mes</strong>
+        </div>
+        ${retroHtml}
+    `;
+};
+
+document.getElementById('raise-is-retro')?.addEventListener('change', (e) => {
+    const fields = document.getElementById('raise-retro-fields');
+    if (e.target.checked) fields?.classList.remove('hidden');
+    else fields?.classList.add('hidden');
+    renderSalaryRaisePreview(parseCleanCOP(document.getElementById('raise-new-salary-input')?.value));
+});
+
+document.getElementById('raise-effective-month')?.addEventListener('change', (e) => {
+    const payMonthEl = document.getElementById('raise-retro-pay-month');
+    if (payMonthEl && e.target.value) payMonthEl.value = e.target.value;
+    renderSalaryRaisePreview(parseCleanCOP(document.getElementById('raise-new-salary-input')?.value));
+});
+
+['raise-effective-period', 'raise-retro-from-month', 'raise-retro-from-period', 'raise-retro-pay-month', 'raise-retro-pay-period'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => {
+        renderSalaryRaisePreview(parseCleanCOP(document.getElementById('raise-new-salary-input')?.value));
+    });
+});
+
+// 1. Cuando escribes directo el Nuevo Sueldo Básico ($), calcula el % automáticamente
+document.getElementById('raise-new-salary-input')?.addEventListener('input', (e) => {
+    if (isSyncingRaise) return;
+    isSyncingRaise = true;
+    const currentBasic = parseCleanCOP(document.getElementById('profile-basic-salary')?.value);
+    const newBasic = parseCleanCOP(e.target.value);
+    const pctInput = document.getElementById('raise-pct-input');
+
+    if (currentBasic > 0 && newBasic > 0) {
+        const pct = round2(((newBasic - currentBasic) / currentBasic) * 100);
+        if (pctInput) pctInput.value = pct !== 0 ? String(pct).replace('.', ',') : '';
+        renderSalaryRaisePreview(newBasic);
+    } else {
+        if (pctInput) pctInput.value = '';
+        renderSalaryRaisePreview(0);
+    }
+    isSyncingRaise = false;
+});
+
+// 2. Opcional: Si solo sabes el %, lo escribes y te calcula el Nuevo Sueldo Básico ($)
+document.getElementById('raise-pct-input')?.addEventListener('input', (e) => {
+    if (isSyncingRaise) return;
+    isSyncingRaise = true;
+    const currentBasic = parseCleanCOP(document.getElementById('profile-basic-salary')?.value);
+    const pct = parseCleanCOP(e.target.value);
+    const newSalInput = document.getElementById('raise-new-salary-input');
+
+    if (currentBasic > 0 && pct !== 0) {
+        const newBasic = round2(currentBasic * (1 + pct / 100));
+        if (newSalInput) newSalInput.value = formatNumberInput(newBasic);
+        renderSalaryRaisePreview(newBasic);
+    } else {
+        if (newSalInput) newSalInput.value = '';
+        renderSalaryRaisePreview(0);
+    }
+    isSyncingRaise = false;
+});
+
+const buildSalaryConfigFromForm = (prevConfig = {}, customRaiseSchedule = null) => {
+    const newBasic = parseCleanCOP(document.getElementById('profile-basic-salary').value);
+    const oldBasic = round2(prevConfig.basicSalary || 0);
+    let lastRaise = prevConfig.lastRaise || null;
+    const raiseSchedule = customRaiseSchedule || prevConfig.raiseSchedule || null;
+
+    if (oldBasic > 0 && newBasic > oldBasic) {
+        const diff = round2(newBasic - oldBasic);
+        const pct = round2((diff / oldBasic) * 100);
+        lastRaise = {
+            date: currentDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }),
+            oldBasic,
+            newBasic,
+            diff,
+            pct,
+            effectiveMonth: raiseSchedule?.effectiveMonth || getMonthId(currentDate),
+            effectivePeriod: raiseSchedule?.effectivePeriod || 'M',
+            isRetro: !!raiseSchedule?.isRetro,
+            retroPayMonth: raiseSchedule?.retroPayMonth || '',
+            retroNetAmount: raiseSchedule?.retroNetAmount || 0
+        };
+    }
+
+    return {
+        basicSalary: newBasic,
+        nonSalary: parseCleanCOP(document.getElementById('profile-non-salary')?.value),
+        transportAuto: document.getElementById('profile-transport-auto')?.checked !== false,
+        transportPayNet: document.getElementById('profile-transport-pay-net')?.checked !== false,
+        transportInBenefits: document.getElementById('profile-transport-in-benefits')?.checked !== false,
+        retProc: document.getElementById('profile-retefuente-proc')?.value || '1',
+        retPct: parseCleanCOP(document.getElementById('profile-retefuente-pct')?.value),
+        dedPrepaid: parseCleanCOP(document.getElementById('profile-ded-prepaid')?.value),
+        dedHousing: parseCleanCOP(document.getElementById('profile-ded-housing')?.value),
+        dedVoluntary: parseCleanCOP(document.getElementById('profile-ded-voluntary')?.value),
+        dedDependents: !!document.getElementById('profile-ded-dependents')?.checked,
+        vacDaysTaken: parseFloat(document.getElementById('profile-vac-days-taken')?.value) || 0,
+        vacDaysCompensated: parseFloat(document.getElementById('profile-vac-days-comp')?.value) || 0,
+        startDate: document.getElementById('profile-start-date').value,
+        frequency: document.getElementById('profile-pay-frequency').value,
+        payDay: document.getElementById('profile-pay-day').value,
+        biweeklyRetMode: document.getElementById('profile-biweekly-ret-mode')?.value || 'prorated',
+        syncBudget: document.getElementById('profile-sync-budget')?.checked,
+        lastRaise,
+        raiseSchedule
+    };
+};
+
+document.getElementById('btn-apply-salary-raise')?.addEventListener('click', () => {
+    const prevConfig = JSON.parse(localStorage.getItem('myFinancesSalary') || '{}');
+    const newBasic = parseCleanCOP(document.getElementById('raise-new-salary-input')?.value);
+    const sim = computeRaiseSimulation(newBasic);
+
+    if (!sim) {
+        alert('Ingresa un Nuevo Sueldo Básico válido.');
+        return;
+    }
+
+    const raiseSchedule = {
+        effectiveMonth: sim.effMonth,
+        effectivePeriod: sim.effPeriod,
+        oldNet: sim.currentMetrics.net,
+        oldNet1Q: sim.currentMetrics.net1Q,
+        oldNet2Q: sim.currentMetrics.net2Q,
+        isRetro: sim.isRetro,
+        retroFromMonth: sim.retroFromMonth,
+        retroFromPeriod: sim.retroFromPeriod,
+        retroPayMonth: sim.retroPayMonth,
+        retroPayPeriod: sim.retroPayPeriod,
+        retroNetAmount: sim.retroNetAmount
+    };
+
+    // Alimentar el Sueldo Básico principal con el nuevo valor
+    document.getElementById('profile-basic-salary').value = formatNumberInput(newBasic);
+
+    // Activar vinculación con presupuesto
+    const syncCheck = document.getElementById('profile-sync-budget');
+    if (syncCheck) syncCheck.checked = true;
+
+    const config = buildSalaryConfigFromForm({ ...prevConfig, basicSalary: sim.currentBasic }, raiseSchedule);
+    localStorage.setItem('myFinancesSalary', JSON.stringify(config));
+
+    // Programar ingreso pendiente del retroactivo en el historial si está marcado
+    const createRetroTx = !!document.getElementById('raise-retro-create-tx')?.checked;
+    let retroTxCreated = false;
+    if (sim.isRetro && sim.retroNetAmount > 0 && createRetroTx) {
+        const salCatName = '💼 Salario / Nómina';
+        if (!financeData.categories.income.some(c => c.name === salCatName)) {
+            financeData.categories.income.unshift({ name: salCatName, subcategories: [] });
+        }
+        const [py, pm] = sim.retroPayMonth.split('-').map(Number);
+        const maxDay = new Date(py, pm, 0).getDate();
+        const payDay = sim.retroPayPeriod === '1Q' ? 15 : Math.min(30, maxDay);
+        const now = new Date();
+        const txDateObj = new Date(py, pm - 1, payDay, now.getHours(), now.getMinutes(), now.getSeconds());
+        const periodTag = sim.retroPayPeriod === '1Q' ? ' (1Q)' : (sim.retroPayPeriod === '2Q' ? ' (2Q)' : '');
+
+        financeData.transactions.push({
+            id: txDateObj.getTime() + Math.floor(Math.random() * 500),
+            monthId: sim.retroPayMonth,
+            type: 'income',
+            status: 'pending',
+            account: getDefaultAccountId(true),
+            category: salCatName,
+            subcategory: 'General',
+            description: `🎁 Retroactivo Aumento Sueldo (${sim.retroFromMonth} a ${sim.effMonth})${periodTag}`,
+            amount: sim.retroNetAmount,
+            budgetedAmount: sim.retroNetAmount,
+            date: `${txDateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${txDateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+            isAdjustment: false
+        });
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        retroTxCreated = true;
+    }
+
+    // Limpiar y cerrar panel de aumento
+    document.getElementById('raise-pct-input').value = '';
+    document.getElementById('raise-new-salary-input').value = '';
+    if (document.getElementById('raise-is-retro')) document.getElementById('raise-is-retro').checked = false;
+    document.getElementById('raise-retro-fields')?.classList.add('hidden');
+    document.getElementById('raise-preview-box')?.classList.add('hidden');
+    document.getElementById('salary-raise-accordion')?.removeAttribute('open');
+
+    hasUnsavedChanges = false;
+    renderSalaryUI(true);
+    updateDashboard();
+
+    let msg = `🎉 ¡Aumento aplicado!\n\n• Nuevo Sueldo: ${formatMoney(newBasic)} (${sim.diff >= 0 ? '+' : ''}${String(sim.pct).replace('.', ',')}%)`;
+    msg += `\n• Vigencia: Desde ${sim.effMonth}${sim.effPeriod !== 'M' ? ` (${sim.effPeriod})` : ''}`;
+    if (sim.isRetro && sim.retroNetAmount > 0) {
+        msg += `\n• Retroactivo: +${formatMoney(sim.retroNetAmount)} aplicado en ${sim.retroPayMonth}${sim.retroPayPeriod !== 'M' ? ` (${sim.retroPayPeriod})` : ''}`;
+        if (retroTxCreated) msg += ` (programado como pendiente en tu historial)`;
+    }
+    alert(msg);
+});
+
 document.getElementById('salary-config-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const config = { basicSalary: parseMoneyInput(document.getElementById('profile-basic-salary').value), nonSalary: parseMoneyInput(document.getElementById('profile-non-salary')?.value), transportAuto: document.getElementById('profile-transport-auto')?.checked !== false, transportPayNet: document.getElementById('profile-transport-pay-net')?.checked !== false, transportInBenefits: document.getElementById('profile-transport-in-benefits')?.checked !== false, retProc: document.getElementById('profile-retefuente-proc')?.value || '1', retPct: parseMoneyInput(document.getElementById('profile-retefuente-pct')?.value) || 0, dedPrepaid: parseMoneyInput(document.getElementById('profile-ded-prepaid')?.value) || 0, dedHousing: parseMoneyInput(document.getElementById('profile-ded-housing')?.value) || 0, dedVoluntary: parseMoneyInput(document.getElementById('profile-ded-voluntary')?.value) || 0, dedDependents: !!document.getElementById('profile-ded-dependents')?.checked, vacDaysTaken: parseFloat(document.getElementById('profile-vac-days-taken')?.value) || 0, vacDaysCompensated: parseFloat(document.getElementById('profile-vac-days-comp')?.value) || 0, startDate: document.getElementById('profile-start-date').value, frequency: document.getElementById('profile-pay-frequency').value, payDay: document.getElementById('profile-pay-day').value, biweeklyRetMode: document.getElementById('profile-biweekly-ret-mode')?.value || 'prorated', syncBudget: document.getElementById('profile-sync-budget')?.checked };
-    localStorage.setItem('myFinancesSalary', JSON.stringify(config)); hasUnsavedChanges = false; renderSalaryUI(true); if (config.syncBudget) alert("✅ Salario calculado y proyectado en tu Presupuesto de Ingresos.");
+    const prevConfig = JSON.parse(localStorage.getItem('myFinancesSalary') || '{}');
+    const config = buildSalaryConfigFromForm(prevConfig);
+    localStorage.setItem('myFinancesSalary', JSON.stringify(config));
+    hasUnsavedChanges = false;
+    renderSalaryUI(true);
+    updateDashboard();
+    if (config.syncBudget) alert("✅ Salario calculado y actualizado en tu Presupuesto.");
 });
 
 const switchSalaryTab = (tabName) => { ['monthly', 'annual', 'liquidation'].forEach(t => { const btn = document.getElementById(`tab-btn-salary-${t}`), panel = document.getElementById(`salary-tab-${t}`); if (t === tabName) { btn?.classList.add('active'); panel?.classList.remove('hidden'); } else { btn?.classList.remove('active'); panel?.classList.add('hidden'); } }); };
@@ -5251,6 +6046,256 @@ document.getElementById('btn-confirm-splits')?.addEventListener('click', () => {
     alert(`✅ Transacción dividida y guardada en ${validItems.length} partes.`);
 });
 
+// --- 15G. GENERADOR DE REPORTES PDF ---
+document.getElementById('btn-generate-pdf-report')?.addEventListener('click', () => {
+    const reportContainer = document.getElementById('print-report-container');
+    if (!reportContainer) return;
+
+    const monthId = getMonthId(viewDate);
+    const snap = computeBalancesUpTo(monthId);
+    const flow = getMonthlyFlow(monthId, false);
+    
+    // Obtener gastos desglosados
+    const expensesByCat = {};
+    let totalRealExp = 0;
+    financeData.transactions.forEach(t => {
+        if (t.monthId === monthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
+            const amt = round2(t.amount);
+            expensesByCat[t.category] = round2((expensesByCat[t.category] || 0) + amt);
+            totalRealExp = round2(totalRealExp + amt);
+        }
+    });
+
+    const sortedExpenses = Object.entries(expensesByCat).sort((a, b) => b[1] - a[1]);
+    const expRowsHtml = sortedExpenses.length > 0 
+        ? sortedExpenses.map(([cat, amt]) => `<tr><td>${cat}</td><td class="print-text-right">${formatMoney(amt)}</td><td class="print-text-right">${((amt / totalRealExp) * 100).toFixed(1)}%</td></tr>`).join('')
+        : `<tr><td colspan="3" style="text-align:center;">Sin gastos registrados en el mes</td></tr>`;
+
+    // Resumen de Deudas Activas
+    const activeDebts = financeData.customAccounts.filter(a => (a.category === 'debt' || a.category === 'credit_card') && snap.bals[a.id] > 0);
+    let totalDebtBal = 0;
+    const debtRowsHtml = activeDebts.length > 0
+        ? activeDebts.map(d => {
+            const bal = round2(snap.bals[d.id]);
+            totalDebtBal = round2(totalDebtBal + bal);
+            const rate = d.category === 'debt' ? (d.debtRate || 0) : (d.rate || 0);
+            return `<tr><td>${d.name}</td><td>${d.category === 'credit_card' ? 'Tarjeta' : 'Préstamo'}</td><td class="print-text-right">${String(rate).replace('.',',')}%</td><td class="print-text-right print-negative">${formatMoney(bal)}</td></tr>`;
+        }).join('')
+        : `<tr><td colspan="4" style="text-align:center;">Libre de deudas</td></tr>`;
+
+    // Construir HTML del Reporte
+    reportContainer.innerHTML = `
+        <div class="print-header">
+            <h1>Reporte Financiero Mensual</h1>
+            <p><strong>Mes:</strong> ${formatMonthName(viewDate)} | <strong>Generado el:</strong> ${currentDate.toLocaleDateString('es-CO')} a las ${currentDate.toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}</p>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">1. Resumen de Flujo de Caja</div>
+            <div class="print-kpi-grid">
+                <div class="print-kpi-box">
+                    <small>Total Ingresos</small>
+                    <strong class="print-positive">${formatMoney(flow.inc)}</strong>
+                </div>
+                <div class="print-kpi-box">
+                    <small>Total Egresos</small>
+                    <strong class="print-negative">${formatMoney(flow.exp)}</strong>
+                </div>
+                <div class="print-kpi-box">
+                    <small>Flujo Neto</small>
+                    <strong class="${flow.net >= 0 ? 'print-positive' : 'print-negative'}">${formatMoney(flow.net)}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">2. Hoja de Balance General</div>
+            <div class="print-kpi-grid">
+                <div class="print-kpi-box">
+                    <small>Activos Totales (Liquidez + Fijos + Bolsillos)</small>
+                    <strong class="print-positive">${formatMoney(snap.assetsTotal + snap.fixedAssetsTotal + snap.pocketsTotal)}</strong>
+                </div>
+                <div class="print-kpi-box">
+                    <small>Pasivos Totales</small>
+                    <strong class="print-negative">${formatMoney(snap.liabilitiesTotal)}</strong>
+                </div>
+                <div class="print-kpi-box" style="background:#f0f0f0;">
+                    <small>Patrimonio Neto</small>
+                    <strong class="${snap.netWorth >= 0 ? 'print-positive' : 'print-negative'}">${formatMoney(snap.netWorth)}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">3. Detalle de Egresos por Categoría</div>
+            <table class="print-table">
+                <thead><tr><th>Categoría</th><th class="print-text-right">Monto</th><th class="print-text-right">% del Gasto</th></tr></thead>
+                <tbody>${expRowsHtml}</tbody>
+                <tfoot><tr><th>TOTAL GASTADO</th><th class="print-text-right print-negative">${formatMoney(totalRealExp)}</th><th></th></tr></tfoot>
+            </table>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">4. Estado de Deudas Activas</div>
+            <table class="print-table">
+                <thead><tr><th>Producto</th><th>Tipo</th><th class="print-text-right">Tasa Base</th><th class="print-text-right">Saldo Actual</th></tr></thead>
+                <tbody>${debtRowsHtml}</tbody>
+                <tfoot><tr><th colspan="3">TOTAL ADEUDADO</th><th class="print-text-right print-negative">${formatMoney(totalDebtBal)}</th></tr></tfoot>
+            </table>
+        </div>
+        
+        <p style="text-align:center; font-size:8pt; color:#888; margin-top:40px;">Documento generado localmente por Mis Finanzas (Función IF). Datos confidenciales y de uso personal.</p>
+    `;
+
+    // Activar impresión (Nativo del navegador)
+    window.print();
+});
+
+// --- RENDERIZADO DE DEUDAS A FAVOR (CUENTAS POR COBRAR) ---
+const renderReceivablesBreakdown = () => {
+    const list = document.getElementById('receivables-breakdown-list');
+    const totalEl = document.getElementById('receivables-total-amount');
+    if (!list || !totalEl) return;
+
+    const receivables = financeData.customAccounts.filter(a => a.id.startsWith('CxC_'));
+    let totalReceivables = 0;
+    list.innerHTML = '';
+
+    if (receivables.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px 0;">Nadie te debe dinero actualmente. ¡Qué paz! 🍃</p>';
+    } else {
+        receivables.forEach((acc) => {
+            const balance = round2(currentBalances[acc.id] || 0);
+            if (balance <= 0) return; // Si ya te pagaron, no lo mostramos en la lista principal
+            totalReceivables += balance;
+
+            list.innerHTML += `
+                <div class="acc-list-item" onclick="openAccountDetail('${acc.id}', 'home')">
+                    <div class="acc-list-name">
+                        <span class="dot" style="background-color:var(--positive);"></span>
+                        <div>
+                            <span>${acc.name.replace('🤝 Me debe: ', '')}</span>
+                            <small style="display:block; font-size:11px; color:var(--text-muted); font-weight:500;">Esperando cobro</small>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span class="acc-list-balance positive">${formatMoney(balance)}</span>
+                        <span style="color:var(--text-muted); margin-left:8px; font-size:14px;">›</span>
+                    </div>
+                </div>`;
+        });
+        
+        if (totalReceivables === 0) {
+            list.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px 0;">Todas las deudas a favor han sido saldadas. ✅</p>';
+        }
+    }
+    totalEl.innerText = formatMoney(totalReceivables);
+};
+
+// --- LÓGICA DE FORMULARIO: CREAR DEUDA A FAVOR ---
+const populateReceivableAccounts = () => {
+    const select = document.getElementById('new-recv-account');
+    if (!select) return;
+    const assets = financeData.customAccounts.filter(a => a.category === 'asset' && !a.id.startsWith('CxC_'));
+    let html = '<option value="adjustment">Ya lo presté (Solo registrar saldo a favor)</option>';
+    html += `<optgroup label="Descontar dinero ahora mismo de:">`;
+    assets.forEach(a => { html += `<option value="${a.id}">${a.name}</option>`; });
+    html += `</optgroup>`;
+    select.innerHTML = html;
+};
+
+// Lógica de Pestañas en el Modal de Deudas
+document.querySelectorAll('#debts-type-pills .pill-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#debts-type-pills .pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const type = btn.getAttribute('data-type');
+        if (type === 'payable') {
+            document.getElementById('debts-payable-view').classList.remove('hidden');
+            document.getElementById('debts-receivable-view').classList.add('hidden');
+        } else {
+            document.getElementById('debts-payable-view').classList.add('hidden');
+            document.getElementById('debts-receivable-view').classList.remove('hidden');
+            renderReceivablesBreakdown();
+            populateReceivableAccounts();
+        }
+    });
+});
+
+// Guardar nueva deuda a favor
+document.getElementById('new-receivable-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const rawName = document.getElementById('new-recv-name').value.trim();
+    const amount = parseMoneyInput(document.getElementById('new-recv-amount').value);
+    const sourceAcc = document.getElementById('new-recv-account').value;
+
+    if (!rawName || amount <= 0) return;
+
+    const accId = 'CxC_' + rawName.replace(/\s+/g, '_');
+
+    // Crear la cuenta si no existe
+    if (!financeData.customAccounts.some(a => a.id === accId)) {
+        financeData.customAccounts.push({ id: accId, name: `🤝 Me debe: ${rawName}`, category: 'asset', isDefault: false, showWhenZero: true });
+    }
+
+    const now = new Date();
+    const mId = getMonthId(now);
+    const dateStr = `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`;
+
+    if (sourceAcc === 'adjustment') {
+        // Ajuste directo (saldo inicial) sin restar de otra cuenta
+        financeData.transactions.push({
+            id: now.getTime(), monthId: mId, type: 'income', status: 'closed',
+            account: accId, description: 'Saldo Inicial (Préstamo a favor)', amount: amount,
+            date: dateStr, isAdjustment: true
+        });
+    } else {
+        // Transferencia automática de tu cuenta a la cuenta por cobrar
+        financeData.transactions.push({
+            id: now.getTime(), monthId: mId, type: 'transfer', status: 'closed',
+            account: sourceAcc, toAccount: accId, description: `💸 Préstamo a ${rawName}`, amount: amount,
+            date: dateStr, isAdjustment: false
+        });
+    }
+
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    document.getElementById('new-receivable-form').reset();
+    hasUnsavedChanges = false;
+    updateDashboard();
+    renderReceivablesBreakdown();
+    alert(`✅ Deuda a favor de ${formatMoney(amount)} registrada a nombre de ${rawName}.`);
+});
+
+// --- LÓGICA VISUAL: AHORRO DE MONEDAS EN EFECTIVO ---
+const updateCoinRoundingUI = () => {
+    const wrap = document.getElementById('coin-round-wrapper');
+    if (!wrap) return;
+    
+    const type = document.getElementById('type')?.value;
+    const acc = document.getElementById('account')?.value;
+    
+    // Lectura limpia compatible con miles y decimales
+    const amount = Math.round(parseCleanCOP(document.getElementById('amount')?.value));
+
+    // Aparece SOLO si es un Gasto, pagado en Efectivo, y el monto no es múltiplo exacto de 1000
+    if (type === 'expense' && acc === 'Efectivo' && amount > 0 && amount % 1000 !== 0) {
+        const diff = 1000 - (amount % 1000);
+        const rounded = amount + diff;
+        
+        document.getElementById('coin-round-desc').innerText = `Redondear a ${formatMoney(rounded)} (Guardar ${formatMoney(diff)})`;
+        wrap.classList.remove('hidden');
+    } else {
+        wrap.classList.add('hidden');
+        if (document.getElementById('is-coin-round')) document.getElementById('is-coin-round').checked = false;
+    }
+};
+
+// Escuchadores para que reaccione al instante
+document.getElementById('account')?.addEventListener('change', updateCoinRoundingUI);
+document.getElementById('amount')?.addEventListener('input', updateCoinRoundingUI);
+document.getElementById('type')?.addEventListener('change', updateCoinRoundingUI);
+
 // --- INIT APP ---
 applyColorModeUI(localStorage.getItem('myFinancesColorMode') || 'auto');
 applyThemeUI(localStorage.getItem('myFinancesTheme') || 'purple');
@@ -5262,3 +6307,29 @@ renderTaxParamsUI();
 renderSalaryUI(false);
 initAuthUI(false);
 updateDashboard();
+// Listener para desplegar los campos de "Quién me debe"
+document.getElementById('is-shared-expense')?.addEventListener('change', (e) => {
+    const fields = document.getElementById('shared-expense-fields');
+    if (e.target.checked) fields?.classList.remove('hidden');
+    else fields?.classList.add('hidden');
+});
+
+// Registro PWA Service Worker (solo en HTTP/HTTPS para compatibilidad local)
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                newWorker?.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        const toast = document.getElementById('sw-update-toast');
+                        if (toast) {
+                            toast.classList.remove('hidden');
+                            setTimeout(() => window.location.reload(), 2200);
+                        }
+                    }
+                });
+            });
+        }).catch(() => {});
+    });
+}

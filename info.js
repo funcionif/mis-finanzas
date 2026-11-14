@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v3.2.5)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v3.3.0)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '3.2.5';
+const APP_VERSION = '3.3.0';
 
 const openUniversalInfoModal = (sectionKey) => {
     const uModal = document.getElementById('universal-info-modal');
@@ -62,7 +62,18 @@ const openUniversalInfoModal = (sectionKey) => {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">📋 Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>🚀 Versión 3.2.5 (Actual)</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 3.3.0 Pro (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Gastos Compartidos y Deudas a Favor:</b> Divide cuentas pagadas por otros, gestiona cuentas por cobrar independientes de tu liquidez y concilia reembolsos mediante transferencias.</li>
+                        <li><b>Alcancía de Monedas (Redondeo en Efectivo):</b> Redondea pagos en efectivo al siguiente múltiplo de $1.000 y envía el vuelto automáticamente a un bolsillo oculto usable como medio de pago.</li>
+                        <li><b>Aumento de Sueldo y Retroactivos:</b> Simula incrementos salariales con impacto neto real, define vigencia por quincena y programa pagos retroactivos.</li>
+                        <li><b>Presupuesto Histórico Protegido:</b> Las actualizaciones salariales y créditos por libranza ajustan únicamente el mes actual y futuros sin alterar meses cerrados.</li>
+                        <li><b>Reportes PDF y Memoria Predictiva:</b> Exporta estados financieros mensuales listos para imprimir y aprovecha el autocompletado inteligente basado en tu historial.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>✨ Versión 3.2.5</span><span>▾</span></summary>
                     <ul>
                         <li><b>División de Transacciones (Split):</b> Divide un solo ticket de compra en múltiples categorías y medios de pago.</li>
                         <li><b>Omni-Modal y UX:</b> Centralización del registro. Colores dinámicos para prevenir errores (rojo, verde, morado) e iconos renovados.</li>

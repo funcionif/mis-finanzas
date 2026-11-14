@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v3.2.5)
+// INICIO DE ARCHIVO: core.js (v3.3.0)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -795,40 +795,96 @@ const calculateFinancialHealth = (monthId, snap) => {
     }
 
     let monthsReserve = 0, scoreLiq = 0;
-    const liquidAssets = round2(snap.assetsTotal + snap.pocketsTotal);
-    if (flow.exp > 0) {
-        monthsReserve = round2(liquidAssets / flow.exp);
-        if (monthsReserve >= goals.liquidity) scoreLiq = 100;
-        else scoreLiq = Math.max(0, Math.round((monthsReserve / goals.liquidity) * 100));
-    } else if (liquidAssets > 0) {
-        scoreLiq = 100;
+    // Para la reserva de salud financiera, tomamos TODOS los bolsillos (allPocketsTotal), incluso los ocultos
+    const liquidAssets = round2(snap.assetsTotal + snap.allPocketsTotal);
+    
+    // Proyección inteligente de gasto para evitar dividir por cero
+    let effectiveExp = flow.exp;
+    if (effectiveExp === 0) {
+        const regularTrans = financeData.transactions.filter(t => t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
+        const monthsCount = new Set(regularTrans.map(t => t.monthId)).size || 1;
+        const avgExpense = round2(regularTrans.reduce((s, t) => s + round2(t.amount), 0) / monthsCount);
+        
+        let totalBudget = 0;
+        if (financeData.categories && financeData.categories.expense) {
+             financeData.categories.expense.forEach(c => { totalBudget += getCategoryLimitForMonth(c, new Date().getMonth()); });
+        }
+
+        if (avgExpense > 0) effectiveExp = avgExpense;
+        else if (totalBudget > 0) effectiveExp = totalBudget;
+        else {
+             const salStr = localStorage.getItem('myFinancesSalary');
+             effectiveExp = salStr ? round2((JSON.parse(salStr).basicSalary || 1000000) * 0.5) : 1000000;
+        }
+    }
+
+    monthsReserve = round2(liquidAssets / effectiveExp);
+    if (monthsReserve >= goals.liquidity) scoreLiq = 100;
+    else scoreLiq = Math.max(0, Math.round((monthsReserve / goals.liquidity) * 100));
+
+    // Proyección inteligente de Ingresos (para evitar el falso 100% a inicio de mes)
+    let effectiveInc = flow.inc;
+    if (effectiveInc === 0) {
+        let totalIncBudget = 0;
+        if (financeData.categories && financeData.categories.income) {
+            financeData.categories.income.forEach(c => { totalIncBudget += getCategoryLimitForMonth(c, new Date().getMonth()); });
+        }
+        const salStr = localStorage.getItem('myFinancesSalary');
+        const baseSalary = salStr ? (JSON.parse(salStr).basicSalary || 0) : 0;
+        effectiveInc = totalIncBudget > 0 ? totalIncBudget : baseSalary;
+    }
+
+    // Recálculo del Flujo de Caja con datos efectivos
+    let realMargin = 0;
+    let realScoreFlow = 0;
+    if (effectiveInc > 0) {
+        realMargin = round2(((effectiveInc - effectiveExp) / effectiveInc) * 100);
+        if (realMargin >= goals.margin) realScoreFlow = 100;
+        else if (realMargin < 0) realScoreFlow = 0;
+        else realScoreFlow = Math.max(0, Math.round((realMargin / goals.margin) * 100));
     }
 
     let debtBurden = 0, scoreDebt = 100;
     const monthlyDebtPayments = getCommittedMonthlyDebtQuotas(snap);
 
-    if (flow.inc > 0) {
-        debtBurden = round2((monthlyDebtPayments / flow.inc) * 100);
+    // La deuda se mide contra tu ingreso efectivo (real o proyectado)
+    if (effectiveInc > 0) {
+        debtBurden = round2((monthlyDebtPayments / effectiveInc) * 100);
         if (debtBurden <= goals.debt) scoreDebt = 100;
         else if (debtBurden >= 60) scoreDebt = 0;
         else scoreDebt = Math.max(0, 100 - Math.round(((debtBurden - goals.debt) / (60 - goals.debt)) * 100));
+    } else if (monthlyDebtPayments > 0) {
+        scoreDebt = 0; 
     }
 
     let scoreNw = 0;
-    const totalAssets = snap.assetsTotal + snap.fixedAssetsTotal + snap.pocketsTotal;
+    // Patrimonio suma activos fijos, cuentas y TODOS los bolsillos (incluso los ocultos del balance)
+    const totalAssets = round2(snap.assetsTotal + snap.fixedAssetsTotal + snap.allPocketsTotal);
     if (totalAssets > 0) {
         const liabilityRatio = (snap.liabilitiesTotal / totalAssets) * 100;
         if (liabilityRatio === 0) scoreNw = 100;
         else if (liabilityRatio >= 100) scoreNw = 0;
         else scoreNw = Math.max(0, 100 - Math.round(liabilityRatio));
+    } else if (snap.liabilitiesTotal > 0) {
+        scoreNw = 0; 
     }
 
-    const globalScore = Math.round((scoreFlow + scoreLiq + scoreDebt + scoreNw) / 4);
+    const globalScore = Math.round((realScoreFlow + scoreLiq + scoreDebt + scoreNw) / 4);
 
     return {
         isNeutral: false,
-        scores: { flow: scoreFlow, liquidity: scoreLiq, debt: scoreDebt, networth: scoreNw, global: globalScore },
-        metrics: { margin, monthsReserve, debtBurden, netWorth: snap.netWorth },
+        scores: { flow: realScoreFlow, liquidity: scoreLiq, debt: scoreDebt, networth: scoreNw, global: globalScore },
+        metrics: { 
+            margin: realMargin, 
+            monthsReserve, 
+            debtBurden, 
+            netWorth: snap.netWorth, 
+            effectiveExp,
+            effectiveInc,
+            monthlyDebtPayments,
+            totalAssets,
+            totalLiabilities: snap.liabilitiesTotal
+        },
         goals
     };
 };
@@ -1088,7 +1144,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v3.2.5//ES',
+        'PRODID:-//Mis Finanzas//v3.3.0//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,

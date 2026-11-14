@@ -16,7 +16,7 @@
     <!-- TOAST DE ACTUALIZACIÓN PWA -->
     <div id="sw-update-toast" class="sw-toast hidden">✨ Nueva versión instalada • Actualizando...</div>
 
-    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v3.2.5) -->
+    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v3.3.0) -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card" id="auth-card">
             <div id="welcome-view" class="hidden">
@@ -24,7 +24,7 @@
                 <div id="welcome-step-1">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
+                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
                     </div>
                     <div class="welcome-isologo">
                         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -78,7 +78,7 @@
                 <div id="welcome-step-2" class="hidden">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
+                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
                     </div>
                     <div class="welcome-step2-top">
                         <button type="button" id="btn-welcome-back" class="mini-action-btn">‹ Volver</button>
@@ -136,7 +136,7 @@
             <div id="login-view" class="hidden">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                    <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
+                    <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
                 </div>
                 <div class="lock-icon">🔐</div>
                 <h2 id="login-greeting">Hola de nuevo</h2>
@@ -159,7 +159,7 @@
         <div class="drawer-header">
             <div class="drawer-brand">
                 <h2>Mis Finanzas</h2>
-                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v3.2.5</button>
+                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v3.3.0</button>
             </div>
             <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
         </div>
@@ -573,7 +573,7 @@
 <!-- PIE DE PÁGINA CLICABLE EN INICIO + BOTÓN ORDENAR -->
     <footer class="main-app-footer">
         <button type="button" id="home-version-btn" class="version-footer-btn" title="Ver notas de versión y novedades">
-            &copy; 2026 Función IF • v3.2.5
+            &copy; 2026 Función IF • v3.3.0
         </button>
         <button type="button" id="toggle-edit-widgets-btn" class="mini-action-btn" style="padding: 5px 10px; font-size: 11px;">
             Ordenar
@@ -653,9 +653,12 @@
                     </div>
                 </div>
 
-                <div id="quick-payroll-shortcut" class="hidden" style="margin-bottom:10px;">
-                    <button type="button" id="btn-tx-quick-payroll" class="btn btn-secondary" style="padding:8px 12px; font-size:12px; color:var(--positive);">
-                        💼 Autocompletar con mi Nómina configurada
+                <div id="quick-payroll-shortcut" class="hidden" style="margin-bottom:10px; display:flex; gap:6px;">
+                    <button type="button" id="btn-tx-quick-payroll" class="btn btn-secondary" style="flex:1; padding:8px 6px; font-size:11.5px; color:var(--positive);">
+                        💼 Autocompletar Nómina
+                    </button>
+                    <button type="button" id="btn-tx-advance-payroll" class="btn btn-secondary" style="flex:1; padding:8px 6px; font-size:11px; color:var(--accent); letter-spacing:-0.3px;">
+                        💸 Registrar Anticipo Nómina
                     </button>
                 </div>
 
@@ -675,6 +678,38 @@
                     <div class="form-group" id="group-budgeted-amount">
                         <label>Presupuestado ($)</label>
                         <input type="text" id="trans-budgeted-amount" class="money-input" inputmode="decimal" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <!-- NUEVO: REDONDEO DE MONEDAS -->
+                <div id="coin-round-wrapper" class="hidden" style="margin-bottom:12px;">
+                    <div class="switch-row" style="margin-bottom:0; padding:8px 10px; background:rgba(245, 158, 11, 0.08); border-radius:8px; border:1px solid rgba(245, 158, 11, 0.2);">
+                        <div>
+                            <strong style="color:var(--text-main); font-size:12px;">🪙 Ahorrar Monedas</strong>
+                            <small id="coin-round-desc">Redondear a $0 y guardar $0</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="is-coin-round"><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <!-- NUEVO: GASTO COMPARTIDO -->
+                <div id="shared-expense-wrapper" class="hidden" style="margin-bottom:12px;">
+                    <div class="switch-row" style="margin-bottom:8px; padding:8px 10px; background:rgba(14, 165, 233, 0.08); border-radius:8px; border:1px solid rgba(14, 165, 233, 0.2);">
+                        <div>
+                            <strong style="color:var(--text-main); font-size:12px;">👥 Gasto Compartido</strong>
+                            <small>Pagué la cuenta, pero me deben una parte</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="is-shared-expense"><span class="slider"></span></label>
+                    </div>
+                    <div id="shared-expense-fields" class="form-row hidden" style="padding:10px; background:rgba(0,0,0,0.02); border-radius:8px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Monto que te deben ($)</label>
+                            <input type="text" id="shared-owed-amount" class="money-input" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>¿Quién te debe?</label>
+                            <input type="text" id="shared-debtor-name" placeholder="Ej. Carlos">
+                        </div>
                     </div>
                 </div>
 
@@ -875,6 +910,13 @@
                 <div class="form-group">
                     <label>Límite General Mensual ($) - Opcional</label>
                     <input type="text" id="new-cat-limit" class="money-input" inputmode="decimal" placeholder="Dejar vacío si no hay límite">
+                </div>
+                <div class="switch-row" id="new-cat-fixed-group">
+                    <div>
+                        <strong>📌 Es un Gasto Fijo</strong>
+                        <small>Ej: Arriendo, servicios. Reduce tu cupo de deuda.</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="new-cat-is-fixed"><span class="slider"></span></label>
                 </div>
                 <button type="submit" class="btn btn-primary">+ Crear Categoría</button>
             </form>
@@ -1422,20 +1464,28 @@
     <div id="debts-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Préstamos</h2>
+                <h2>Deudas</h2>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
-            <div class="tc-summary-banner" style="margin-bottom:12px;">
-                <div><small style="color:var(--text-muted); font-size:11px; display:block;">Deuda Vigente</small><strong id="debts-total-amount" class="negative" style="font-size:17px;">$ 0,00</strong></div>
-                <button type="button" id="open-debt-planner-btn" class="btn btn-primary" style="width:auto; padding:8px 12px; font-size:12px;">🚀 Plan Avalancha</button>
+            
+            <div class="filter-pills-row" id="debts-type-pills" style="margin-bottom:12px;">
+                <button type="button" class="pill-btn active" data-type="payable">Mis Deudas</button>
+                <button type="button" class="pill-btn" data-type="receivable">A Favor (Cobros)</button>
             </div>
-            <div class="combined-bar-container">
-                <div class="combined-bar" id="debts-combined-bar"></div>
-                <div class="combined-legend" id="debts-combined-legend"></div>
-            </div>
-            <div id="debts-breakdown-list"></div>
-            <div class="drawer-divider"></div>
-            <h3 style="font-size:15px; font-weight:800; margin-bottom:10px;">Registrar Préstamo o Cupo</h3>
+
+            <!-- VISTA: MIS DEUDAS (POR PAGAR) -->
+            <div id="debts-payable-view">
+                <div class="tc-summary-banner" style="margin-bottom:12px;">
+                    <div><small style="color:var(--text-muted); font-size:11px; display:block;">Deuda Vigente</small><strong id="debts-total-amount" class="negative" style="font-size:17px;">$ 0,00</strong></div>
+                    <button type="button" id="open-debt-planner-btn" class="btn btn-primary" style="width:auto; padding:8px 12px; font-size:12px;">🚀 Plan Avalancha</button>
+                </div>
+                <div class="combined-bar-container">
+                    <div class="combined-bar" id="debts-combined-bar"></div>
+                    <div class="combined-legend" id="debts-combined-legend"></div>
+                </div>
+                <div id="debts-breakdown-list"></div>
+                <div class="drawer-divider"></div>
+                <h3 style="font-size:15px; font-weight:800; margin-bottom:10px;">Registrar Préstamo o Cupo</h3>
             <form id="new-debt-form" class="data-form">
                 <div class="form-group">
                     <label>Modalidad</label>
@@ -1486,6 +1536,37 @@
                 </div>
                 <button type="submit" class="btn btn-primary">+ Crear Préstamo</button>
             </form>
+            
+            </div> <!-- Cierre de debts-payable-view -->
+
+            <!-- VISTA: DEUDAS A FAVOR (POR COBRAR) -->
+            <div id="debts-receivable-view" class="hidden">
+                <div class="tc-summary-banner" style="margin-bottom:12px; background:rgba(16, 185, 129, 0.1); border-color:rgba(16, 185, 129, 0.3);">
+                    <div><small style="color:var(--text-muted); font-size:11px; display:block;">Dinero por cobrar (Activo)</small><strong id="receivables-total-amount" class="positive" style="font-size:17px;">$ 0,00</strong></div>
+                </div>
+                <div id="receivables-breakdown-list"></div>
+
+                <div class="drawer-divider"></div>
+                <h3 style="font-size:15px; font-weight:800; margin-bottom:10px; color:var(--positive);">Registrar Deuda a Favor</h3>
+                <form id="new-receivable-form" class="data-form">
+                    <div class="form-group">
+                        <label>¿Quién te debe?</label>
+                        <input type="text" id="new-recv-name" placeholder="Ej. Carlos, María" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Monto ($)</label>
+                            <input type="text" id="new-recv-amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>¿De dónde salió el dinero?</label>
+                            <select id="new-recv-account" required></select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="background:var(--positive); border-color:var(--positive);">+ Crear Deuda a Favor</button>
+                </form>
+            </div>
+            
         </div>
     </div>
 
@@ -1677,6 +1758,7 @@
                     <small id="analytics-month-label" style="color:var(--text-muted); font-size:11.5px; text-transform:capitalize;">Mes actual</small>
                 </div>
                 <div style="display:flex; gap:6px;">
+                    <button type="button" id="btn-generate-pdf-report" class="mini-action-btn" style="color:#0ea5e9;">📄 PDF</button>
                     <button type="button" id="open-annual-from-analytics-btn" class="mini-action-btn" style="color:var(--positive);">📅 12M</button>
                     <button type="button" class="btn-close-modal">Cerrar</button>
                 </div>
@@ -1777,6 +1859,9 @@
                 <span id="health-modal-badge" class="widget-badge neutral">Faltan datos ⚪</span>
             </div>
 
+            <!-- Indicador de Tendencia Histórica -->
+            <div id="health-trend-indicator" style="text-align:center; margin-top: -6px; margin-bottom: 14px; font-size: 11.5px; font-weight: 700; height: 18px;"></div>
+
             <div class="health-pillars-grid">
                 <button type="button" class="health-pillar-card" onclick="showHealthTip('flow')">
                     <div class="pillar-top"><span class="pillar-icon" style="color:var(--positive);">📈</span><span class="pillar-score" id="pillar-score-flow">0/100</span></div>
@@ -1803,16 +1888,31 @@
 
             <div class="glass-sub-box">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <strong style="font-size:13px;">💳 Capacidad de Endeudamiento</strong>
+                    <strong style="font-size:13px;">💳 Análisis de Endeudamiento</strong>
                     <span id="cap-usage-badge" class="widget-badge good">0% / 30%</span>
                 </div>
-                <div class="pace-bar-track" style="margin-bottom:8px;"><div id="cap-usage-bar" class="pace-bar-fill positive-bg" style="width:0%;"></div></div>
-                <div class="dash-strip-grid" style="margin-bottom:8px;">
-                    <div class="dash-strip-item"><small id="cap-income-label">Base Ingreso</small><strong id="cap-base-income">$ 0</strong></div>
-                    <div class="dash-strip-item"><small>Comprometido</small><strong id="cap-committed-quota">$ 0</strong></div>
-                    <div class="dash-strip-item"><small>Cupo Cuota</small><strong id="cap-available-quota" class="positive">$ 0</strong></div>
+                <div class="pace-bar-track" style="margin-bottom:12px;"><div id="cap-usage-bar" class="pace-bar-fill positive-bg" style="width:0%;"></div></div>
+                
+                <div style="font-size:11.5px; display:flex; flex-direction:column; gap:6px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:var(--text-muted);" id="cap-income-label">Nómina neta:</span>
+                        <b id="cap-base-income">$ 0</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:var(--text-muted);">(-) Gastos Fijos (Presupuesto):</span>
+                        <b id="cap-fixed-expenses" class="negative">-$ 0</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:var(--text-muted);">(-) Cuotas de deudas actuales:</span>
+                        <b id="cap-committed-quota" class="negative">-$ 0</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding-top:6px; border-top:1px dashed rgba(148,163,184,0.35);">
+                        <strong style="color:var(--text-main);">Flujo libre real (Efectivo):</strong>
+                        <strong id="cap-available-quota" style="font-size:13.5px;">$ 0</strong>
+                    </div>
                 </div>
-                <p id="cap-loan-estimate" style="font-size:11px; color:var(--text-muted); line-height:1.4;"></p>
+                
+                <div id="cap-loan-estimate" style="font-size:11px; color:var(--text-muted); line-height:1.4; padding:8px; background:rgba(0,0,0,0.03); border-radius:6px; border-left:3px solid var(--accent);"></div>
             </div>
 
             <details class="changelog-accordion">
@@ -1887,7 +1987,7 @@
                 </button>
                 <button type="button" id="btn-lock-app-profile" class="btn btn-danger hidden" style="margin-top:8px;">🔒 Bloquear Aplicación</button>
                 <button type="button" id="profile-version-btn" class="version-footer-btn" style="margin-top:12px;" title="Ver notas de versión y novedades">
-                    &copy; 2026 Función IF • v3.2.5
+                    &copy; 2026 Función IF • v3.3.0
                 </button>
             </div>
 
@@ -1900,10 +2000,102 @@
                 </div>
 
                 <form id="salary-config-form" class="data-form">
-                    <div class="form-row">
-                        <div class="form-group"><label>Sueldo Básico ($)</label><input type="text" id="profile-basic-salary" class="money-input" inputmode="decimal" placeholder="Ej. 1.750.905" required></div>
-                        <div class="form-group"><label>No Salarial / Bonos ($)</label><input type="text" id="profile-non-salary" class="money-input" inputmode="decimal" placeholder="0,00"></div>
+                    <div class="form-row" style="margin-bottom:8px;">
+                        <div class="form-group" style="margin-bottom:0;"><label>Sueldo Básico ($)</label><input type="text" id="profile-basic-salary" class="money-input" inputmode="decimal" placeholder="Ej. 1.750.905" required></div>
+                        <div class="form-group" style="margin-bottom:0;"><label>No Salarial / Bonos ($)</label><input type="text" id="profile-non-salary" class="money-input" inputmode="decimal" placeholder="0,00"></div>
                     </div>
+
+                    <!-- ETIQUETA ÚLTIMO AUMENTO REGISTRADO -->
+                    <div id="last-raise-banner" class="hidden" style="margin-bottom:10px; padding:8px 10px; border-radius:10px; background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.25); font-size:11.5px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="color:var(--text-muted);">📈 Último aumento:</span>
+                            <strong id="last-raise-text" class="positive">+$ 0 (0%)</strong>
+                        </div>
+                        <small id="last-raise-subtext" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:3px;"></small>
+                    </div>
+
+                    <!-- DESPLEGABLE: APLICAR AUMENTO DE SUELDO -->
+                    <details id="salary-raise-accordion" class="changelog-accordion" style="margin-bottom:12px;">
+                        <summary style="color:var(--positive); font-weight:700;">📈 Aplicar Aumento de Sueldo <span>▾</span></summary>
+                        <div style="margin-top:10px;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nuevo Sueldo Básico ($)</label>
+                                    <input type="text" id="raise-new-salary-input" class="money-input" inputmode="decimal" placeholder="Ej. 5.500.000">
+                                </div>
+                                <div class="form-group">
+                                    <label>% Aumento (Opcional)</label>
+                                    <input type="text" id="raise-pct-input" inputmode="decimal" placeholder="Ej. 5,77">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Aplica desde (Mes)</label>
+                                    <input type="month" id="raise-effective-month">
+                                </div>
+                                <div class="form-group">
+                                    <label>Vigencia desde</label>
+                                    <select id="raise-effective-period">
+                                        <option value="M">Mes completo (1Q)</option>
+                                        <option value="1Q">1ra Quincena (15)</option>
+                                        <option value="2Q">2da Quincena (30)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="switch-row" style="margin-bottom:8px; padding:8px 10px; background:rgba(139, 92, 246, 0.08); border-radius:8px; border:1px solid rgba(139, 92, 246, 0.2);">
+                                <div>
+                                    <strong style="font-size:12px;">🎁 ¿Tiene pago retroactivo?</strong>
+                                    <small>Calcula el excedente de meses o quincenas anteriores</small>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="raise-is-retro"><span class="slider"></span></label>
+                            </div>
+
+                            <div id="raise-retro-fields" class="glass-sub-box hidden" style="margin-bottom:10px; padding:10px;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Retroactivo desde (Mes)</label>
+                                        <input type="month" id="raise-retro-from-month">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Desde quincena</label>
+                                        <select id="raise-retro-from-period">
+                                            <option value="M">Mes completo (1Q)</option>
+                                            <option value="1Q">1ra Quincena (15)</option>
+                                            <option value="2Q">2da Quincena (30)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>¿En qué mes te lo pagan?</label>
+                                        <input type="month" id="raise-retro-pay-month">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>¿En qué quincena?</label>
+                                        <select id="raise-retro-pay-period">
+                                            <option value="M">Pago Mensual (30)</option>
+                                            <option value="1Q">1ra Quincena (15)</option>
+                                            <option value="2Q">2da Quincena (30)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="switch-row" style="margin-bottom:0; padding:6px 8px;">
+                                    <div>
+                                        <strong style="font-size:11.5px;">Programar ingreso en historial</strong>
+                                        <small>Crea el movimiento pendiente por confirmar</small>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="raise-retro-create-tx" checked><span class="slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div id="raise-preview-box" class="glass-sub-box hidden" style="font-size:11.5px; margin-bottom:10px;"></div>
+                            <button type="button" id="btn-apply-salary-raise" class="btn btn-primary" style="background:var(--positive); border-color:var(--positive); padding:10px; font-size:13px;">
+                                ✅ Aplicar Aumento y Actualizar Presupuesto
+                            </button>
+                        </div>
+                    </details>
 
                     <div class="glass-sub-box" style="padding:10px 12px;">
                         <strong style="font-size:12px; display:block; margin-bottom:2px;">🚌 Auxilio de Transporte</strong>
@@ -2442,6 +2634,9 @@
             <div id="universal-info-body" style="padding-bottom:10px;"></div>
         </div>
     </div>
+
+<!-- CONTENEDOR OCULTO PARA REPORTE PDF -->
+    <div id="print-report-container"></div>
 
     <!-- SCRIPTS EN ORDEN CORRECTO -->
     <script src="core.js"></script>

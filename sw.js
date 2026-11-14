@@ -3,7 +3,7 @@
 // Optimizado para Safari iOS y GitHub Pages
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v3.2.5';
+const CACHE_NAME = 'mis-finanzas-v3.3.0';
 
 const CORE_ASSETS = [
     './',
