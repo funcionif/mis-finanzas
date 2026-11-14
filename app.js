@@ -2484,11 +2484,16 @@ document.getElementById('new-card-form')?.addEventListener('submit', (e) => {
 });
 
 document.getElementById('new-debt-type')?.addEventListener('change', (e) => {
+    const isRevolving = e.target.value === 'revolving';
     const nameInput = document.getElementById('new-debt-name');
+    const commerceGroup = document.getElementById('new-debt-revolving-commerce-group');
     if (nameInput) {
-        nameInput.placeholder = e.target.value === 'revolving'
-            ? 'Nombre (Ej. Cupo Rotativo, Addi)'
+        nameInput.placeholder = isRevolving
+            ? 'Nombre del Cupo (Ej. Addi, Sistecrédito)'
             : 'Nombre (Ej. Crédito Vehículo)';
+    }
+    if (commerceGroup) {
+        commerceGroup.classList.toggle('hidden', !isRevolving);
     }
 });
 
@@ -2496,7 +2501,9 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = document.getElementById('new-debt-name').value.trim();
     const debtType = document.getElementById('new-debt-type')?.value || 'fixed';
+    const commerceName = document.getElementById('new-debt-commerce')?.value.trim() || '';
     const payrollDeduction = document.getElementById('new-debt-payroll')?.checked || false;
+    const isNewExpense = !!document.getElementById('new-debt-is-new-expense')?.checked;
 
     const original = parseMoneyInput(document.getElementById('new-debt-original').value);
     const currentStr = document.getElementById('new-debt-current').value;
@@ -2514,24 +2521,67 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
     }
 
     const id = 'Deuda_' + Date.now();
+    const isRevWithPurchase = debtType === 'revolving' && current > 0;
+
     financeData.customAccounts.push({
         id, name, category: 'debt', debtType, isDefault: false, showWhenZero: false,
-        debtOriginal: original, debtTotalQuotes: totalQuotes, debtPaidQuotes: paidQuotes,
-        debtRate: rate, debtRateType: rateType, debtMonthlyPayment: monthlyPay, payrollDeduction
+        debtOriginal: original,
+        debtTotalQuotes: isRevWithPurchase ? 0 : totalQuotes,
+        debtPaidQuotes: isRevWithPurchase ? 0 : paidQuotes,
+        debtRate: rate,
+        debtRateType: rateType,
+        debtMonthlyPayment: isRevWithPurchase ? 0 : monthlyPay,
+        payrollDeduction
     });
 
     if (current > 0) {
         const now = new Date();
-        financeData.transactions.push({
-            id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed',
-            account: id, description: debtType === 'revolving' ? 'Cupo Utilizado Inicial' : 'Saldo Inicial Préstamo', amount: current,
-            date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
-            isAdjustment: true
-        });
+        if (debtType === 'revolving') {
+            const amort = calculateAmortization(original, totalQuotes, rate, rateType);
+            const remSchedule = amort.schedule.slice(paidQuotes);
+            const rawRemCapital = round2(remSchedule.reduce((s, r) => s + r.principal, 0));
+            const extraPrincipalPaid = current < rawRemCapital ? round2(rawRemCapital - current) : 0;
+
+            financeData.transactions.push({
+                id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed',
+                account: id, category: '🛍️ Compras', subcategory: 'General',
+                description: commerceName || 'Compra Inicial Cupo',
+                amount: original,
+                date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+                isAdjustment: !isNewExpense,
+                installments: totalQuotes,
+                paidInstallments: paidQuotes,
+                rate, rateType,
+                zeroInterest: rate === 0,
+                monthlyQuota: monthlyPay,
+                totalWithInterest: amort.totalWithInterest,
+                extraPrincipalPaid
+            });
+
+            if (current > rawRemCapital) {
+                financeData.transactions.push({
+                    id: now.getTime() + 600, monthId: getMonthId(now), type: 'expense', status: 'closed',
+                    account: id, description: `⚖️ Ajuste Capital (${commerceName || 'Compra Inicial'})`,
+                    amount: round2(current - rawRemCapital),
+                    date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+                    isAdjustment: true
+                });
+            }
+        } else {
+            financeData.transactions.push({
+                id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed',
+                account: id, category: '📦 Otros Gastos', subcategory: 'General',
+                description: isNewExpense ? `Préstamo: ${name}` : 'Saldo Inicial Préstamo',
+                amount: current,
+                date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+                isAdjustment: !isNewExpense
+            });
+        }
     }
 
     localStorage.setItem('myFinances', JSON.stringify(financeData));
     document.getElementById('new-debt-form').reset();
+    document.getElementById('new-debt-revolving-commerce-group')?.classList.add('hidden');
     hasUnsavedChanges = false;
     updateDashboard();
     renderAccountSelects();
@@ -2757,6 +2807,91 @@ document.getElementById('edit-card-form')?.addEventListener('submit', (e) => {
     acc.zeroInterestMax = parseInt(document.getElementById('edit-card-zero-interest-max').value, 10) || 0;
     localStorage.setItem('myFinances', JSON.stringify(financeData));
     hasUnsavedChanges = false; updateDashboard(); openAccountDetail(accountId, lastAccountViewOrigin);
+});
+document.getElementById('btn-revolving-new-purchase')?.addEventListener('click', () => {
+    const revForm = document.getElementById('revolving-new-purchase-form');
+    if (!revForm) return;
+    revForm.classList.toggle('hidden');
+    if (!revForm.classList.contains('hidden')) {
+        const accountId = document.getElementById('reconcile-account-id')?.value;
+        const acc = financeData.customAccounts.find(a => a.id === accountId);
+        if (acc) {
+            if (document.getElementById('rev-purch-rate')) document.getElementById('rev-purch-rate').value = acc.debtRate ? formatNumberInput(acc.debtRate) : '';
+            if (document.getElementById('rev-purch-rate-type')) document.getElementById('rev-purch-rate-type').value = acc.debtRateType || 'annual';
+        }
+    }
+});
+
+document.getElementById('revolving-new-purchase-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const accountId = document.getElementById('reconcile-account-id')?.value;
+    const acc = financeData.customAccounts.find(a => a.id === accountId);
+    if (!acc) return;
+
+    const name = document.getElementById('rev-purch-name').value.trim();
+    const original = parseMoneyInput(document.getElementById('rev-purch-original').value);
+    const currentStr = document.getElementById('rev-purch-current').value;
+    const current = currentStr ? parseMoneyInput(currentStr) : original;
+    const totalQuotes = Math.max(1, parseInt(document.getElementById('rev-purch-total-quotes').value, 10) || 1);
+    const paidQuotes = Math.max(0, parseInt(document.getElementById('rev-purch-paid-quotes').value, 10) || 0);
+    const rate = parseMoneyInput(document.getElementById('rev-purch-rate').value);
+    const rateType = document.getElementById('rev-purch-rate-type').value;
+    const isNewExpense = !!document.getElementById('rev-purch-is-new-expense')?.checked;
+
+    const amort = calculateAmortization(original, totalQuotes, rate, rateType);
+    const customQuota = parseMoneyInput(document.getElementById('rev-purch-monthly-payment').value);
+    const monthlyQuota = customQuota > 0 ? customQuota : amort.payment;
+
+    const remSchedule = amort.schedule.slice(paidQuotes);
+    const rawRemCapital = round2(remSchedule.reduce((s, r) => s + r.principal, 0));
+    const extraPrincipalPaid = current < rawRemCapital ? round2(rawRemCapital - current) : 0;
+
+    acc.debtOriginal = round2((acc.debtOriginal || 0) + original);
+
+    const now = new Date();
+    financeData.transactions.push({
+        id: now.getTime() + Math.floor(Math.random() * 500),
+        monthId: getMonthId(now),
+        type: 'expense',
+        status: 'closed',
+        account: accountId,
+        category: '🛍️ Compras',
+        subcategory: 'General',
+        description: name,
+        amount: original,
+        date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+        isAdjustment: !isNewExpense,
+        installments: totalQuotes,
+        paidInstallments: paidQuotes,
+        rate,
+        rateType,
+        zeroInterest: rate === 0,
+        monthlyQuota,
+        totalWithInterest: amort.totalWithInterest,
+        extraPrincipalPaid
+    });
+
+    if (current > rawRemCapital) {
+        const diff = round2(current - rawRemCapital);
+        financeData.transactions.push({
+            id: now.getTime() + 600 + Math.floor(Math.random() * 500),
+            monthId: getMonthId(now),
+            type: 'expense',
+            status: 'closed',
+            account: accountId,
+            description: `⚖️ Ajuste Capital (${name})`,
+            amount: diff,
+            date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+            isAdjustment: true
+        });
+    }
+
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    document.getElementById('revolving-new-purchase-form').reset();
+    document.getElementById('revolving-new-purchase-form').classList.add('hidden');
+    hasUnsavedChanges = false;
+    updateDashboard();
+    openAccountDetail(accountId, lastAccountViewOrigin);
 });
 document.getElementById('edit-debt-settings-btn')?.addEventListener('click', () => { document.getElementById('edit-debt-form')?.classList.toggle('hidden'); document.getElementById('pay-installment-box')?.classList.add('hidden'); document.getElementById('amortization-panel')?.classList.add('hidden'); });
 document.getElementById('open-pay-installment-btn')?.addEventListener('click', () => { document.getElementById('pay-installment-box')?.classList.toggle('hidden'); document.getElementById('edit-debt-form')?.classList.add('hidden'); document.getElementById('amortization-panel')?.classList.add('hidden'); });
