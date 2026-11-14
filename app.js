@@ -4431,7 +4431,18 @@ document.querySelectorAll('.btn-close-modal').forEach(btn => { btn.addEventListe
 document.getElementById('profile-trigger-btn')?.addEventListener('click', () => { if (attemptCloseModals()) { syncUserUI(); document.getElementById('profile-modal')?.classList.remove('hidden'); showProfileSubView(document.getElementById('profile-main-view')); } });
 document.getElementById('menu-salary-btn')?.addEventListener('click', () => { renderSalaryUI(false); showProfileSubView(document.getElementById('profile-salary-view')); });
 document.getElementById('menu-tax-params-btn')?.addEventListener('click', () => { renderTaxParamsUI(); showProfileSubView(document.getElementById('profile-tax-params-view')); });
-document.getElementById('menu-theme-btn')?.addEventListener('click', () => showProfileSubView(document.getElementById('profile-theme-view')));
+document.getElementById('menu-theme-btn')?.addEventListener('click', () => {
+    const compactCheck = document.getElementById('profile-use-compact-numbers');
+    if (compactCheck) compactCheck.checked = !!financeData.useCompactNumbers;
+    showProfileSubView(document.getElementById('profile-theme-view'));
+});
+
+document.getElementById('profile-use-compact-numbers')?.addEventListener('change', (e) => {
+    financeData.useCompactNumbers = !!e.target.checked;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    updateDashboard();
+});
+
 document.getElementById('menu-notifications-btn')?.addEventListener('click', () => { 
     const prefs = getNotificationPrefs();
     document.getElementById('notif-days-before').value = prefs.daysBefore;

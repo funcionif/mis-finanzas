@@ -759,12 +759,15 @@ html[data-color-mode="dark"] .hamburger-btn {
     height: 60px;
     padding: 0;
     border-radius: 50%;
-    color: var(--accent);
+    background: var(--theme-gradient) !important;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    box-shadow: 0 8px 24px var(--theme-shadow) !important;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, color 0.2s;
 }
 
 .fab-btn svg {
@@ -773,12 +776,13 @@ html[data-color-mode="dark"] .hamburger-btn {
 }
 .fab-btn:hover { transform: scale(1.05); }
 .fab-btn:active { transform: scale(0.92); }
+
 .fab-btn.active {
     transform: rotate(135deg) scale(1.05);
-    background: var(--theme-gradient) !important;
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.4) !important;
-    box-shadow: 0 8px 24px var(--theme-shadow) !important;
+    background: var(--negative) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-color: var(--negative) !important;
+    box-shadow: 0 8px 24px rgba(255, 59, 48, 0.4) !important;
 }
 
 .fab-menu {
@@ -820,9 +824,8 @@ html[data-color-mode="dark"] .hamburger-btn {
 .fab-option span { font-size: 20px; }
 .fab-option:active { transform: scale(0.95); }
 
-/* Acabado Cristal Translúcido Unificado */
+/* Acabado Cristal Translúcido Unificado (Excluyendo el FAB estático) */
 .bottom-nav,
-.fab-btn,
 .fab-option {
     background-color: rgba(255, 255, 255, 0.45) !important;
     backdrop-filter: blur(28px) saturate(200%) !important;
@@ -833,7 +836,6 @@ html[data-color-mode="dark"] .hamburger-btn {
 
 @media (prefers-color-scheme: dark) {
     .bottom-nav,
-    .fab-btn:not(.active),
     .fab-option {
         background-color: rgba(30, 41, 59, 0.45) !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -842,7 +844,6 @@ html[data-color-mode="dark"] .hamburger-btn {
 }
 
 html[data-color-mode="dark"] .bottom-nav,
-html[data-color-mode="dark"] .fab-btn:not(.active),
 html[data-color-mode="dark"] .fab-option {
     background-color: rgba(30, 41, 59, 0.45) !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;

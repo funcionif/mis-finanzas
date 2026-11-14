@@ -64,12 +64,12 @@ const openUniversalInfoModal = (sectionKey) => {
                 <details class="changelog-accordion" open>
                     <summary><span>🚀 Versión 3.2 (Actual)</span><span>▾</span></summary>
                     <ul>
-                        <li><b>Onboarding Mejorado:</b> Nueva experiencia de bienvenida en dos pasos.</li>
+                        <li><b>Onboarding Mejorado:</b> Nueva experiencia de bienvenida en dos pasos, con firma visual de Función IF.</li>
                         <li><b>Bolsillos Inteligentes:</b> Cálculo automático de cuotas y fechas objetivo para tus metas de ahorro.</li>
                         <li><b>Fondo de Cesantías:</b> Nuevo sistema para acumular y separar tus cesantías año tras año.</li>
                         <li><b>Historial de Activos y ROI:</b> Lleva el registro de la valorización o depreciación de tu patrimonio y calcula tu Ganancia Real.</li>
                         <li><b>Liquidación Completa:</b> Módulo mejorado de nómina con vacaciones compensadas y bonos ocasionales.</li>
-                        <li><b>Interfaz Liquid Glass v3:</b> Modales estandarizados, animaciones optimizadas y diseño visual unificado.</li>
+                        <li><b>Interfaz Liquid Glass v3:</b> Modales estandarizados, animaciones optimizadas y diseño visual unificado con opción de cifras compactas (k, M).</li>
                     </ul>
                 </details>
 

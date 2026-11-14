@@ -230,6 +230,8 @@ const formatMoney = (amount) => {
 };
 
 const formatCompact = (amount) => {
+    if (!financeData.useCompactNumbers) return formatMoney(amount);
+    
     const abs = Math.abs(amount);
     const sign = amount < 0 ? '-' : '';
     if (abs >= 1000000) return `${sign}${(abs / 1000000).toFixed(2)}M`;
@@ -1067,7 +1069,7 @@ const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', custo
     };
 };
 
-// --- 8. GENERADOR DE RECORDATORIOS iOS (.ICS VCALENDAR) ---
+/// --- 8. GENERADOR DE RECORDATORIOS iOS (.ICS VCALENDAR) ---
 const generateICSBlob = (title, description, dateObj) => {
     const pad = (n) => n < 10 ? '0' + n : n;
     const formatDateStr = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
@@ -1102,7 +1104,7 @@ const generateICSBlob = (title, description, dateObj) => {
 // --- 9. UTILIDADES DE FECHAS Y PALETAS DE TEMAS ---
 const getMonthId = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 const getShortMonthLabel = (date) => date.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '');
-const formatMonthName = (date) => date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+const formatMonthName = (date) => date.toLocaleDateString('es-CO', { month: 'short', year: 'numeric' }).replace('.', '');
 const getAssetEmoji = (cat) => ({ 'Inmueble': '🏠', 'Vehículo': '🚗', 'Inversión': '📈', 'Tecnología': '💻', 'Coleccionable': '💎', 'Otro': '📦' }[cat] || '📦');
 
 const calcCommercialDays = (sD, eD) => {
