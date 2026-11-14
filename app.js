@@ -1168,32 +1168,41 @@ const renderBalanceSheet = (balances, netWorth, snap) => {
 
     list.innerHTML = '';
     let hiddenCount = 0;
-    const sortedAccounts = sortAlphabeticallyWithDefault(financeData.customAccounts);
 
-    sortedAccounts.forEach(acc => {
-        const bal = round2(balances[acc.id] || 0);
-        const isZero = Math.abs(bal) < 0.01;
+    const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
+    const cards = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
+    const debts = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'debt'));
 
-        if (financeData.hideZeroAccounts && isZero && !acc.showWhenZero) {
-            hiddenCount++;
-            return;
-        }
+    const renderAccGroup = (accGroup) => {
+        accGroup.forEach(acc => {
+            const bal = round2(balances[acc.id] || 0);
+            const isZero = Math.abs(bal) < 0.01;
 
-        const isLiab = isLiabilityCategory(acc.category);
-        const displayVal = isLiab ? -bal : bal;
-        const colorClass = isLiab ? (bal > 0 ? 'negative' : '') : (bal > 0 ? 'positive' : '');
-        const icon = acc.category === 'credit_card' ? '💳' : (acc.category === 'debt' ? '🏛️' : '🏦');
-        const starTag = acc.isDefault ? ' ⭐' : '';
+            if (financeData.hideZeroAccounts && isZero && !acc.showWhenZero) {
+                hiddenCount++;
+                return;
+            }
 
-        const row = document.createElement('div');
-        row.className = 'bs-row';
-        row.onclick = (e) => {
-            e.stopPropagation();
-            if (attemptCloseModals()) openAccountDetail(acc.id, 'home');
-        };
-        row.innerHTML = `<span>${icon} ${acc.name}${starTag}</span><strong class="${colorClass}">${formatMoney(displayVal)}</strong>`;
-        list.appendChild(row);
-    });
+            const isLiab = isLiabilityCategory(acc.category);
+            const displayVal = isLiab ? -bal : bal;
+            const colorClass = isLiab ? (bal > 0 ? 'negative' : '') : (bal > 0 ? 'positive' : '');
+            const icon = acc.category === 'credit_card' ? '💳' : (acc.category === 'debt' ? '🏛️' : '🏦');
+            const starTag = acc.isDefault ? ' ⭐' : '';
+
+            const row = document.createElement('div');
+            row.className = 'bs-row';
+            row.onclick = (e) => {
+                e.stopPropagation();
+                if (attemptCloseModals()) openAccountDetail(acc.id, 'home');
+            };
+            row.innerHTML = `<span>${icon} ${acc.name}${starTag}</span><strong class="${colorClass}">${formatMoney(displayVal)}</strong>`;
+            list.appendChild(row);
+        });
+    };
+
+    renderAccGroup(assets);
+    renderAccGroup(cards);
+    renderAccGroup(debts);
 
     if (toggleZeroBtn) {
         if (financeData.hideZeroAccounts) {
