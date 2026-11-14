@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v3.2)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v3.2.5)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.2.5';
 
 const openUniversalInfoModal = (sectionKey) => {
     const uModal = document.getElementById('universal-info-modal');
@@ -62,7 +62,18 @@ const openUniversalInfoModal = (sectionKey) => {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">📋 Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>🚀 Versión 3.2 (Actual)</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 3.2.5 (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>División de Transacciones (Split):</b> Divide un solo ticket de compra en múltiples categorías y medios de pago.</li>
+                        <li><b>Omni-Modal y UX:</b> Centralización del registro. Colores dinámicos para prevenir errores (rojo, verde, morado) e iconos renovados.</li>
+                        <li><b>Gestor Educativo:</b> Módulo de matrícula universitaria con plan de pagos, trámites extra, descarga de recibos (.txt) y alertas a 7 días.</li>
+                        <li><b>Bolsillos Ocultos:</b> Excluye metas de ahorro de la hoja de balance para proteger tu capital psicológico.</li>
+                        <li><b>Suscripciones y Fijos:</b> Gestiona tus servicios recurrentes y recibe alertas tempranas para pagarlos con 1 solo toque.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>✨ Versión 3.2</span><span>▾</span></summary>
                     <ul>
                         <li><b>Onboarding Mejorado:</b> Nueva experiencia de bienvenida en dos pasos, con firma visual de Función IF.</li>
                         <li><b>Cupos Rotativos Consolidados:</b> Registra múltiples compras por comercio dentro de un mismo cupo (Addi, Sistecrédito) y controla si afectan el gasto del mes.</li>

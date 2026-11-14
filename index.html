@@ -16,7 +16,7 @@
     <!-- TOAST DE ACTUALIZACIÓN PWA -->
     <div id="sw-update-toast" class="sw-toast hidden">✨ Nueva versión instalada • Actualizando...</div>
 
-    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v3.2) -->
+    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v3.2.5) -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card" id="auth-card">
             <div id="welcome-view" class="hidden">
@@ -24,7 +24,7 @@
                 <div id="welcome-step-1">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2</span>
+                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
                     </div>
                     <div class="welcome-isologo">
                         <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -78,7 +78,7 @@
                 <div id="welcome-step-2" class="hidden">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                         <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2</span>
+                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
                     </div>
                     <div class="welcome-step2-top">
                         <button type="button" id="btn-welcome-back" class="mini-action-btn">‹ Volver</button>
@@ -136,7 +136,7 @@
             <div id="login-view" class="hidden">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                     <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                    <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2</span>
+                    <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.2.5</span>
                 </div>
                 <div class="lock-icon">🔐</div>
                 <h2 id="login-greeting">Hola de nuevo</h2>
@@ -159,7 +159,7 @@
         <div class="drawer-header">
             <div class="drawer-brand">
                 <h2>Mis Finanzas</h2>
-                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v3.2</button>
+                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v3.2.5</button>
             </div>
             <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
         </div>
@@ -224,6 +224,13 @@
                 <div class="drawer-item-left">
                     <span class="drawer-icon-box" style="background: rgba(239, 68, 68, 0.15); color: #dc2626;">💲</span>
                     <span>Gastos del Mes</span>
+                </div>
+            </button>
+
+            <button type="button" class="drawer-item" id="drawer-subscriptions">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #d97706;">🔁</span>
+                    <span>Suscripciones y Fijos</span>
                 </div>
             </button>
 
@@ -566,7 +573,7 @@
 <!-- PIE DE PÁGINA CLICABLE EN INICIO + BOTÓN ORDENAR -->
     <footer class="main-app-footer">
         <button type="button" id="home-version-btn" class="version-footer-btn" title="Ver notas de versión y novedades">
-            &copy; 2026 Función IF • v3.2
+            &copy; 2026 Función IF • v3.2.5
         </button>
         <button type="button" id="toggle-edit-widgets-btn" class="mini-action-btn" style="padding: 5px 10px; font-size: 11px;">
             Ordenar
@@ -592,9 +599,9 @@
     <!-- BOTÓN FLOTANTE INDEPENDIENTE (FAB CON ANIMACIÓN) -->
     <div class="fab-container">
         <div id="fab-menu" class="fab-menu hidden">
-            <button type="button" class="fab-option" data-type="expense"><span>💸</span> Nuevo Gasto</button>
-            <button type="button" class="fab-option" data-type="income"><span>💰</span> Nuevo Ingreso</button>
-            <button type="button" class="fab-option" data-type="transfer"><span>🔄</span> Transferencia</button>
+            <button type="button" class="fab-option" data-type="expense"><span style="color:var(--negative);">↓</span> Nuevo Gasto</button>
+            <button type="button" class="fab-option" data-type="income"><span style="color:var(--positive);">↑</span> Nuevo Ingreso</button>
+            <button type="button" class="fab-option" data-type="transfer"><span style="color:var(--accent);">⇄</span> Transferencia</button>
         </div>
         <button type="button" id="fab-btn" class="fab-btn" aria-label="Nuevo movimiento">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
@@ -617,9 +624,9 @@
                     <div class="form-group">
                         <label>Tipo</label>
                         <select id="type">
-                            <option value="expense">💸 Gasto</option>
-                            <option value="income">💰 Ingreso</option>
-                            <option value="transfer">🔄 Transferencia</option>
+                            <option value="expense">↓ Gasto</option>
+                            <option value="income">↑ Ingreso</option>
+                            <option value="transfer">⇄ Transferencia</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -670,6 +677,8 @@
                         <input type="text" id="trans-budgeted-amount" class="money-input" inputmode="decimal" placeholder="Opcional">
                     </div>
                 </div>
+
+                <button type="button" id="btn-open-split-modal" class="btn btn-secondary hidden" style="width:100%; padding:8px; font-size:12px; margin-bottom:12px; color:var(--accent); border-style:dashed;">➗ Dividir transacción (Categorías / Cuentas)</button>
 
                 <div id="tx-calculator-panel" class="tx-calculator-panel hidden">
                     <div class="tx-calc-display">
@@ -805,6 +814,29 @@
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DIVIDIR TRANSACCIÓN -->
+    <div id="split-tx-modal" class="modal hidden" style="z-index: 1350;">
+        <div class="modal-content" style="max-width: 420px; padding: 16px;">
+            <div class="modal-header" style="margin-bottom:12px;">
+                <button type="button" id="close-split-modal-btn" class="mini-action-btn">‹ Volver</button>
+                <h3 style="font-size:15px; font-weight:800;">Dividir Transacción</h3>
+                <span id="split-tx-type-badge" class="widget-badge negative-bg" style="color:white;">Gasto</span>
+            </div>
+            
+            <div class="dash-strip-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:12px; padding:10px 8px;">
+                <div class="dash-strip-item"><small>Total a separar</small><strong id="split-base-total">$ 0,00</strong></div>
+                <div class="dash-strip-item"><small>Asignado</small><strong id="split-assigned-total" class="positive">$ 0,00</strong></div>
+                <div class="dash-strip-item"><small>Restante</small><strong id="split-remaining-total" class="negative">$ 0,00</strong></div>
+            </div>
+
+            <div id="split-items-container" style="max-height: 48vh; overflow-y: auto; display:flex; flex-direction:column; gap:10px; margin-bottom:12px; padding-right:4px;"></div>
+
+            <button type="button" id="btn-add-split-item" class="mini-action-btn" style="width:100%; padding:10px; margin-bottom:14px; border-style:dashed; color:var(--text-main);">+ Añadir Sub-Transacción</button>
+
+            <button type="button" id="btn-confirm-splits" class="btn btn-primary" style="width:100%;">✓ Guardar División</button>
         </div>
     </div>
 
@@ -1015,6 +1047,13 @@
                     </div>
                     <input type="text" id="new-pocket-quota" class="money-input" inputmode="decimal" placeholder="Se calcula automático (editable)">
                 </div>
+                <div class="switch-row">
+                    <div>
+                        <strong>Incluir en Hoja de Balance</strong>
+                        <small>Suma al Patrimonio Neto y Liquidez</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="new-pocket-include-balance" checked><span class="slider"></span></label>
+                </div>
                 <button type="submit" class="btn btn-primary">+ Crear Bolsillo</button>
             </form>
         </div>
@@ -1061,44 +1100,19 @@
                     <input type="text" id="edit-pocket-quota" class="money-input" inputmode="decimal" placeholder="Auto según fechas">
                     <small id="edit-pocket-quota-hint" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:4px;"></small>
                 </div>
+                <div class="switch-row">
+                    <div>
+                        <strong>Incluir en Hoja de Balance</strong>
+                        <small>Suma al Patrimonio Neto y Liquidez</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="edit-pocket-include-balance"><span class="slider"></span></label>
+                </div>
                 <button type="submit" class="btn btn-primary">Guardar Cambios</button>
             </form>
         </div>
     </div>
 
-    <!-- MODAL MOVIMIENTO INTERNO EN BOLSILLO -->
-    <div id="pocket-action-modal" class="modal hidden" style="z-index: 1375;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="pocket-action-title">Abonar a Bolsillo</h3>
-                <button type="button" id="close-pocket-action-btn" class="btn-close-modal">Cerrar</button>
-            </div>
-            <form id="pocket-action-form" class="data-form">
-                <input type="hidden" id="pocket-action-id">
-                <input type="hidden" id="pocket-action-type">
-                <div class="form-group">
-                    <label>Monto ($)</label>
-                    <input type="text" id="pocket-action-amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
-                </div>
-                <div class="form-group" id="pocket-action-account-group">
-                    <label id="pocket-action-account-label">Cuenta Origen / Destino</label>
-                    <select id="pocket-action-account"></select>
-                </div>
-                <div class="switch-row hidden" id="pocket-yield-income-row">
-                    <div>
-                        <strong>Registrar como Ingreso del mes</strong>
-                        <small>Suma este rendimiento a tu flujo en categoría Rendimientos</small>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="pocket-yield-as-income" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <button type="submit" class="btn btn-primary">Confirmar</button>
-            </form>
-        </div>
-    </div>
-<!-- MODAL CUENTAS Y DETALLE UNIVERSAL (CUENTAS, TARJETAS, PRÉSTAMOS Y BNPL) -->
+    <!-- MODAL CUENTAS Y DETALLE UNIVERSAL (CUENTAS, TARJETAS, PRÉSTAMOS Y BNPL) -->
     <div id="accounts-modal" class="modal hidden">
         <div class="modal-content">
             <div id="accounts-list-view">
@@ -1268,7 +1282,8 @@
 
                     <div class="form-row" style="margin-top:10px;">
                         <button type="button" id="open-pay-installment-btn" class="btn btn-primary" style="padding:9px; font-size:12.5px;">💸 Pagar Cuota</button>
-                        <button type="button" id="toggle-amortization-btn" class="btn btn-secondary" style="padding:9px; font-size:12.5px;">📊 Amortización</button>
+                        <button type="button" id="toggle-amortization-btn" class="btn btn-secondary" style="padding:9px; font-size:12.5px;">📊 Plan/Amortización</button>
+                        <button type="button" id="open-education-extra-btn" class="btn btn-secondary hidden" style="padding:9px; font-size:12.5px; color:var(--accent);">+ Trámite Extra</button>
                     </div>
 
                     <div id="pay-installment-box" class="hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
@@ -1284,21 +1299,35 @@
                     </div>
 
                     <div id="amortization-panel" class="hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
-                        <div class="form-group">
-                            <label>🚀 Simular Abono Extra a Capital hoy ($)</label>
-                            <input type="text" id="sim-extra-payment" class="money-input" inputmode="decimal" placeholder="Ej. 1.000.000">
-                            <small id="sim-savings-result" style="display:block; font-size:11px; color:var(--positive); margin-top:4px; font-weight:700;"></small>
+                        <div id="standard-amortization-view">
+                            <div class="form-group">
+                                <label>🚀 Simular Abono Extra a Capital hoy ($)</label>
+                                <input type="text" id="sim-extra-payment" class="money-input" inputmode="decimal" placeholder="Ej. 1.000.000">
+                                <small id="sim-savings-result" style="display:block; font-size:11px; color:var(--positive); margin-top:4px; font-weight:700;"></small>
+                            </div>
+                            <div class="amortization-scroll" style="max-height:200px;">
+                                <table class="amort-table">
+                                    <thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead>
+                                    <tbody id="amortization-table-body"></tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="amortization-scroll" style="max-height:200px;">
-                            <table class="amort-table">
-                                <thead><tr><th>#</th><th>Cuota</th><th>Capital</th><th>Interés</th><th>Saldo</th></tr></thead>
-                                <tbody id="amortization-table-body"></tbody>
-                            </table>
+                        <div id="education-schedule-view" class="hidden">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <h4 style="font-size:12px; font-weight:800;">Plan de Pagos (Matrícula)</h4>
+                                <button type="button" id="btn-download-edu-receipt" class="mini-action-btn">📄 Recibo (.txt)</button>
+                            </div>
+                            <div class="amortization-scroll" style="max-height:280px;">
+                                <table class="amort-table">
+                                    <thead><tr><th style="text-align:left;">Concepto</th><th>Deuda</th><th>Pago</th><th>Balance</th></tr></thead>
+                                    <tbody id="education-table-body"></tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
                     <form id="edit-debt-form" class="data-form hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
-                        <div class="form-group"><label>Tipo de Deuda</label><select id="edit-debt-type"><option value="fixed">Préstamo Fijo</option><option value="revolving">Cupo Rotativo</option></select></div>
+                        <div class="form-group"><label>Tipo de Deuda</label><select id="edit-debt-type"><option value="fixed">Préstamo Fijo</option><option value="revolving">Cupo Rotativo</option><option value="education">Matrícula / Educativo</option></select></div>
                         <div class="form-group"><label>Saldo Inicial ($)</label><input type="text" id="edit-debt-original" class="money-input" inputmode="decimal" required></div>
                         <div class="form-row">
                             <div class="form-group"><label>Cuotas Totales</label><input type="number" id="edit-debt-total-quotes" min="1" required></div>
@@ -1413,9 +1442,20 @@
                     <select id="new-debt-type">
                         <option value="fixed">Préstamo Fijo (Cuota Fija)</option>
                         <option value="revolving">Cupo Rotativo</option>
+                        <option value="education">Matrícula / Educativo</option>
                     </select>
                 </div>
                 <div class="form-group"><input type="text" id="new-debt-name" placeholder="Nombre (Ej. Crédito Vehículo)" required></div>
+                <div class="form-row hidden" id="new-debt-education-period-group">
+                    <div class="form-group">
+                        <label>Periodo Académico</label>
+                        <input type="text" id="new-debt-academic-period" placeholder="Ej. Semestre 3">
+                    </div>
+                    <div class="form-group">
+                        <label>Día de Pago (1-31)</label>
+                        <input type="number" id="new-debt-payment-day" min="1" max="31" placeholder="Ej. 5">
+                    </div>
+                </div>
                 <div class="form-group hidden" id="new-debt-revolving-commerce-group">
                     <label>Comercio / Compra Inicial (Opcional)</label>
                     <input type="text" id="new-debt-commerce" placeholder="Ej. Dafiti, Celular, Mercado">
@@ -1566,6 +1606,65 @@
                 <div class="combined-legend" id="expenses-combined-legend"></div>
             </div>
             <div id="expenses-category-list"></div>
+        </div>
+    </div>
+
+    <!-- MODAL SUSCRIPCIONES Y GASTOS FIJOS -->
+    <div id="subscriptions-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Suscripciones y Fijos</h2>
+                <button type="button" class="btn-close-modal">Cerrar</button>
+            </div>
+            <div class="dash-strip-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dash-strip-item"><small>Gasto Mensual Promedio</small><strong id="subs-monthly-total" class="negative">$ 0,00</strong></div>
+                <div class="dash-strip-item" style="text-align:right;"><small>Impacto Anualizado</small><strong id="subs-annual-total" class="negative">$ 0,00</strong></div>
+            </div>
+            <div id="subscriptions-list-container" style="margin-bottom:14px; max-height:45vh; overflow-y:auto; padding-right:4px;"></div>
+
+            <div class="drawer-divider"></div>
+            <h3 id="sub-form-title" style="font-size:15px; font-weight:800; margin-bottom:10px;">Nueva Suscripción / Fijo</h3>
+            <form id="new-subscription-form" class="data-form">
+                <input type="hidden" id="edit-sub-id">
+                <div class="form-group">
+                    <label>Nombre / Servicio</label>
+                    <input type="text" id="new-sub-name" placeholder="Ej. Netflix, Gimnasio, Internet" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monto ($)</label>
+                        <input type="text" id="new-sub-amount" class="money-input" inputmode="decimal" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ciclo de Cobro</label>
+                        <select id="new-sub-cycle">
+                            <option value="monthly">Mensual</option>
+                            <option value="annual">Anual</option>
+                            <option value="quarterly">Trimestral</option>
+                            <option value="weekly">Semanal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Próximo Cobro</label>
+                        <input type="date" id="new-sub-next-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cuenta de Débito</label>
+                        <select id="new-sub-account" required></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Categoría Presupuestal</label>
+                    <select id="new-sub-category" required></select>
+                </div>
+                <div class="form-row modal-actions-row">
+                    <button type="button" id="btn-sub-cancel" class="btn btn-secondary hidden">Cancelar</button>
+                    <button type="button" id="btn-sub-delete" class="btn btn-danger hidden">Eliminar</button>
+                    <button type="submit" id="btn-sub-submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -1788,7 +1887,7 @@
                 </button>
                 <button type="button" id="btn-lock-app-profile" class="btn btn-danger hidden" style="margin-top:8px;">🔒 Bloquear Aplicación</button>
                 <button type="button" id="profile-version-btn" class="version-footer-btn" style="margin-top:12px;" title="Ver notas de versión y novedades">
-                    &copy; 2026 Función IF • v3.2
+                    &copy; 2026 Función IF • v3.2.5
                 </button>
             </div>
 

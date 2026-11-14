@@ -1,9 +1,9 @@
 // ==========================================
-// SW.JS - SERVICE WORKER INTELIGENTE (v3.2)
+// SW.JS - SERVICE WORKER INTELIGENTE (v3.2.5)
 // Optimizado para Safari iOS y GitHub Pages
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v3.2.2';
+const CACHE_NAME = 'mis-finanzas-v3.2.5';
 
 const CORE_ASSETS = [
     './',

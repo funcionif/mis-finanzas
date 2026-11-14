@@ -1,5 +1,5 @@
 // ==========================================
-// app.js (v3.2) - VERSIÓN OFICIAL
+// app.js (v3.2.5) - VERSIÓN OFICIAL
 // EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO
 // ==========================================
 
@@ -434,7 +434,9 @@ function attemptCloseModals() {
         'debt-planner-modal',
         'annual-control-modal',
         'cat-months-modal',
-        'asset-detail-modal'
+        'asset-detail-modal',
+        'subscriptions-modal',
+        'split-tx-modal'
     ];
     for (const cId of childModals) {
         const cm = document.getElementById(cId);
@@ -532,6 +534,45 @@ const renderSmartAlerts = (monthId, snap) => {
             }
         }
     });
+
+    financeData.customAccounts.filter(a => a.debtType === 'education').forEach(edu => {
+        const bal = round2(snap.bals[edu.id] || 0);
+        if (bal > 0 && edu.paymentDay) {
+            const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), edu.paymentDay, 8, 30, 0);
+            const diffDays = Math.ceil((payDate - currentDate) / (1000 * 3600 * 24));
+            if (diffDays >= -5 && diffDays <= 7) {
+                const quotaAmt = calculateAmortization(edu.debtOriginal, edu.debtTotalQuotes || 1, 0, 'monthly').payment;
+                alerts.push({
+                    title: `🎓 Universidad: ${edu.name}`,
+                    desc: diffDays < 0 ? `Atrasada ${Math.abs(diffDays)} día(s) • ${formatMoney(quotaAmt)}` : (diffDays === 0 ? `¡Vence HOY! • ${formatMoney(quotaAmt)}` : `Vence en ${diffDays} día(s) • ${formatMoney(quotaAmt)}`),
+                    actionLabel: 'Ver Detalle',
+                    onAction: () => { openAccountDetail(edu.id, 'home'); document.getElementById('open-pay-installment-btn')?.click(); }
+                });
+            }
+        }
+    });
+
+    if (financeData.subscriptions) {
+        financeData.subscriptions.filter(s => s.status === 'active').forEach(sub => {
+            if (!sub.nextBillingDate) return;
+            const [y, m, d] = sub.nextBillingDate.split('-').map(Number);
+            const nextDate = new Date(y, m - 1, d, 8, 30, 0);
+            const diffDays = Math.ceil((nextDate - currentDate) / (1000 * 3600 * 24));
+            
+            if (diffDays >= -5 && diffDays <= (sub.reminderDays || 3)) {
+                alerts.push({
+                    title: `🔁 Pago ${sub.name}`,
+                    desc: diffDays < 0 ? `Vencido hace ${Math.abs(diffDays)} día(s) • ${formatMoney(sub.amount)}` : (diffDays === 0 ? `Vence hoy • ${formatMoney(sub.amount)}` : `Vence en ${diffDays} día(s) • ${formatMoney(sub.amount)}`),
+                    actionLabel: '💸 Pagar',
+                    onAction: () => {
+                        if (confirm(`¿Registrar el pago de ${sub.name} por ${formatMoney(sub.amount)} y actualizar al próximo ciclo?`)) {
+                            if (typeof processSubscriptionPayment === 'function') processSubscriptionPayment(sub.id);
+                        }
+                    }
+                });
+            }
+        });
+    }
 
     let totalPlannedExp = 0, totalSpentExp = 0;
     const mIdx = viewDate.getMonth();
@@ -929,7 +970,7 @@ const updateDashboard = () => {
 
     if (document.getElementById('pockets-ring-pct')) document.getElementById('pockets-ring-pct').innerText = `${pocketsPct}%`;
     if (document.getElementById('pockets-saved-total')) {
-        document.getElementById('pockets-saved-total').innerText = `${formatCompact(currSnap.pocketsTotal)} de ${formatCompact(totalPocketsGoal)}`;
+        document.getElementById('pockets-saved-total').innerText = `${formatCompact(currSnap.allPocketsTotal)} de ${formatCompact(totalPocketsGoal)}`;
     }
 
     const goalsCircle = document.getElementById('pockets-ring-progress');
@@ -1741,9 +1782,9 @@ const renderTransactionHistory = (monthId, snap, projectionData) => {
         let sign = '', colorClass = '', emoji = '', accInfo = getAccountObj(t.account).name;
         let catStr = t.subcategory && t.subcategory !== 'General' ? `${t.category} (${t.subcategory})` : (t.category || '');
 
-        if (t.type === 'income') { sign = '+'; colorClass = 'positive'; emoji = '💰'; }
-        else if (t.type === 'expense') { sign = '-'; colorClass = 'negative'; emoji = '💸'; }
-        else { sign = ''; colorClass = ''; emoji = '🔄'; catStr = 'Transferencia'; accInfo = `${getAccountObj(t.account).name} ➔ ${getAccountObj(t.toAccount).name}`; }
+        if (t.type === 'income') { sign = '+'; colorClass = 'positive'; emoji = '<span style="color:var(--positive);">↑</span>'; }
+        else if (t.type === 'expense') { sign = '-'; colorClass = 'negative'; emoji = '<span style="color:var(--negative);">↓</span>'; }
+        else { sign = ''; colorClass = ''; emoji = '<span style="color:var(--accent);">⇄</span>'; catStr = 'Transferencia'; accInfo = `${getAccountObj(t.account).name} ➔ ${getAccountObj(t.toAccount).name}`; }
 
         let extraBadge = '';
         if (isPending) {
@@ -2484,16 +2525,26 @@ document.getElementById('new-card-form')?.addEventListener('submit', (e) => {
 });
 
 document.getElementById('new-debt-type')?.addEventListener('change', (e) => {
-    const isRevolving = e.target.value === 'revolving';
+    const type = e.target.value;
+    const isRevolving = type === 'revolving';
+    const isEducation = type === 'education';
+    
     const nameInput = document.getElementById('new-debt-name');
     const commerceGroup = document.getElementById('new-debt-revolving-commerce-group');
+    const eduPeriodGroup = document.getElementById('new-debt-education-period-group');
+    const rateInput = document.getElementById('new-debt-rate');
+    
     if (nameInput) {
-        nameInput.placeholder = isRevolving
-            ? 'Nombre del Cupo (Ej. Addi, Sistecrédito)'
-            : 'Nombre (Ej. Crédito Vehículo)';
+        nameInput.placeholder = isRevolving ? 'Nombre del Cupo (Ej. Addi, Sistecrédito)' : (isEducation ? 'Universidad / Instituto (Ej. UNIR)' : 'Nombre (Ej. Crédito Vehículo)');
     }
-    if (commerceGroup) {
-        commerceGroup.classList.toggle('hidden', !isRevolving);
+    if (commerceGroup) commerceGroup.classList.toggle('hidden', !isRevolving);
+    if (eduPeriodGroup) eduPeriodGroup.classList.toggle('hidden', !isEducation);
+    
+    if (rateInput && isEducation) {
+        rateInput.value = '0';
+        rateInput.readOnly = true;
+    } else if (rateInput) {
+        rateInput.readOnly = false;
     }
 });
 
@@ -2522,6 +2573,8 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
 
     const id = 'Deuda_' + Date.now();
     const isRevWithPurchase = debtType === 'revolving' && current > 0;
+    const academicPeriod = document.getElementById('new-debt-academic-period')?.value.trim() || '';
+    const paymentDay = parseInt(document.getElementById('new-debt-payment-day')?.value, 10) || 1;
 
     financeData.customAccounts.push({
         id, name, category: 'debt', debtType, isDefault: false, showWhenZero: false,
@@ -2531,7 +2584,10 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
         debtRate: rate,
         debtRateType: rateType,
         debtMonthlyPayment: isRevWithPurchase ? 0 : monthlyPay,
-        payrollDeduction
+        payrollDeduction,
+        academicPeriod: debtType === 'education' ? academicPeriod : '',
+        paymentDay: debtType === 'education' ? paymentDay : null,
+        extraFees: debtType === 'education' ? [] : undefined
     });
 
     if (current > 0) {
@@ -2586,6 +2642,192 @@ document.getElementById('new-debt-form')?.addEventListener('submit', (e) => {
     updateDashboard();
     renderAccountSelects();
 });
+// --- 15.5 GESTOR DE SUSCRIPCIONES Y GASTOS FIJOS ---
+window.renderSubscriptionsView = () => {
+    const listContainer = document.getElementById('subscriptions-list-container');
+    if (!listContainer) return;
+    
+    // Poblar Selectores
+    const accSelect = document.getElementById('new-sub-account');
+    const catSelect = document.getElementById('new-sub-category');
+    if (accSelect && accSelect.options.length <= 1) {
+        const liqAndCards = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset' || a.category === 'credit_card'));
+        accSelect.innerHTML = liqAndCards.map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
+    }
+    if (catSelect && catSelect.options.length <= 1) {
+        let html = '';
+        [...(financeData.categories.expense || [])].sort((a, b) => a.name.localeCompare(b.name, 'es')).forEach(cat => {
+            if (cat.subcategories && cat.subcategories.length > 0) {
+                html += `<optgroup label="${cat.name}">`;
+                html += `<option value="${cat.name}::General">${cat.name} (General)</option>`;
+                [...cat.subcategories].sort((a, b) => a.name.localeCompare(b.name, 'es')).forEach(sub => { html += `<option value="${cat.name}::${sub.name}">↳ ${sub.name}</option>`; });
+                html += `</optgroup>`;
+            } else { html += `<option value="${cat.name}::General">${cat.name}</option>`; }
+        });
+        catSelect.innerHTML = html;
+    }
+
+    listContainer.innerHTML = '';
+    let totalMonthly = 0, totalAnnual = 0;
+    const activeSubs = (financeData.subscriptions || []).filter(s => s.status === 'active');
+    
+    if (activeSubs.length === 0) {
+        listContainer.innerHTML = '<p style="color:var(--text-muted); font-size:12.5px; text-align:center; padding:20px 0;">No tienes suscripciones registradas.</p>';
+        document.getElementById('subs-monthly-total').innerText = '$ 0,00';
+        document.getElementById('subs-annual-total').innerText = '$ 0,00';
+        return;
+    }
+
+    // Ordenar por fecha más próxima
+    activeSubs.sort((a, b) => new Date(a.nextBillingDate) - new Date(b.nextBillingDate)).forEach(sub => {
+        let monthlyEquiv = sub.amount;
+        if (sub.cycle === 'annual') monthlyEquiv = round2(sub.amount / 12);
+        else if (sub.cycle === 'quarterly') monthlyEquiv = round2(sub.amount / 3);
+        else if (sub.cycle === 'weekly') monthlyEquiv = round2((sub.amount * 52) / 12);
+        
+        totalMonthly += monthlyEquiv;
+        totalAnnual += round2(monthlyEquiv * 12);
+
+        const cycleLabels = { monthly: 'Mes', annual: 'Año', quarterly: 'Trimestre', weekly: 'Semana' };
+        
+        let diffDays = 999;
+        let badgeHtml = '';
+        if (sub.nextBillingDate) {
+            const [y, m, d] = sub.nextBillingDate.split('-').map(Number);
+            const nextDate = new Date(y, m - 1, d, 8, 30, 0);
+            diffDays = Math.ceil((nextDate - currentDate) / (1000 * 3600 * 24));
+            
+            if (diffDays < 0) badgeHtml = `<span class="widget-badge danger" style="font-size:9.5px; padding:2px 6px;">Vencido</span>`;
+            else if (diffDays === 0) badgeHtml = `<span class="widget-badge warn" style="font-size:9.5px; padding:2px 6px;">Hoy</span>`;
+            else if (diffDays <= 7) badgeHtml = `<span class="widget-badge warn" style="font-size:9.5px; padding:2px 6px;">En ${diffDays}d</span>`;
+            else badgeHtml = `<span class="widget-badge neutral" style="font-size:9.5px; padding:2px 6px;">${diffDays}d</span>`;
+        }
+
+        const btnClass = diffDays <= 7 ? 'btn-confirm-pending' : 'mini-action-btn';
+        
+        listContainer.innerHTML += `
+            <div class="acc-list-item" style="padding:12px 14px; gap:8px;">
+                <div class="acc-list-name" style="flex:1;">
+                    <div style="flex:1; min-width:0;">
+                        <span style="font-size:14px; font-weight:800; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub.name}</span>
+                        <small style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); font-weight:600;">
+                            ${formatMoney(sub.amount)}/${cycleLabels[sub.cycle]} ${badgeHtml}
+                        </small>
+                    </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                    <button type="button" onclick="processSubscriptionPayment('${sub.id}')" class="${btnClass}" style="margin:0;">💸 Pagar</button>
+                    <button type="button" onclick="editSubscription('${sub.id}')" class="mini-action-btn" style="background:transparent; border:none; padding:2px 6px; font-size:10.5px; color:var(--text-muted);">✏️ Editar</button>
+                </div>
+            </div>`;
+    });
+
+    document.getElementById('subs-monthly-total').innerText = formatMoney(totalMonthly);
+    document.getElementById('subs-annual-total').innerText = formatMoney(totalAnnual);
+};
+
+window.processSubscriptionPayment = (subId) => {
+    const sub = financeData.subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+    const now = new Date();
+    const txDateStr = sub.nextBillingDate || now.toLocaleDateString('en-CA');
+    
+    let catName = '🎬 Entretenimiento', subName = 'General';
+    if (sub.category) {
+        const parts = sub.category.split('::');
+        catName = parts[0] || catName;
+        subName = parts[1] || subName;
+    }
+
+    financeData.transactions.push({
+        id: now.getTime() + Math.floor(Math.random() * 500),
+        monthId: getMonthId(new Date(txDateStr + 'T12:00:00')),
+        type: 'expense',
+        status: 'closed',
+        account: sub.accountId || getDefaultAccountId(false),
+        category: catName,
+        subcategory: subName,
+        description: `🔁 Pago: ${sub.name}`,
+        amount: sub.amount,
+        date: `${new Date(txDateStr + 'T12:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, 08:00`,
+        isAdjustment: false
+    });
+
+    const [y, m, d] = txDateStr.split('-').map(Number);
+    const nextD = new Date(y, m - 1, d);
+    if (sub.cycle === 'monthly') nextD.setMonth(nextD.getMonth() + 1);
+    else if (sub.cycle === 'annual') nextD.setFullYear(nextD.getFullYear() + 1);
+    else if (sub.cycle === 'quarterly') nextD.setMonth(nextD.getMonth() + 3);
+    else if (sub.cycle === 'weekly') nextD.setDate(nextD.getDate() + 7);
+    
+    sub.nextBillingDate = nextD.toLocaleDateString('en-CA');
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    updateDashboard();
+    renderSubscriptionsView();
+};
+
+window.editSubscription = (id) => {
+    const sub = financeData.subscriptions.find(s => s.id === id);
+    if (!sub) return;
+    document.getElementById('sub-form-title').innerText = 'Editar Suscripción';
+    document.getElementById('edit-sub-id').value = sub.id;
+    document.getElementById('new-sub-name').value = sub.name;
+    document.getElementById('new-sub-amount').value = formatNumberInput(sub.amount);
+    document.getElementById('new-sub-cycle').value = sub.cycle;
+    document.getElementById('new-sub-next-date').value = sub.nextBillingDate;
+    document.getElementById('new-sub-account').value = sub.accountId;
+    document.getElementById('new-sub-category').value = sub.category;
+    document.getElementById('btn-sub-cancel').classList.remove('hidden');
+    document.getElementById('btn-sub-delete').classList.remove('hidden');
+};
+
+document.getElementById('btn-sub-cancel')?.addEventListener('click', () => {
+    document.getElementById('new-subscription-form').reset();
+    document.getElementById('sub-form-title').innerText = 'Nueva Suscripción / Fijo';
+    document.getElementById('edit-sub-id').value = '';
+    document.getElementById('btn-sub-cancel').classList.add('hidden');
+    document.getElementById('btn-sub-delete').classList.add('hidden');
+});
+
+document.getElementById('btn-sub-delete')?.addEventListener('click', () => {
+    const id = document.getElementById('edit-sub-id').value;
+    if (confirm('¿Eliminar esta suscripción? (No se borrarán los pagos pasados)')) {
+        financeData.subscriptions = financeData.subscriptions.filter(s => s.id !== id);
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        document.getElementById('btn-sub-cancel').click();
+        updateDashboard();
+        renderSubscriptionsView();
+    }
+});
+
+document.getElementById('new-subscription-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-sub-id').value;
+    const subData = {
+        name: document.getElementById('new-sub-name').value.trim(),
+        amount: parseMoneyInput(document.getElementById('new-sub-amount').value),
+        cycle: document.getElementById('new-sub-cycle').value,
+        nextBillingDate: document.getElementById('new-sub-next-date').value,
+        accountId: document.getElementById('new-sub-account').value,
+        category: document.getElementById('new-sub-category').value,
+        reminderDays: 3,
+        status: 'active'
+    };
+
+    if (id) {
+        const index = financeData.subscriptions.findIndex(s => s.id === id);
+        if (index !== -1) financeData.subscriptions[index] = { ...financeData.subscriptions[index], ...subData };
+    } else {
+        subData.id = 'Sub_' + Date.now();
+        financeData.subscriptions.push(subData);
+    }
+
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    document.getElementById('btn-sub-cancel').click();
+    updateDashboard();
+    renderSubscriptionsView();
+});
+
 // --- 15B. DETALLE DE CUENTAS, TARJETAS, PRÉSTAMOS, BOLSILLOS Y ACTIVOS ---
 window.openAccountDetail = (accountId, originType = 'home') => {
     const acc = financeData.customAccounts.find(a => a.id === accountId);
@@ -2622,6 +2864,9 @@ window.openAccountDetail = (accountId, originType = 'home') => {
     const cardExtraBox = document.getElementById('card-extra-info'), editCardBtn = document.getElementById('edit-card-settings-btn');
     const debtExtraBox = document.getElementById('debt-extra-info'), editDebtBtn = document.getElementById('edit-debt-settings-btn');
     ['edit-card-form', 'edit-debt-form', 'pay-installment-box', 'amortization-panel'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    
+    // Forzar reinicio de estado del botón universitario
+    if (document.getElementById('open-education-extra-btn')) document.getElementById('open-education-extra-btn').classList.add('hidden');
 
     if (acc.category === 'credit_card') {
         cardExtraBox?.classList.remove('hidden'); editCardBtn?.classList.remove('hidden');
@@ -2728,10 +2973,121 @@ window.openAccountDetail = (accountId, originType = 'home') => {
             if (document.getElementById('pay-debt-source-acc')) {
                 document.getElementById('pay-debt-source-acc').innerHTML = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset')).map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
             }
-            const tbody = document.getElementById('amortization-table-body');
-            if (tbody) {
-                const remSched = activeAmortizationSchedule.slice(paidQuotes);
-                tbody.innerHTML = remSched.length === 0 ? '<tr><td colspan="5" style="text-align:center;">Préstamo liquidado 🎉</td></tr>' : remSched.map(row => `<tr><td>${row.period}</td><td>${formatMoney(row.payment)}</td><td class="positive">${formatMoney(row.principal)}</td><td class="negative">${formatMoney(row.interest)}</td><td>${formatMoney(row.balance)}</td></tr>`).join('');
+
+            const standardAmortView = document.getElementById('standard-amortization-view');
+            const eduScheduleView = document.getElementById('education-schedule-view');
+            const openEduExtraBtn = document.getElementById('open-education-extra-btn');
+
+            if (acc.debtType === 'education') {
+                if (openEduExtraBtn) openEduExtraBtn.classList.remove('hidden');
+                if (standardAmortView) standardAmortView.classList.add('hidden');
+                if (eduScheduleView) eduScheduleView.classList.remove('hidden');
+
+                const intRow = document.getElementById('detail-debt-total-interest');
+                if (intRow && intRow.parentElement) intRow.parentElement.classList.add('hidden');
+                
+                const eduBody = document.getElementById('education-table-body');
+                if (eduBody) {
+                    let html = '';
+                    let runningBal = round2(originalDebt);
+                    
+                    // Render Cuotas de Matrícula
+                    for (let i = 1; i <= totalQuotes; i++) {
+                        const isPaid = i <= paidQuotes;
+                        const payAmt = isPaid ? amortData.payment : 0;
+                        if (isPaid) runningBal = Math.max(0, round2(runningBal - amortData.payment));
+                        html += `<tr><td style="text-align:left;">Cuota ${String(i).padStart(2, '0')} de ${totalQuotes}</td><td>${formatMoney(amortData.payment)}</td><td class="positive">${isPaid ? formatMoney(payAmt) : ''}</td><td>${formatMoney(runningBal)}</td></tr>`;
+                    }
+                    
+                    // Render Trámites Adicionales (Ej. Constancias)
+                    if (acc.extraFees && acc.extraFees.length > 0) {
+                        acc.extraFees.forEach(fee => {
+                            html += `<tr style="background:rgba(148,163,184,0.06);"><td style="text-align:left; color:var(--text-muted);">${fee.name}</td><td>${formatMoney(fee.amount)}</td><td class="positive">${fee.paid ? formatMoney(fee.amount) : ''}</td><td>-</td></tr>`;
+                        });
+                    }
+                    eduBody.innerHTML = html;
+                }
+                
+                // Acción para agregar trámites
+                if (openEduExtraBtn) {
+                    openEduExtraBtn.onclick = () => {
+                        const feeName = prompt('Nombre del Trámite Extra (Ej. Constancia, Derechos de Grado):');
+                        if (!feeName) return;
+                        const feeAmtStr = prompt('Valor del Trámite ($):');
+                        if (!feeAmtStr) return;
+                        const feeAmt = parseMoneyInput(feeAmtStr);
+                        if (feeAmt <= 0) return;
+                        
+                        const isPaid = confirm('¿Este trámite ya fue pagado? (Aceptar = Sí, Cancelar = Queda en deuda)');
+                        
+                        if (!acc.extraFees) acc.extraFees = [];
+                        acc.extraFees.push({ name: feeName, amount: feeAmt, paid: isPaid });
+                        
+                        if (!isPaid) {
+                            acc.debtOriginal = round2((acc.debtOriginal || 0) + feeAmt);
+                            const now = new Date();
+                            financeData.transactions.push({ id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed', account: acc.id, description: `⚖️ Cargo Universidad: ${feeName}`, amount: feeAmt, date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: true });
+                        } else {
+                            const now = new Date();
+                            financeData.transactions.push({
+                                id: now.getTime(), monthId: getMonthId(now), type: 'expense', status: 'closed', 
+                                account: getDefaultAccountId(false), category: '🎓 Educación', subcategory: 'Trámites', 
+                                description: `🎓 Trámite: ${feeName}`, amount: feeAmt, 
+                                date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: false 
+                            });
+                        }
+                        localStorage.setItem('myFinances', JSON.stringify(financeData));
+                        updateDashboard();
+                        openAccountDetail(acc.id, originType);
+                    };
+                }
+
+                const btnDownloadEdu = document.getElementById('btn-download-edu-receipt');
+                if (btnDownloadEdu) {
+                    btnDownloadEdu.onclick = () => {
+                        let txt = `COMPROBANTE DE PAGOS - ${acc.name.toUpperCase()}\n`;
+                        txt += `Periodo Académico: ${acc.academicPeriod || 'N/A'}\n`;
+                        txt += `Fecha de generación: ${new Date().toLocaleDateString('es-CO')} a las ${new Date().toLocaleTimeString('es-CO')}\n`;
+                        txt += `----------------------------------------\n\n`;
+                        txt += `CUOTAS PAGADAS (${paidQuotes} de ${totalQuotes}):\n`;
+                        for (let i = 1; i <= totalQuotes; i++) {
+                            txt += `- Cuota ${String(i).padStart(2, '0')}: ${i <= paidQuotes ? '✅ PAGADO (' + formatMoney(amortData.payment) + ')' : '⏳ Pendiente'}\n`;
+                        }
+                        if (acc.extraFees && acc.extraFees.length > 0) {
+                            txt += `\nTRÁMITES EXTRAORDINARIOS:\n`;
+                            acc.extraFees.forEach(fee => {
+                                txt += `- ${fee.name}: ${formatMoney(fee.amount)} ${fee.paid ? '[✅ PAGADO]' : '[⏳ PENDIENTE]'}\n`;
+                            });
+                        }
+                        txt += `\n----------------------------------------\n`;
+                        txt += `Deuda Inicial Base: ${formatMoney(acc.debtOriginal)}\n`;
+                        txt += `Generado localmente por Mis Finanzas (Función IF)\n`;
+
+                        const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Soporte_Pagos_${acc.name.replace(/\s+/g, '_')}.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    };
+                }
+
+            } else {
+                if (openEduExtraBtn) openEduExtraBtn.classList.add('hidden');
+                if (standardAmortView) standardAmortView.classList.remove('hidden');
+                if (eduScheduleView) eduScheduleView.classList.add('hidden');
+                
+                const intRow = document.getElementById('detail-debt-total-interest');
+                if (intRow && intRow.parentElement) intRow.parentElement.classList.remove('hidden');
+                
+                const tbody = document.getElementById('amortization-table-body');
+                if (tbody) {
+                    const remSched = activeAmortizationSchedule.slice(paidQuotes);
+                    tbody.innerHTML = remSched.length === 0 ? '<tr><td colspan="5" style="text-align:center;">Préstamo liquidado 🎉</td></tr>' : remSched.map(row => `<tr><td>${row.period}</td><td>${formatMoney(row.payment)}</td><td class="positive">${formatMoney(row.principal)}</td><td class="negative">${formatMoney(row.interest)}</td><td>${formatMoney(row.balance)}</td></tr>`).join('');
+                }
             }
         }
         if (document.getElementById('edit-debt-type')) document.getElementById('edit-debt-type').value = acc.debtType || 'fixed';
@@ -3083,6 +3439,7 @@ const renderPocketsView = () => {
             } else if (p.startDate) {
                 dateLabel = `Inicio: ${p.startDate}`;
             }
+            if (p.excludeFromBalance) dateLabel += ' • 👁️ Oculto del Balance';
 
             const paceBadge = m.paceStatus
                 ? ` <span class="widget-badge ${m.paceStatus.cls}" style="font-size:9px; padding:1px 6px;">${m.paceStatus.label}</span>`
@@ -3142,6 +3499,9 @@ window.openEditPocket = (id) => {
     document.getElementById('edit-pocket-start-date').value = p.startDate || '';
     document.getElementById('edit-pocket-date').value = p.targetDate || '';
     document.getElementById('edit-pocket-quota').value = m.activeQuota > 0 ? formatNumberInput(m.activeQuota) : '';
+    if (document.getElementById('edit-pocket-include-balance')) {
+        document.getElementById('edit-pocket-include-balance').checked = !p.excludeFromBalance;
+    }
 
     const hintEl = document.getElementById('edit-pocket-quota-hint');
     if (hintEl) {
@@ -3190,6 +3550,9 @@ document.getElementById('edit-pocket-form')?.addEventListener('submit', (e) => {
         autoQuota = round2(rem / calcMonthsBetweenDates(getEffectiveStartStr(p.startDate), p.targetDate));
     }
     p.customQuota = (enteredQuota > 0 && Math.abs(enteredQuota - autoQuota) > 1) ? enteredQuota : 0;
+    if (document.getElementById('edit-pocket-include-balance')) {
+        p.excludeFromBalance = !document.getElementById('edit-pocket-include-balance').checked;
+    }
 
     localStorage.setItem('myFinances', JSON.stringify(financeData));
     hasUnsavedChanges = false;
@@ -3207,59 +3570,39 @@ document.getElementById('close-pocket-edit-btn')?.addEventListener('click', () =
 window.openPocketAction = (id, actionType) => {
     const p = financeData.pockets.find(x => String(x.id) === String(id));
     if (!p) return;
-    const m = document.getElementById('pocket-action-modal');
-    if (!m) return;
     const metrics = computePocketMetrics(p);
-    document.getElementById('pocket-action-id').value = p.id;
-    document.getElementById('pocket-action-type').value = actionType;
-    document.getElementById('pocket-action-amount').value = (actionType === 'deposit' && metrics.activeQuota > 0)
-        ? formatNumberInput(metrics.activeQuota)
-        : '';
-    const accGroup = document.getElementById('pocket-action-account-group');
-    const yieldRow = document.getElementById('pocket-yield-income-row');
-    const assetsAcc = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset'));
-    document.getElementById('pocket-action-account').innerHTML = assetsAcc.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
-
+    
     if (actionType === 'deposit') {
-        document.getElementById('pocket-action-title').innerText = `Abonar a ${p.name}`;
-        document.getElementById('pocket-action-account-label').innerText = 'Cuenta Origen (Opcional / Solo interno)';
-        accGroup.classList.remove('hidden'); yieldRow.classList.add('hidden');
+        openOmniModal({
+            type: 'transfer',
+            title: `Abonar a ${p.name}`,
+            toAccount: p.id,
+            amount: metrics.activeQuota > 0 ? metrics.activeQuota : '',
+            description: `Abono a bolsillo: ${p.name}`,
+            lockType: true,
+            hideRecurrence: true
+        });
     } else if (actionType === 'withdraw') {
-        document.getElementById('pocket-action-title').innerText = `Retirar de ${p.name}`;
-        document.getElementById('pocket-action-account-label').innerText = 'Cuenta Destino';
-        accGroup.classList.remove('hidden'); yieldRow.classList.add('hidden');
-    } else {
-        document.getElementById('pocket-action-title').innerText = `Rendimientos • ${p.name}`;
-        accGroup.classList.add('hidden'); yieldRow.classList.remove('hidden');
-    }
-    m.classList.remove('hidden');
-};
-
-document.getElementById('pocket-action-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const id = document.getElementById('pocket-action-id').value;
-    const actionType = document.getElementById('pocket-action-type').value;
-    const amt = parseMoneyInput(document.getElementById('pocket-action-amount').value);
-    const p = financeData.pockets.find(x => String(x.id) === String(id));
-    if (!p || amt <= 0) return;
-
-    if (actionType === 'deposit') {
-        adjustPocketBalance(p.id, amt);
-    } else if (actionType === 'withdraw') {
-        const total = round2((p.principal || 0) + (p.yields || 0));
-        if (amt > total) { alert('Monto superior al saldo del bolsillo.'); return; }
-        adjustPocketBalance(p.id, -amt);
+        openOmniModal({
+            type: 'transfer',
+            title: `Retirar de ${p.name}`,
+            account: p.id,
+            description: `Retiro de bolsillo: ${p.name}`,
+            lockType: true,
+            hideRecurrence: true
+        });
     } else if (actionType === 'yield') {
-        p.yields = round2((p.yields || 0) + amt);
-        if (document.getElementById('pocket-yield-as-income')?.checked) {
-            const now = new Date();
-            financeData.transactions.push({ id: now.getTime(), monthId: getMonthId(now), type: 'income', status: 'closed', account: getDefaultAccountId(true), category: '📈 Rendimientos', subcategory: 'General', description: `📈 Rendimientos: ${p.name}`, amount: amt, date: `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`, isAdjustment: false });
-        }
+        openOmniModal({
+            type: 'income',
+            title: `Rendimientos • ${p.name}`,
+            account: p.id,
+            category: '📈 Rendimientos::General',
+            description: `📈 Rendimientos: ${p.name}`,
+            lockType: true,
+            hideRecurrence: true
+        });
     }
-    localStorage.setItem('myFinances', JSON.stringify(financeData));
-    document.getElementById('pocket-action-modal')?.classList.add('hidden');
-    renderPocketsView(); renderAccountSelects(); updateDashboard();
-});
+};
 
 document.getElementById('add-pocket-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -3276,6 +3619,7 @@ document.getElementById('add-pocket-form')?.addEventListener('submit', (e) => {
     const effectiveStart = startDate || currentDate.toLocaleDateString('en-CA');
     const autoQuota = (needed > 0 && targetDate) ? round2(needed / calcMonthsBetweenDates(effectiveStart, targetDate)) : 0;
     const customQuota = (enteredQuota > 0 && Math.abs(enteredQuota - autoQuota) > 1) ? enteredQuota : 0;
+    const excludeFromBalance = !document.getElementById('new-pocket-include-balance').checked;
 
     financeData.pockets.push({
         id: 'Pocket_' + Date.now(),
@@ -3286,7 +3630,8 @@ document.getElementById('add-pocket-form')?.addEventListener('submit', (e) => {
         targetDate,
         customQuota,
         principal: initial,
-        yields: 0
+        yields: 0,
+        excludeFromBalance
     });
     localStorage.setItem('myFinances', JSON.stringify(financeData));
     document.getElementById('add-pocket-form').reset();
@@ -3711,15 +4056,33 @@ document.getElementById('trans-recurrence')?.addEventListener('change', (e) => {
 
 typeSelect?.addEventListener('change', () => {
     const accEl = document.getElementById('account'), budgetGroup = document.getElementById('group-budgeted-amount'), payrollShortcut = document.getElementById('quick-payroll-shortcut');
+    const splitBtn = document.getElementById('btn-open-split-modal');
+    
+    // Elementos visuales dinámicos del Omni-Modal
+    const submitBtn = document.querySelector('#transaction-modal button[type="submit"]');
+    const modalContent = document.querySelector('#transaction-modal .modal-content');
+
     if (typeSelect.value === 'transfer') {
+        if (submitBtn) { submitBtn.style.backgroundColor = 'var(--accent)'; submitBtn.innerText = 'Guardar Transferencia'; }
+        if (modalContent) modalContent.style.boxShadow = '0 0 0 2px var(--accent)';
+        
+        if (splitBtn) splitBtn.classList.add('hidden');
         renderAccountSelects(false); if (accEl) accEl.value = getDefaultAccountId(true);
         toAccountGroup?.classList.remove('hidden'); categoryGroup?.classList.add('hidden'); budgetGroup?.classList.add('hidden'); payrollShortcut?.classList.add('hidden'); ccInstallmentsBox?.classList.add('hidden');
         document.getElementById('label-account').innerText = 'Cuenta Origen';
     } else if (typeSelect.value === 'income') {
+        if (submitBtn) { submitBtn.style.backgroundColor = 'var(--positive)'; submitBtn.innerText = 'Guardar Ingreso'; }
+        if (modalContent) modalContent.style.boxShadow = '0 0 0 2px var(--positive)';
+        
+        if (splitBtn) splitBtn.classList.remove('hidden');
         renderAccountSelects(true); if (accEl) accEl.value = getDefaultAccountId(true);
         toAccountGroup?.classList.add('hidden'); categoryGroup?.classList.remove('hidden'); budgetGroup?.classList.remove('hidden'); payrollShortcut?.classList.remove('hidden'); ccInstallmentsBox?.classList.add('hidden');
         document.getElementById('label-account').innerText = 'Cuenta Destino'; renderCategoryOptions('income');
     } else {
+        if (submitBtn) { submitBtn.style.backgroundColor = 'var(--negative)'; submitBtn.innerText = 'Guardar Gasto'; }
+        if (modalContent) modalContent.style.boxShadow = '0 0 0 2px var(--negative)';
+        
+        if (splitBtn) splitBtn.classList.remove('hidden');
         renderAccountSelects(false); if (accEl) accEl.value = getDefaultAccountId(false);
         toAccountGroup?.classList.add('hidden'); categoryGroup?.classList.remove('hidden'); budgetGroup?.classList.remove('hidden'); payrollShortcut?.classList.add('hidden');
         document.getElementById('label-account').innerText = 'Cuenta / Tarjeta'; renderCategoryOptions('expense'); updateCCInstallmentsPreview(true);
@@ -3739,23 +4102,78 @@ document.getElementById('btn-tx-quick-payroll')?.addEventListener('click', () =>
     document.getElementById('amount').dispatchEvent(new Event('input'));
 });
 
+// --- 15D. OMNI-MODAL: CENTRALIZACIÓN DE REGISTROS ---
+window.openOmniModal = (config = {}) => {
+    const {
+        mode = 'create', txId = null, type = 'expense', title = null,
+        lockType = false, amount = '', account = '', toAccount = '',
+        category = '', description = '', status = 'closed',
+        dateMs = null, hideRecurrence = false
+    } = config;
+
+    forceCloseAllModals();
+    const tModal = document.getElementById('transaction-modal');
+    if (!tModal) return;
+
+    form?.reset();
+    document.getElementById('edit-id').value = mode === 'edit' ? txId : '';
+    document.getElementById('modal-title').innerText = title || { expense: 'Nuevo Gasto', income: 'Nuevo Ingreso', transfer: 'Nueva Transferencia' }[type];
+    
+    typeSelect.value = type; 
+    typeSelect.disabled = lockType;
+    typeSelect.dispatchEvent(new Event('change'));
+
+    document.getElementById('trans-status').value = status;
+    
+    if (amount !== '') {
+        document.getElementById('amount').value = formatNumberInput(amount);
+        document.getElementById('amount').dispatchEvent(new Event('input'));
+    }
+    if (account) document.getElementById('account').value = account;
+    if (toAccount && type === 'transfer') document.getElementById('to-account').value = toAccount;
+    if (category && type !== 'transfer') {
+        document.getElementById('trans-category').value = category;
+        userEditedBudgetField = false; 
+        autoFillBudgetedAmountForTransaction(true);
+    }
+    if (description) document.getElementById('description').value = description;
+
+    const targetDate = dateMs ? new Date(dateMs) : new Date();
+    document.getElementById('trans-date').value = (mode === 'create' && selectedCalendarDay) ? selectedCalendarDay : targetDate.toLocaleDateString('en-CA');
+    document.getElementById('trans-time').value = targetDate.toTimeString().slice(0, 5);
+
+    const recGroup = document.getElementById('group-recurrence');
+    if (recGroup) {
+        if (hideRecurrence || mode === 'edit') recGroup.classList.add('hidden');
+        else recGroup.classList.remove('hidden');
+    }
+    document.getElementById('group-recurrence-count')?.classList.add('hidden');
+    
+    const delBtn = document.getElementById('delete-btn');
+    if (delBtn) {
+        if (mode === 'edit') delBtn.classList.remove('hidden');
+        else delBtn.classList.add('hidden');
+    }
+
+    hasUnsavedChanges = false;
+    tModal.classList.remove('hidden');
+};
+
 window.openEditModal = (id) => {
     const tx = financeData.transactions.find(t => String(t.id) === String(id));
     if (!tx) return;
-    document.getElementById('modal-title').innerText = { expense: 'Editar Gasto', income: 'Editar Ingreso', transfer: 'Editar Transferencia' }[tx.type] || 'Editar Movimiento';
-    document.getElementById('edit-id').value = tx.id;
-    document.getElementById('group-recurrence')?.classList.add('hidden');
-    document.getElementById('trans-status').value = tx.status === 'pending' ? 'pending' : 'closed';
-    typeSelect.value = tx.type; typeSelect.dispatchEvent(new Event('change'));
-    document.getElementById('account').value = tx.account;
-    if (tx.type === 'transfer' && tx.toAccount) document.getElementById('to-account').value = tx.toAccount;
-    else if (tx.category) document.getElementById('trans-category').value = `${tx.category}::${tx.subcategory || 'General'}`;
-    document.getElementById('description').value = tx.description;
-    document.getElementById('amount').value = formatNumberInput(tx.amount);
+    
+    let catFull = '';
+    if (tx.type !== 'transfer' && tx.category) catFull = `${tx.category}::${tx.subcategory || 'General'}`;
+    
+    openOmniModal({
+        mode: 'edit', txId: tx.id, type: tx.type, 
+        amount: tx.amount, account: tx.account, toAccount: tx.toAccount,
+        category: catFull, description: tx.description,
+        status: tx.status === 'pending' ? 'pending' : 'closed', dateMs: tx.id
+    });
+    
     document.getElementById('trans-budgeted-amount').value = tx.budgetedAmount ? formatNumberInput(tx.budgetedAmount) : '';
-    const dObj = new Date(tx.id);
-    document.getElementById('trans-date').value = dObj.toLocaleDateString('en-CA');
-    document.getElementById('trans-time').value = dObj.toTimeString().slice(0, 5);
     if (tx.type === 'expense') {
         document.getElementById('trans-installments').value = tx.installments || 1;
         document.getElementById('trans-rate').value = tx.rate ? formatNumberInput(tx.rate) : '0';
@@ -3764,28 +4182,14 @@ window.openEditModal = (id) => {
         updateCCInstallmentsPreview(false);
     }
     renderTxBudgetVariancePreview();
-    document.getElementById('delete-btn')?.classList.remove('hidden');
-    modal?.classList.remove('hidden'); hasUnsavedChanges = false;
 };
 
 document.querySelectorAll('.fab-option').forEach(opt => {
     opt.addEventListener('click', () => {
         const selectedType = opt.getAttribute('data-type');
         if (!selectedType) return;
-        document.getElementById('modal-title').innerText = { expense: 'Nuevo Gasto', income: 'Nuevo Ingreso', transfer: 'Nueva Transferencia' }[selectedType];
-        document.getElementById('edit-id').value = '';
-        form?.reset();
-        document.getElementById('group-recurrence')?.classList.remove('hidden');
-        document.getElementById('group-recurrence-count')?.classList.add('hidden');
-        document.getElementById('trans-status').value = 'closed';
-        const now = new Date();
-        document.getElementById('trans-date').value = selectedCalendarDay || now.toLocaleDateString('en-CA');
-        document.getElementById('trans-time').value = now.toTimeString().slice(0, 5);
-        typeSelect.value = selectedType; typeSelect.dispatchEvent(new Event('change'));
-        userEditedBudgetField = false; autoFillBudgetedAmountForTransaction(true);
-        document.getElementById('delete-btn')?.classList.add('hidden');
         fabMenu?.classList.add('hidden'); fabBtn?.classList.remove('active');
-        modal?.classList.remove('hidden'); hasUnsavedChanges = false;
+        openOmniModal({ type: selectedType });
     });
 });
 
@@ -3841,12 +4245,18 @@ form?.addEventListener('submit', (e) => {
             txData.zeroInterest = document.getElementById('trans-zero-interest').checked || rate === 0;
             txData.paidInstallments = 0; txData.monthlyQuota = amort.payment; txData.totalWithInterest = amort.totalWithInterest;
         }
-        if (type === 'transfer') {
-            txData.toAccount = toAccount;
-            if (instStatus === 'closed') {
+        if (type === 'transfer') txData.toAccount = toAccount;
+        
+        if (instStatus === 'closed') {
+            if (type === 'transfer') {
                 if (accObj.category === 'pocket') adjustPocketBalance(accObj.id, -amount);
                 const toObj = getAccountObj(toAccount);
-                if (toObj.category === 'pocket') adjustPocketBalance(toObj.id, amount);
+                if (toObj && toObj.category === 'pocket') adjustPocketBalance(toObj.id, amount);
+            } else if (type === 'income' && accObj.category === 'pocket') {
+                const p = financeData.pockets.find(x => x.id === accObj.id);
+                if (p) p.yields = round2((p.yields || 0) + amount);
+            } else if (type === 'expense' && accObj.category === 'pocket') {
+                adjustPocketBalance(accObj.id, -amount);
             }
         }
         financeData.transactions.push(txData);
@@ -4543,6 +4953,7 @@ document.getElementById('drawer-pockets')?.addEventListener('click', () => { if 
 document.getElementById('drawer-assets')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('assets-modal')?.classList.remove('hidden'); renderAssetsBreakdown(); } });
 document.getElementById('drawer-budget')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(document.getElementById('nav-budget')); } });
 document.getElementById('drawer-expenses')?.addEventListener('click', () => { if (attemptCloseModals()) document.getElementById('expenses-modal')?.classList.remove('hidden'); });
+document.getElementById('drawer-subscriptions')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('subscriptions-modal')?.classList.remove('hidden'); renderSubscriptionsView(); } });
 document.getElementById('drawer-analytics')?.addEventListener('click', () => { if (attemptCloseModals()) { document.getElementById('analytics-modal')?.classList.remove('hidden'); setActiveNav(document.getElementById('nav-analytics')); } });
 document.getElementById('drawer-annual')?.addEventListener('click', () => { if (attemptCloseModals()) { annualViewYear = viewDate.getFullYear(); document.getElementById('annual-control-modal')?.classList.remove('hidden'); renderAnnualControlTable(); } });
 document.getElementById('drawer-health')?.addEventListener('click', () => { if (attemptCloseModals()) document.getElementById('widget-financial-health')?.click(); });
@@ -4656,6 +5067,188 @@ document.querySelectorAll('.drawer-accordion-trigger').forEach(trigger => {
             }
         }
     });
+});
+
+// --- 15.6 DIVISIÓN DE TRANSACCIONES (SPLIT) ---
+let splitState = { baseAmount: 0, type: 'expense', items: [] };
+
+const renderSplitItems = () => {
+    const container = document.getElementById('split-items-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    let assigned = 0;
+    
+    // Obtener opciones de cuenta y categoría una sola vez para inyectarlas
+    const assetsAcc = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset' || a.category === 'credit_card'));
+    const accOptionsHtml = assetsAcc.map(a => `<option value="${a.id}">${a.name}${a.isDefault ? ' ⭐' : ''}</option>`).join('');
+    
+    let catOptionsHtml = '';
+    [...(financeData.categories[splitState.type] || [])].sort((a, b) => a.name.localeCompare(b.name, 'es')).forEach(cat => {
+        if (cat.subcategories && cat.subcategories.length > 0) {
+            catOptionsHtml += `<optgroup label="${cat.name}">`;
+            catOptionsHtml += `<option value="${cat.name}::General">${cat.name} (General)</option>`;
+            [...cat.subcategories].sort((a, b) => a.name.localeCompare(b.name, 'es')).forEach(sub => { catOptionsHtml += `<option value="${cat.name}::${sub.name}">↳ ${sub.name}</option>`; });
+            catOptionsHtml += `</optgroup>`;
+        } else { catOptionsHtml += `<option value="${cat.name}::General">${cat.name}</option>`; }
+    });
+
+    splitState.items.forEach((item, index) => {
+        assigned += round2(item.amount);
+        
+        container.innerHTML += `
+            <div class="glass-sub-box" style="padding:12px; margin-bottom:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong style="font-size:12.5px;">Parte ${index + 1}</strong>
+                    <button type="button" class="mini-action-btn" onclick="removeSplitItem(${index})" style="background:rgba(255,59,48,0.15); color:var(--negative); border:none; padding:3px 8px;">✕ Eliminar</button>
+                </div>
+                <div class="form-row" style="margin-bottom:8px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <input type="text" class="money-input split-amt-input" data-index="${index}" inputmode="decimal" value="${item.amount > 0 ? formatNumberInput(item.amount) : ''}" placeholder="Monto ($)" style="font-weight:700;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <select class="split-cat-select" data-index="${index}">${catOptionsHtml}</select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <select class="split-acc-select" data-index="${index}">${accOptionsHtml}</select>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <input type="text" class="split-desc-input" data-index="${index}" value="${item.description}" placeholder="Nota (Ej. Aseo)">
+                    </div>
+                </div>
+            </div>`;
+    });
+    
+    // Restaurar selecciones
+    setTimeout(() => {
+        document.querySelectorAll('.split-cat-select').forEach(el => { el.value = splitState.items[el.getAttribute('data-index')].category; });
+        document.querySelectorAll('.split-acc-select').forEach(el => { el.value = splitState.items[el.getAttribute('data-index')].account; });
+        
+        // Re-vincular eventos de inputs de monto
+        document.querySelectorAll('.split-amt-input').forEach(el => {
+            el.addEventListener('input', (e) => {
+                applyLiveDecimalFormatting(e.target);
+                splitState.items[el.getAttribute('data-index')].amount = parseMoneyInput(e.target.value);
+                updateSplitTotals();
+            });
+        });
+        document.querySelectorAll('.split-cat-select').forEach(el => { el.addEventListener('change', (e) => splitState.items[el.getAttribute('data-index')].category = e.target.value); });
+        document.querySelectorAll('.split-acc-select').forEach(el => { el.addEventListener('change', (e) => splitState.items[el.getAttribute('data-index')].account = e.target.value); });
+        document.querySelectorAll('.split-desc-input').forEach(el => { el.addEventListener('input', (e) => splitState.items[el.getAttribute('data-index')].description = e.target.value); });
+    }, 50);
+
+    updateSplitTotals();
+};
+
+const updateSplitTotals = () => {
+    let assigned = splitState.items.reduce((sum, item) => sum + round2(item.amount), 0);
+    const rem = round2(splitState.baseAmount - assigned);
+    
+    document.getElementById('split-base-total').innerText = formatMoney(splitState.baseAmount);
+    document.getElementById('split-assigned-total').innerText = formatMoney(assigned);
+    document.getElementById('split-remaining-total').innerText = formatMoney(rem);
+    
+    const remEl = document.getElementById('split-remaining-total');
+    if (rem === 0) remEl.className = 'positive';
+    else if (rem < 0) remEl.className = 'negative';
+    else remEl.className = 'neutral';
+};
+
+window.removeSplitItem = (index) => {
+    splitState.items.splice(index, 1);
+    renderSplitItems();
+};
+
+document.getElementById('btn-add-split-item')?.addEventListener('click', () => {
+    let currentAssigned = splitState.items.reduce((sum, item) => sum + round2(item.amount), 0);
+    let rem = Math.max(0, round2(splitState.baseAmount - currentAssigned));
+    
+    const baseCat = document.getElementById('trans-category')?.value || '';
+    const baseAcc = document.getElementById('account')?.value || getDefaultAccountId(splitState.type === 'income');
+    const baseDesc = document.getElementById('description')?.value || '';
+
+    splitState.items.push({ amount: rem, category: baseCat, account: baseAcc, description: baseDesc });
+    renderSplitItems();
+});
+
+document.getElementById('btn-open-split-modal')?.addEventListener('click', () => {
+    const baseAmt = parseMoneyInput(document.getElementById('amount')?.value);
+    if (baseAmt <= 0) { alert('Ingresa primero el Monto Total en el formulario principal.'); return; }
+    
+    splitState.type = typeSelect.value;
+    splitState.baseAmount = baseAmt;
+    
+    const badge = document.getElementById('split-tx-type-badge');
+    if (badge) {
+        badge.innerText = splitState.type === 'expense' ? 'Gasto' : 'Ingreso';
+        badge.className = splitState.type === 'expense' ? 'widget-badge negative-bg' : 'widget-badge positive-bg';
+        badge.style.color = 'white';
+    }
+
+    const baseCat = document.getElementById('trans-category')?.value || '';
+    const baseAcc = document.getElementById('account')?.value || getDefaultAccountId(splitState.type === 'income');
+    const baseDesc = document.getElementById('description')?.value || '';
+
+    splitState.items = [
+        { amount: baseAmt, category: baseCat, account: baseAcc, description: baseDesc },
+        { amount: 0, category: baseCat, account: baseAcc, description: baseDesc }
+    ];
+
+    document.getElementById('split-tx-modal')?.classList.remove('hidden');
+    renderSplitItems();
+});
+
+document.getElementById('close-split-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('split-tx-modal')?.classList.add('hidden');
+});
+
+document.getElementById('btn-confirm-splits')?.addEventListener('click', () => {
+    let assigned = splitState.items.reduce((sum, item) => sum + round2(item.amount), 0);
+    if (round2(splitState.baseAmount - assigned) !== 0) {
+        alert('La suma de las divisiones debe ser EXACTAMENTE igual al monto total base. Verifica el restante.');
+        return;
+    }
+
+    const validItems = splitState.items.filter(i => i.amount > 0);
+    if (validItems.length < 2) {
+        alert('Debes tener al menos 2 divisiones con monto mayor a $0.');
+        return;
+    }
+
+    const status = document.getElementById('trans-status').value;
+    const baseDateObj = new Date(`${document.getElementById('trans-date').value}T${document.getElementById('trans-time').value}`);
+    const splitGroupId = 'Split_' + Date.now();
+    const commonDesc = document.getElementById('description').value.trim();
+
+    validItems.forEach((item, idx) => {
+        let catName = '', subName = 'General';
+        if (item.category) { const parts = item.category.split('::'); catName = parts[0]; subName = parts[1] || 'General'; }
+
+        financeData.transactions.push({
+            id: baseDateObj.getTime() + idx + Math.floor(Math.random() * 500),
+            monthId: getMonthId(baseDateObj),
+            type: splitState.type,
+            status: status,
+            account: item.account,
+            category: catName,
+            subcategory: subName,
+            description: `${item.description || commonDesc} [${idx+1}/${validItems.length}]`,
+            amount: item.amount,
+            budgetedAmount: status === 'pending' ? item.amount : 0,
+            date: `${baseDateObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${baseDateObj.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`,
+            isAdjustment: false,
+            splitGroupId: splitGroupId
+        });
+    });
+
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    viewDate = new Date(baseDateObj.getFullYear(), baseDateObj.getMonth(), 1);
+    document.getElementById('split-tx-modal')?.classList.add('hidden');
+    forceCloseAllModals(); 
+    updateDashboard();
+    alert(`✅ Transacción dividida y guardada en ${validItems.length} partes.`);
 });
 
 // --- INIT APP ---

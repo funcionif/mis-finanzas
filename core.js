@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v3.2)
+// INICIO DE ARCHIVO: core.js (v3.2.5)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -58,13 +58,14 @@ let financeData = JSON.parse(localStorage.getItem('myFinances')) || {
     monthlyBudget: 0,
     fixedAssets: [],
     pockets: [],
+    subscriptions: [],
     hideZeroAccounts: false
 };
 
 if (!financeData.fixedAssets) financeData.fixedAssets = [];
 if (!financeData.pockets) financeData.pockets = [];
+if (!financeData.subscriptions) financeData.subscriptions = [];
 if (!financeData.lastBackupDate) financeData.lastBackupDate = new Date().getTime();
-
 if (!financeData.customAccounts || financeData.customAccounts.length === 0) {
     financeData.customAccounts = [
         { id: 'Efectivo', name: 'Efectivo', category: 'asset', isDefault: false, showWhenZero: false }
@@ -519,9 +520,14 @@ const computeBalancesUpTo = (targetMonthId) => {
         });
     }
 
+    let allPocketsTotal = 0;
     if (financeData.pockets) {
         financeData.pockets.forEach(p => {
-            pocketsTotal = round2(pocketsTotal + round2(p.principal || 0) + round2(p.yields || 0));
+            const pBal = round2(p.principal || 0) + round2(p.yields || 0);
+            allPocketsTotal = round2(allPocketsTotal + pBal);
+            if (!p.excludeFromBalance) {
+                pocketsTotal = round2(pocketsTotal + pBal);
+            }
         });
     }
 
@@ -536,6 +542,7 @@ const computeBalancesUpTo = (targetMonthId) => {
         liabilitiesTotal,
         fixedAssetsTotal,
         pocketsTotal,
+        allPocketsTotal,
         netWorth
     };
 };
@@ -1081,7 +1088,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v3.2//ES',
+        'PRODID:-//Mis Finanzas//v3.2.5//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,
