@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v3.3.0)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v4.0.0)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '4.0.0';
 
 const openUniversalInfoModal = (sectionKey) => {
     const uModal = document.getElementById('universal-info-modal');
@@ -13,20 +13,20 @@ const openUniversalInfoModal = (sectionKey) => {
 
     const contentMap = {
         faq: {
-            title: '📖 Guía Rápida y FAQ',
+            title: 'Guía Rápida y FAQ',
             html: `
                 <div class="glass-sub-box" style="font-size:12px; line-height:1.55;">
                     <p style="margin-bottom:10px;"><b>1. ¿Cómo cierro las ventanas rápidamente?</b><br>Puedes tocar el botón <b>Cerrar</b>, pulsar la tecla <b>Esc</b> o tocar directamente en el fondo difuminado fuera de la ventana.</p>
                     <p style="margin-bottom:10px;"><b>2. ¿Cómo registro compras a cuotas (TC o Cupos BNPL)?</b><br>Crea un gasto y elige tu Tarjeta de Crédito o Cupo Rotativo. Podrás definir el número de cuotas, tasa o marcar 0% interés y revisar la tabla de amortización.</p>
                     <p style="margin-bottom:10px;"><b>3. ¿Cómo transfiero dinero a mis Bolsillos?</b><br>Usa el botón <b>+ ➔ Transferencia</b>, elige tu cuenta bancaria como origen y selecciona tu Bolsillo de Ahorro en <i>Cuenta Destino</i> (o viceversa para retirar).</p>
-                    <p style="margin-bottom:10px;"><b>4. ¿Cómo vendo un Activo Fijo o registro sus gastos?</b><br>Entra a <i>Activos Fijos</i> en el menú lateral, toca el activo que deseas gestionar y usa los botones <b>💰 Vender</b> (abona el dinero a tu cuenta) o <b>📉 Registrar Gasto</b>.</p>
-                    <p style="margin-bottom:10px;"><b>5. ¿Cómo ordeno los widgets del Inicio?</b><br>Toca <b>🎛️ Ordenar</b> en el widget de Flujo de Caja para subir o bajar tarjetas y cuentas a tu gusto.</p>
-                    <p><b>6. ¿Cómo exporto recordatorios al calendario iOS?</b><br>Entra a <i>Tarjetas de Crédito</i> y toca el botón <b>📅 Añadir Alarma (.ics)</b> en cada tarjeta, o configúralo desde tu Perfil para alarmas generales.</p>
+                    <p style="margin-bottom:10px;"><b>4. ¿Cómo vendo un Activo Fijo o registro sus gastos?</b><br>Entra a <i>Activos Fijos</i> en el menú lateral, toca el activo que deseas gestionar y usa los botones <b>Vender</b> (abona el dinero a tu cuenta) o <b>Registrar Gasto</b>.</p>
+                    <p style="margin-bottom:10px;"><b>5. ¿Cómo ordeno los widgets del Inicio?</b><br>Toca <b>Ordenar</b> en el pie de página para subir o bajar tarjetas y bloques a tu gusto.</p>
+                    <p><b>6. ¿Cómo exporto recordatorios al calendario iOS?</b><br>Entra a <i>Tarjetas de Crédito</i> y toca el botón <b>Añadir Alarma (.ics)</b> en cada tarjeta, o configúralo desde tu Perfil para alarmas generales.</p>
                 </div>
             `
         },
         terms: {
-            title: '📜 Términos de Uso',
+            title: 'Términos de Uso',
             html: `
                 <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted);">
                     <p style="margin-bottom:10px;"><b>Mis Finanzas</b> es una herramienta de organización, proyección presupuestal y simulación financiera personal desarrollada por <b>Función IF</b>.</p>
@@ -36,7 +36,7 @@ const openUniversalInfoModal = (sectionKey) => {
             `
         },
         privacy: {
-            title: '🛡️ Política de Privacidad',
+            title: 'Política de Privacidad',
             html: `
                 <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted);">
                     <p style="margin-bottom:10px;"><b>Arquitectura 100% Local-First:</b> Mis Finanzas no utiliza servidores remotos, bases de datos en la nube, cuentas externas ni rastreadores publicitarios.</p>
@@ -46,7 +46,7 @@ const openUniversalInfoModal = (sectionKey) => {
             `
         },
         about: {
-            title: 'ℹ️ Acerca y Novedades',
+            title: 'Acerca y Novedades',
             html: `
                 <div style="text-align:center; margin-bottom:14px;">
                     <h3 style="font-size:18px; font-weight:800; color:var(--accent);">Mis Finanzas • v${APP_VERSION}</h3>
@@ -54,15 +54,28 @@ const openUniversalInfoModal = (sectionKey) => {
                 </div>
 
                 <div class="glass-sub-box" style="font-size:12px; line-height:1.55;">
-                    <p style="margin-bottom:6px;">✅ <b>Arquitectura:</b> 100% Local-First PWA (Offline Ready)</p>
-                    <p style="margin-bottom:6px;">✅ <b>Interfaz:</b> Diseño Liquid Glass (Glassmorphism + iOS)</p>
-                    <p>✅ <b>Ecosistema:</b> Flujo de caja, presupuestos mensuales, tarjetas con amortización, plan avalancha, bolsillos, activos fijos, gráficos SVG y nómina Colombia.</p>
+                    <p style="margin-bottom:6px;"><b>Arquitectura:</b> 100% Local-First PWA (Offline Ready)</p>
+                    <p style="margin-bottom:6px;"><b>Interfaz:</b> Diseño Fintech Editorial + Micro-Glass Selectivo</p>
+                    <p><b>Ecosistema:</b> Flujo de caja, presupuestos con rollover, tarjetas con amortización, plan avalancha, bolsillos, activos fijos, gráficos SVG y nómina Colombia.</p>
                 </div>
 
-                <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">📋 Historial de Versiones</h4>
+                <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>🚀 Versión 3.3.0 Pro (Actual)</span><span>▾</span></summary>
+                    <summary><span>Versión 4.0.0 • Fintech Editorial (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste en modo claro y oscuro, tipografía tabular de precisión con decimales atenuados, derivación tonal dinámica a partir de tu color de acento (<code>color-mix</code>) e iconografía vectorial SVG plana en toda la app.</li>
+                        <li><b>Presupuesto Restante Dinámico y Arrastre (Rollover):</b> Auto-llenado inteligente del saldo disponible real al registrar gastos, vista previa sincronizada de diferencia/variación y arrastre opcional por categoría o subcategoría (sin arrastre, solo sobrante <code>+</code> o sobrante y déficit <code>+/-</code>).</li>
+                        <li><b>Ahorro de Monedas Inteligente (Efectivo Colombia):</b> Cálculo del vuelto en monedas según denominaciones reales de billetes ($5.000 / $2.000), monto editable con píldoras rápidas y contabilidad en doble partida sin alterar tus gastos reales.</li>
+                        <li><b>Nómina, Retroactivos y Promedios Legales (CST):</b> Cálculo ponderado por días para Prima de Servicios (Art. 306 CST) y Cesantías (Art. 253 CST) ante aumentos de sueldo, vigencia retroactiva o ingresos variables, con desglose de fórmulas paso a paso en Liquidación a Hoy y liberación automática de libranzas saldadas.</li>
+                        <li><b>Suscripciones Reservables y Vencimientos:</b> Reserva automática del valor de tus suscripciones dentro de su categoría presupuestal y tarjetas compactas de próximos vencimientos en el tablero.</li>
+                        <li><b>Analítica Suavizada y Reportes PDF:</b> Gráficos SVG con curvas suaves y degradado del acento, comparativa simétrica de ingresos vs. gastos y reportes listos para imprimir en PDF.</li>
+                        <li><b>Seguridad PIN y Onboarding Editorial:</b> Pantalla de bienvenida en dos pasos, selector segmentado de modo de pantalla (Auto / Claro / Oscuro) blindado para iOS y gestión completa para activar, cambiar o desactivar el bloqueo con PIN desde el perfil.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>🚀 Versión 3.3.0 Pro</span><span>▾</span></summary>
                     <ul>
                         <li><b>Gastos Compartidos y Deudas a Favor:</b> Divide cuentas pagadas por otros, gestiona cuentas por cobrar independientes de tu liquidez y concilia reembolsos mediante transferencias.</li>
                         <li><b>Alcancía de Monedas (Redondeo en Efectivo):</b> Redondea pagos en efectivo al siguiente múltiplo de $1.000 y envía el vuelto automáticamente a un bolsillo oculto usable como medio de pago.</li>
@@ -166,7 +179,7 @@ const checkWhatsNewBanner = () => {
     if (lastSeen && lastSeen !== APP_VERSION) {
         const toast = document.getElementById('sw-update-toast');
         if (toast) {
-            toast.innerHTML = `🎉 Actualizado a v${APP_VERSION} • Toca aquí para ver novedades`;
+            toast.innerHTML = `Actualizado a v${APP_VERSION} • Toca aquí para ver novedades`;
             toast.style.cursor = 'pointer';
             toast.classList.remove('hidden');
             toast.onclick = () => {
@@ -225,7 +238,7 @@ document.getElementById('drawer-share-app')?.addEventListener('click', async () 
     } else if (navigator.clipboard) {
         try {
             await navigator.clipboard.writeText(window.location.href);
-            alert('🔗 Enlace de la aplicación copiado al portapapeles.');
+            alert('Enlace de la aplicación copiado al portapapeles.');
         } catch (err) {}
     }
 });

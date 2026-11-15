@@ -14,55 +14,60 @@
 </head>
 <body>
     <!-- TOAST DE ACTUALIZACIÓN PWA -->
-    <div id="sw-update-toast" class="sw-toast hidden">✨ Nueva versión instalada • Actualizando...</div>
+    <div id="sw-update-toast" class="sw-toast hidden">
+        <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px; height:16px; margin-right:8px;"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+        <span>Nueva versión instalada • Actualizando...</span>
+    </div>
 
-    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v3.3.0) -->
+    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v4.0.0) -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card" id="auth-card">
             <div id="welcome-view" class="hidden">
                 <!-- PÁGINA 1: PRESENTACIÓN Y PRIVACIDAD -->
                 <div id="welcome-step-1">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
+                    <div class="auth-brand-bar">
+                        <span class="auth-brand-name">Función IF</span>
+                        <span class="drawer-version-pill">v4.0.0</span>
                     </div>
+
                     <div class="welcome-isologo">
-                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <linearGradient id="fiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#38bdf8"/>
-                                    <stop offset="50%" stop-color="#8b5cf6"/>
-                                    <stop offset="100%" stop-color="#10b981"/>
-                                </linearGradient>
-                            </defs>
-                            <rect x="8" y="8" width="84" height="84" rx="24" fill="url(#fiGrad)" fill-opacity="0.16" stroke="url(#fiGrad)" stroke-width="3"/>
-                            <path d="M30 68V48M44 68V34M58 68V42M72 68V26" stroke="url(#fiGrad)" stroke-width="6.5" stroke-linecap="round"/>
-                            <circle cx="72" cy="26" r="4.5" fill="#10b981"/>
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                            <circle cx="18" cy="6" r="2" fill="var(--positive)" stroke="none"/>
                         </svg>
                     </div>
+                    <span class="auth-eyebrow">Finanzas Personales</span>
                     <h2>Bienvenido a Mis Finanzas</h2>
-                    <p class="auth-subtitle">Tu centro financiero personal.</p>
+                    <p class="auth-subtitle">Control claro de tus cuentas, presupuestos y patrimonio en un solo lugar.</p>
 
                     <div class="privacy-points-list">
                         <div class="privacy-point-item">
-                            <span class="privacy-point-icon">🔒</span>
+                            <span class="privacy-point-icon" style="background: var(--accent-soft); color: var(--accent);">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </span>
                             <div class="privacy-point-text">
                                 <strong>100% Privado y Local-First</strong>
                                 <small>Tus datos nunca salen de este dispositivo ni se suben a servidores externos.</small>
                             </div>
                         </div>
                         <div class="privacy-point-item">
-                            <span class="privacy-point-icon">⚡</span>
+                            <span class="privacy-point-icon" style="background: rgba(16, 185, 129, 0.14); color: var(--positive);">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </span>
                             <div class="privacy-point-text">
                                 <strong>Funciona Sin Conexión</strong>
                                 <small>Consulta saldos, presupuestos y registra movimientos incluso en modo avión.</small>
                             </div>
                         </div>
                         <div class="privacy-point-item">
-                            <span class="privacy-point-icon">💾</span>
+                            <span class="privacy-point-icon" style="background: rgba(14, 165, 233, 0.14); color: #0ea5e9;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            </span>
                             <div class="privacy-point-text">
                                 <strong>Tú Eres el Dueño</strong>
-                                <small>Exporta copias de seguridad en JSON o CSV cuando quieras desde tu perfil.</small>
+                                <small>Exporta copias de seguridad en JSON o migra desde CSV cuando quieras.</small>
                             </div>
                         </div>
                     </div>
@@ -71,22 +76,28 @@
                         <span class="active"></span><span></span>
                     </div>
 
-                    <button type="button" id="btn-welcome-next" class="btn btn-primary" style="width: 100%;">Comenzar</button>
+                    <button type="button" id="btn-welcome-next" class="btn btn-primary auth-cta-btn">Comenzar</button>
                 </div>
 
                 <!-- PÁGINA 2: REGISTRO, PIN Y ACEPTACIÓN LEGAL -->
                 <div id="welcome-step-2" class="hidden">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                        <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                        <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
-                    </div>
-                    <div class="welcome-step2-top">
-                        <button type="button" id="btn-welcome-back" class="mini-action-btn">‹ Volver</button>
+                    <div class="auth-brand-bar">
+                        <button type="button" id="btn-welcome-back" class="mini-action-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                            <span>Volver</span>
+                        </button>
                         <div class="welcome-step-dots" style="margin: 0;">
                             <span></span><span class="active"></span>
                         </div>
                     </div>
 
+                    <div class="welcome-isologo" style="width: 56px; height: 56px; border-radius: 18px; margin-bottom: 12px;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </div>
+                    <span class="auth-eyebrow">Paso 2 de 2</span>
                     <h2>Configura tu Perfil</h2>
                     <p class="auth-subtitle" style="margin-bottom: 18px;">Personaliza tu nombre y seguridad local.</p>
 
@@ -97,9 +108,14 @@
                         </div>
 
                         <div class="switch-row">
-                            <div>
-                                <strong>Proteger con PIN de acceso</strong>
-                                <small>Opcional • Puedes activarlo luego</small>
+                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                <span class="privacy-point-icon" style="width:32px; height:32px; border-radius:10px; background: var(--accent-soft); color: var(--accent);">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                </span>
+                                <div style="min-width:0;">
+                                    <strong>Proteger con PIN</strong>
+                                    <small>Opcional • Puedes activarlo luego</small>
+                                </div>
                             </div>
                             <label class="switch">
                                 <input type="checkbox" id="welcome-use-pin">
@@ -123,30 +139,32 @@
                         <label class="terms-check-row" for="welcome-accept-terms">
                             <input type="checkbox" id="welcome-accept-terms" required>
                             <span>
-                                He leído y acepto los <button type="button" id="welcome-link-terms" class="inline-legal-link">Términos y Condiciones</button> y la <button type="button" id="welcome-link-privacy" class="inline-legal-link">Política de Protección de Datos</button>.
+                                He leído y acepto los <button type="button" id="welcome-link-terms" class="inline-legal-link">Términos y Condiciones</button> y la <button type="button" id="welcome-link-privacy" class="inline-legal-link">Política de Datos</button>.
                             </span>
                         </label>
 
                         <p id="welcome-error" class="auth-error hidden"></p>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar y entrar</button>
+                        <button type="submit" class="btn btn-primary auth-cta-btn">Guardar y entrar</button>
                     </form>
                 </div>
             </div>
 
             <div id="login-view" class="hidden">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <span style="font-size:12px; font-weight:800; color:var(--text-muted); opacity:0.8;">Función IF</span>
-                    <span class="version-badge" style="font-size:10px; padding:3px 8px; background:rgba(139,92,246,0.15); color:var(--accent); border-radius:10px; font-weight:700;">v3.3.0</span>
+                <div class="auth-brand-bar">
+                    <span class="auth-brand-name">Función IF</span>
+                    <span class="drawer-version-pill">v4.0.0</span>
                 </div>
-                <div class="lock-icon">🔐</div>
+                <div class="lock-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
                 <h2 id="login-greeting">Hola de nuevo</h2>
                 <p class="auth-subtitle">Ingresa tu PIN para desbloquear tus finanzas</p>
                 <form id="login-form">
                     <div class="form-group">
-                        <input type="password" id="login-pin" inputmode="numeric" maxlength="6" placeholder="Ingresa tu PIN" style="text-align:center; font-size:20px; letter-spacing:6px;" required>
+                        <input type="password" id="login-pin" inputmode="numeric" maxlength="6" placeholder="••••" style="text-align:center; font-size:22px; letter-spacing:8px; font-weight:800;" required>
                     </div>
                     <p id="login-error" class="auth-error hidden">PIN incorrecto. Intenta de nuevo.</p>
-                    <button type="submit" class="btn btn-primary">Desbloquear</button>
+                    <button type="submit" class="btn btn-primary auth-cta-btn">Desbloquear</button>
                 </form>
                 <button type="button" id="btn-forgot-pin" class="btn-link">¿Olvidaste tu PIN?</button>
             </div>
@@ -159,22 +177,29 @@
         <div class="drawer-header">
             <div class="drawer-brand">
                 <h2>Mis Finanzas</h2>
-                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v3.3.0</button>
+                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v4.0.0</button>
             </div>
             <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
         </div>
 
         <div class="drawer-scroll">
+            <!-- 1. MI DINERO (Liquidez y obligaciones diarias) -->
+            <div class="drawer-group-label" style="margin-top: 2px;">Mi Dinero</div>
+
             <button type="button" class="drawer-item" id="drawer-accounts">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(56, 189, 248, 0.16); color: #0284c7;">🏦</span>
+                    <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.16); color: #0ea5e9;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
+                    </span>
                     <span>Cuentas</span>
                 </div>
             </button>
 
             <button type="button" class="drawer-item" id="drawer-cards">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(99, 102, 241, 0.16); color: #4f46e5;">💳</span>
+                    <span class="drawer-icon-box" style="background: rgba(99, 102, 241, 0.16); color: #6366f1;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    </span>
                     <span>Tarjetas de Crédito</span>
                 </div>
             </button>
@@ -182,150 +207,208 @@
             <div class="drawer-accordion-group">
                 <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-debts-sub">
                     <div class="drawer-item-left">
-                        <span class="drawer-icon-box" style="background: rgba(244, 63, 94, 0.16); color: #e11d48;">💸</span>
-                        <span>Deudas y Préstamos</span>
+                        <span class="drawer-icon-box" style="background: rgba(244, 63, 94, 0.16); color: #f43f5e;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                        </span>
+                        <span>Deudas y Cobros</span>
                     </div>
-                    <span class="drawer-chevron">▼</span>
+                    <span class="drawer-chevron" style="transform: rotate(-90deg);">▼</span>
                 </button>
-                <div id="drawer-debts-sub" class="drawer-accordion-content hidden">
+                <div id="drawer-debts-sub" class="drawer-accordion-content hidden" style="padding-left: 16px;">
                     <button type="button" class="drawer-sub-item" id="drawer-debts">
-                        <span class="drawer-icon-box" style="background: rgba(244, 63, 94, 0.12); color: #e11d48;">🏛️</span>
-                        <span>Préstamos</span>
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(244, 63, 94, 0.12); color: #f43f5e;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </span>
+                        <span>Préstamos y A Favor</span>
                     </button>
                     <button type="button" class="drawer-sub-item" id="drawer-debt-planner">
-                        <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.14); color: #d97706;">🚀</span>
-                        <span>Plan de Deudas</span>
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(245, 158, 11, 0.14); color: #f59e0b;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        </span>
+                        <span>Plan Salida de Deudas</span>
                     </button>
                 </div>
             </div>
 
             <button type="button" class="drawer-item" id="drawer-pockets">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #059669;">🐷</span>
+                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #10b981;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><circle cx="16" cy="11" r="1"/></svg>
+                    </span>
                     <span>Metas de Ahorro</span>
                 </div>
             </button>
 
-            <button type="button" class="drawer-item" id="drawer-assets">
-                <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.16); color: #0369a1;">💎</span>
-                    <span>Activos Fijos</span>
-                </div>
-            </button>
+            <div class="drawer-divider"></div>
+
+            <!-- 2. CONTROL MENSUAL (Operación del día a día) -->
+            <div class="drawer-group-label">Control Mensual</div>
 
             <button type="button" class="drawer-item" id="drawer-budget">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(236, 72, 153, 0.16); color: #db2777;">🎯</span>
+                    <span class="drawer-icon-box" style="background: rgba(236, 72, 153, 0.16); color: #ec4899;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    </span>
                     <span>Presupuesto y Categorías</span>
                 </div>
             </button>
 
             <button type="button" class="drawer-item" id="drawer-expenses">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(239, 68, 68, 0.15); color: #dc2626;">💲</span>
+                    <span class="drawer-icon-box" style="background: rgba(239, 68, 68, 0.16); color: #ef4444;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>
+                    </span>
                     <span>Gastos del Mes</span>
                 </div>
             </button>
 
             <button type="button" class="drawer-item" id="drawer-subscriptions">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #d97706;">🔁</span>
+                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #f59e0b;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                    </span>
                     <span>Suscripciones y Fijos</span>
                 </div>
             </button>
 
-            <div class="drawer-divider"></div>
-
-            <div class="drawer-accordion-group">
-                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-analytics-sub">
-                    <div class="drawer-item-left">
-                        <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.16); color: #7c3aed;">📊</span>
-                        <span>Análisis y Reportes</span>
-                    </div>
-                    <span class="drawer-chevron">▼</span>
-                </button>
-                <div id="drawer-analytics-sub" class="drawer-accordion-content hidden">
-                    <button type="button" class="drawer-sub-item" id="drawer-analytics">
-                        <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.12); color: #7c3aed;">📈</span>
-                        <span>Gráficos y Tendencias</span>
-                    </button>
-                    <button type="button" class="drawer-sub-item" id="drawer-annual">
-                        <span class="drawer-icon-box" style="background: rgba(59, 130, 246, 0.12); color: #2563eb;">📅</span>
-                        <span>Control Anual 12M</span>
-                    </button>
-                    <button type="button" class="drawer-sub-item" id="drawer-health">
-                        <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.12); color: #059669;">🩺</span>
-                        <span>Salud Financiera y Cupo</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="drawer-divider"></div>
-
             <button type="button" class="drawer-item" id="drawer-salary">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #059669;">💼</span>
+                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #10b981;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </span>
                     <span>Nómina y Liquidación</span>
                 </div>
             </button>
 
-            <button type="button" class="drawer-item" id="drawer-tax">
+            <div class="drawer-divider"></div>
+
+            <!-- 3. ANÁLISIS Y PATRIMONIO (Visión estratégica) -->
+            <div class="drawer-group-label">Análisis y Patrimonio</div>
+
+            <button type="button" class="drawer-item" id="drawer-health">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #d97706;">⚖️</span>
-                    <span>Parámetros UVT / SMMLV</span>
+                    <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #10b981;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+                    </span>
+                    <span>Salud Financiera y Cupo</span>
                 </div>
             </button>
 
-            <button type="button" class="drawer-item" id="drawer-backup">
+            <div class="drawer-accordion-group">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-analytics-sub">
+                    <div class="drawer-item-left">
+                        <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.16); color: #8b5cf6;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </span>
+                        <span>Reportes y Gráficos</span>
+                    </div>
+                    <span class="drawer-chevron" style="transform: rotate(-90deg);">▼</span>
+                </button>
+                <div id="drawer-analytics-sub" class="drawer-accordion-content hidden" style="padding-left: 16px;">
+                    <button type="button" class="drawer-sub-item" id="drawer-analytics">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(139, 92, 246, 0.12); color: #8b5cf6;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                        </span>
+                        <span>Gráficos y Tendencias</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-annual">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        </span>
+                        <span>Control Anual 12M</span>
+                    </button>
+                </div>
+            </div>
+
+            <button type="button" class="drawer-item" id="drawer-assets">
                 <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(100, 116, 139, 0.16); color: #475569;">💾</span>
-                    <span>Copia de Seguridad</span>
+                    <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.16); color: #0ea5e9;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+                    </span>
+                    <span>Activos Fijos</span>
                 </div>
             </button>
 
             <div class="drawer-divider"></div>
 
+            <!-- 4. SISTEMA Y AYUDA (Compactado al final) -->
+            <div class="drawer-group-label">Sistema y Ayuda</div>
+
             <div class="drawer-accordion-group">
-                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-help-sub">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-config-sub">
                     <div class="drawer-item-left">
-                        <span class="drawer-icon-box" style="background: rgba(59, 130, 246, 0.16); color: #2563eb;">❓</span>
-                        <span>Centro de Ayuda</span>
+                        <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.16); color: #f59e0b;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                        </span>
+                        <span>Configuración y Datos</span>
                     </div>
-                    <span class="drawer-chevron">▼</span>
+                    <span class="drawer-chevron" style="transform: rotate(-90deg);">▼</span>
                 </button>
-                <div id="drawer-help-sub" class="drawer-accordion-content hidden">
-                    <button type="button" class="drawer-sub-item" id="drawer-help-faq">
-                        <span class="drawer-icon-box">📖</span>
-                        <span>Guía Rápida y FAQ</span>
+                <div id="drawer-config-sub" class="drawer-accordion-content hidden" style="padding-left: 16px;">
+                    <button type="button" class="drawer-sub-item" id="drawer-tax">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(245, 158, 11, 0.14); color: #f59e0b;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </span>
+                        <span>Parámetros UVT / SMMLV</span>
                     </button>
-                    <button type="button" class="drawer-sub-item" id="drawer-help-terms">
-                        <span class="drawer-icon-box">📜</span>
-                        <span>Términos de Uso</span>
-                    </button>
-                    <button type="button" class="drawer-sub-item" id="drawer-help-privacy">
-                        <span class="drawer-icon-box">🛡️</span>
-                        <span>Política de Privacidad</span>
-                    </button>
-                    <button type="button" class="drawer-sub-item" id="drawer-help-about">
-                        <span class="drawer-icon-box">ℹ️</span>
-                        <span>Acerca y Novedades</span>
+                    <button type="button" class="drawer-sub-item" id="drawer-backup">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; background: rgba(100, 116, 139, 0.16); color: #94a3b8;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        </span>
+                        <span>Copia de Seguridad</span>
                     </button>
                 </div>
             </div>
 
-            <button type="button" class="drawer-item" id="drawer-report-bug">
-                <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(245, 158, 11, 0.14); color: #d97706;">🐞</span>
-                    <span>Reportar un Problema</span>
+            <div class="drawer-accordion-group">
+                <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-help-sub">
+                    <div class="drawer-item-left">
+                        <span class="drawer-icon-box" style="background: rgba(59, 130, 246, 0.16); color: #3b82f6;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </span>
+                        <span>Centro de Ayuda</span>
+                    </div>
+                    <span class="drawer-chevron" style="transform: rotate(-90deg);">▼</span>
+                </button>
+                <div id="drawer-help-sub" class="drawer-accordion-content hidden" style="padding-left: 16px;">
+                    <button type="button" class="drawer-sub-item" id="drawer-help-faq">
+                        <span class="drawer-icon-box" style="width:28px; height:28px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        </span>
+                        <span>Guía Rápida y FAQ</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-help-about">
+                        <span class="drawer-icon-box" style="width:28px; height:28px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                        </span>
+                        <span>Acerca y Novedades</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-help-terms">
+                        <span class="drawer-icon-box" style="width:28px; height:28px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        </span>
+                        <span>Términos de Uso</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-help-privacy">
+                        <span class="drawer-icon-box" style="width:28px; height:28px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </span>
+                        <span>Política de Privacidad</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-report-bug">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; color: #f59e0b;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </span>
+                        <span>Reportar un Problema</span>
+                    </button>
+                    <button type="button" class="drawer-sub-item" id="drawer-share-app">
+                        <span class="drawer-icon-box" style="width:28px; height:28px; color: #8b5cf6;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        </span>
+                        <span>Compartir Aplicación</span>
+                    </button>
                 </div>
-            </button>
-
-            <button type="button" class="drawer-item" id="drawer-share-app">
-                <div class="drawer-item-left">
-                    <span class="drawer-icon-box" style="background: rgba(139, 92, 246, 0.14); color: #7c3aed;">📤</span>
-                    <span>Compartir Aplicación</span>
-                </div>
-            </button>
+            </div>
         </div>
     </aside>
 
@@ -352,7 +435,9 @@
             <button type="button" id="prev-month" aria-label="Mes anterior">‹</button>
             <div class="month-center-group">
                 <button type="button" id="month-picker-trigger" class="month-trigger">
-                    <span class="cal-trigger-icon">📅</span>
+                    <span class="cal-trigger-icon" style="display:flex; align-items:center; color:var(--accent);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </span>
                     <h2 id="current-month-display">Cargando...</h2>
                     <span class="cal-caret">▾</span>
                 </button>
@@ -361,6 +446,9 @@
             <button type="button" id="today-month-btn" class="today-pill-btn hidden">Hoy</button>
             <button type="button" id="next-month" aria-label="Mes siguiente">›</button>
         </div>
+
+        <!-- CAJA DE PROYECCIÓN (Reubicada bajo el calendario) -->
+        <div id="projection-summary-box" class="card projection-box hidden" style="padding:12px 14px; margin-top:14px; margin-bottom:0; background-color:var(--card-inner-bg); border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border-color)); box-shadow: 0 4px 12px rgba(0,0,0,0.03);"></div>
 
         <div id="quick-calendar-popover" class="quick-cal-popover hidden">
             <div class="quick-cal-top">
@@ -566,14 +654,13 @@
                 <button type="button" class="pill-btn" data-filter="expense">Gastos</button>
                 <button type="button" class="pill-btn" data-filter="transfer">Transferencias</button>
             </div>
-            <div id="projection-summary-box" class="card projection-box hidden" style="padding:10px 12px; margin-bottom:10px;"></div>
             <ul id="transaction-list" class="history-list"></ul>
         </div>
     </main>
 <!-- PIE DE PÁGINA CLICABLE EN INICIO + BOTÓN ORDENAR -->
     <footer class="main-app-footer">
         <button type="button" id="home-version-btn" class="version-footer-btn" title="Ver notas de versión y novedades">
-            &copy; 2026 Función IF • v3.3.0
+            &copy; 2026 Función IF • v4.0.0
         </button>
         <button type="button" id="toggle-edit-widgets-btn" class="mini-action-btn" style="padding: 5px 10px; font-size: 11px;">
             Ordenar
@@ -583,15 +670,15 @@
     <!-- DOCK INFERIOR FLOTANTE COMPACTO -->
     <nav class="bottom-nav">
         <button type="button" id="nav-home" class="nav-item active">
-            <span>📊</span>
+            <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
             <span>Resumen</span>
         </button>
         <button type="button" id="nav-analytics" class="nav-item">
-            <span>📈</span>
+            <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
             <span>Análisis</span>
         </button>
         <button type="button" id="nav-budget" class="nav-item">
-            <span>🎯</span>
+            <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
             <span>Presup.</span>
         </button>
     </nav>
@@ -632,8 +719,8 @@
                     <div class="form-group">
                         <label>Estado</label>
                         <select id="trans-status">
-                            <option value="closed">✅ Realizado</option>
-                            <option value="pending">⏳ Pendiente / Programado</option>
+                            <option value="closed">Realizado</option>
+                            <option value="pending">Pendiente / Programado</option>
                         </select>
                     </div>
                 </div>
@@ -672,7 +759,9 @@
                         <label>Monto Real ($)</label>
                         <div class="amount-input-wrap">
                             <input type="text" id="amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
-                            <button type="button" id="toggle-tx-calc-btn" class="btn-calc-toggle" title="Calculadora">🧮</button>
+                            <button type="button" id="toggle-tx-calc-btn" class="btn-calc-toggle" title="Calculadora" style="color:var(--accent);">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group" id="group-budgeted-amount">
@@ -680,15 +769,28 @@
                         <input type="text" id="trans-budgeted-amount" class="money-input" inputmode="decimal" placeholder="Opcional">
                     </div>
                 </div>
+                <small id="tx-budget-context-hint" class="hidden" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:-6px; margin-bottom:10px; font-weight:600;"></small>
 
-                <!-- NUEVO: REDONDEO DE MONEDAS -->
+                <!-- AHORRO DE MONEDAS (BILLETE MÍNIMO $2.000 + EDITABLE) -->
                 <div id="coin-round-wrapper" class="hidden" style="margin-bottom:12px;">
-                    <div class="switch-row" style="margin-bottom:0; padding:8px 10px; background:rgba(245, 158, 11, 0.08); border-radius:8px; border:1px solid rgba(245, 158, 11, 0.2);">
-                        <div>
-                            <strong style="color:var(--text-main); font-size:12px;">🪙 Ahorrar Monedas</strong>
-                            <small id="coin-round-desc">Redondear a $0 y guardar $0</small>
+                    <div class="switch-row" style="margin-bottom:0; padding:8px 10px; background:rgba(245, 158, 11, 0.08); border-radius:12px; border:1px solid rgba(245, 158, 11, 0.25);">
+                        <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                            <span style="color:#d97706; display:flex; flex-shrink:0;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                            </span>
+                            <div style="min-width:0;">
+                                <strong style="color:var(--text-main); font-size:12px;">Ahorrar Monedas del Vuelto</strong>
+                                <small id="coin-round-desc">Guardar vuelto en alcancía</small>
+                            </div>
                         </div>
                         <label class="switch"><input type="checkbox" id="is-coin-round"><span class="slider"></span></label>
+                    </div>
+                    <div id="coin-round-fields" class="hidden" style="margin-top:6px; padding:10px; background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:12px;">
+                        <div id="coin-round-pills" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-size:10px;">Monedas a guardar en Alcancía ($)</label>
+                            <input type="text" id="coin-round-amount" class="money-input" inputmode="decimal" placeholder="0,00" style="min-height:38px; padding:6px 10px; font-size:14px; font-weight:700;">
+                        </div>
                     </div>
                 </div>
 
@@ -881,7 +983,7 @@
             <div class="modal-header">
                 <h2>Presupuesto</h2>
                 <div style="display:flex; gap:6px;">
-                    <button type="button" id="open-annual-from-budget-btn" class="mini-action-btn">📅 Control Anual</button>
+                    <button type="button" id="open-annual-from-budget-btn" class="mini-action-btn">Control 12M</button>
                     <button type="button" class="btn-close-modal">Cerrar</button>
                 </div>
             </div>
@@ -895,9 +997,14 @@
                     <strong id="budget-total-actual" class="negative">$ 0,00</strong>
                 </div>
             </div>
-            <div class="filter-pills-row">
-                <button type="button" id="tab-budget-expense" class="pill-btn active">Gastos</button>
-                <button type="button" id="tab-budget-income" class="pill-btn">Ingresos</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div class="filter-pills-row" style="margin-bottom:0; flex:1;">
+                    <button type="button" id="tab-budget-expense" class="pill-btn active">Gastos</button>
+                    <button type="button" id="tab-budget-income" class="pill-btn">Ingresos</button>
+                </div>
+                <label style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-muted); cursor:pointer;">
+                    <input type="checkbox" id="toggle-archived-cats" style="accent-color:var(--text-muted);"> Ver archivadas
+                </label>
             </div>
             <div id="budget-categories-list" class="budget-cat-list"></div>
 
@@ -907,13 +1014,23 @@
                 <div class="form-group">
                     <input type="text" id="new-cat-name" placeholder="Ej. Mascotas o Educación" required>
                 </div>
-                <div class="form-group">
-                    <label>Límite General Mensual ($) - Opcional</label>
-                    <input type="text" id="new-cat-limit" class="money-input" inputmode="decimal" placeholder="Dejar vacío si no hay límite">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Límite Mensual ($) - Opcional</label>
+                        <input type="text" id="new-cat-limit" class="money-input" inputmode="decimal" placeholder="Sin límite">
+                    </div>
+                    <div class="form-group">
+                        <label>Arrastre de Saldo</label>
+                        <select id="new-cat-rollover">
+                            <option value="none">Sin arrastre (Mes limpio)</option>
+                            <option value="positive">Guardar sobrante (+)</option>
+                            <option value="both">Sobrante y déficit (+/-)</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="switch-row" id="new-cat-fixed-group">
                     <div>
-                        <strong>📌 Es un Gasto Fijo</strong>
+                        <strong>Es un Gasto Fijo</strong>
                         <small>Ej: Arriendo, servicios. Reduce tu cupo de deuda.</small>
                     </div>
                     <label class="switch"><input type="checkbox" id="new-cat-is-fixed"><span class="slider"></span></label>
@@ -923,31 +1040,160 @@
         </div>
     </div>
 
-    <!-- MODAL CONFIGURACIÓN MES A MES DE CATEGORÍA -->
+    <!-- MODAL EDICIÓN INTEGRAL DE CATEGORÍA Y SUBCATEGORÍAS -->
     <div id="cat-months-modal" class="modal hidden" style="z-index: 1350;">
+        <div class="modal-content" style="max-height: 85vh; padding:0; display:flex; flex-direction:column;">
+            <div class="modal-header" style="padding: 16px 20px 0 20px; flex-shrink: 0;">
+                <h3 id="cat-months-title" style="font-size:16px;">Editar Categoría</h3>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" id="archive-cat-btn" class="mini-action-btn hidden" style="color:var(--text-muted);">Archivar</button>
+                    <button type="button" id="close-cat-months-btn" class="btn-close-modal">Cerrar</button>
+                </div>
+            </div>
+            
+            <div style="overflow-y:auto; padding: 16px 20px 20px 20px; flex: 1;">
+                <form id="cat-months-form" class="data-form">
+                    <input type="hidden" id="cat-months-target-name">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre de la Categoría</label>
+                            <input type="text" id="cat-edit-name-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Arrastre de Saldo</label>
+                            <select id="cat-edit-rollover">
+                                <option value="none">Sin arrastre</option>
+                                <option value="positive">Sobrante (+)</option>
+                                <option value="both">Ambos (+/-)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="switch-row" style="margin-bottom:12px; padding: 8px 12px;">
+                        <div>
+                            <strong style="font-size:12px;">📌 Es un Gasto Fijo Global</strong>
+                            <small style="font-size:10.5px;">Aplica a toda la categoría</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="cat-edit-is-fixed">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="glass-sub-box" style="padding:12px; border-color: color-mix(in srgb, var(--accent) 30%, var(--border-color)); margin-bottom:14px;">
+                        <div class="switch-row" style="background:transparent; border:none; padding:0; margin-bottom:10px;">
+                            <div>
+                                <strong style="font-size:12px;">Presupuesto Mes a Mes</strong>
+                                <small style="font-size:10.5px;">Definir topes variables en el año</small>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="cat-is-monthly-check">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="cat-general-limit-box" class="form-group" style="margin-bottom:0;">
+                            <label style="font-size:10px;">Monto Fijo General ($)</label>
+                            <input type="text" id="cat-general-limit-input" class="money-input" inputmode="decimal" placeholder="0,00">
+                        </div>
+                        <div id="cat-12months-grid" class="month-budget-grid hidden" style="margin-top:6px;"></div>
+                    </div>
+
+                    <div class="drawer-divider" style="margin:16px 0;"></div>
+                    
+                    <h4 style="font-size:13.5px; font-weight:800; margin-bottom:10px; color:var(--text-main);">↳ Editar Subcategorías</h4>
+                    <div id="cat-edit-subcategories-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;"></div>
+                    
+                    <button type="submit" class="btn btn-primary" style="width:100%;">✓ Guardar Todos los Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN DE SUBCATEGORÍA -->
+    <div id="subcat-months-modal" class="modal hidden" style="z-index: 1360;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="cat-months-title">Configurar por Mes</h3>
-                <button type="button" id="close-cat-months-btn" class="btn-close-modal">Cerrar</button>
+                <h3 id="subcat-months-title">Editar Subcategoría</h3>
+                <button type="button" id="close-subcat-months-btn" class="btn-close-modal">Cerrar</button>
             </div>
-            <form id="cat-months-form" class="data-form">
-                <input type="hidden" id="cat-months-target-name">
+            <form id="subcat-months-form" class="data-form">
+                <input type="hidden" id="subcat-months-cat-name">
+                <input type="hidden" id="subcat-months-target-name">
+                <div class="form-group">
+                    <label>Nombre de Subcategoría</label>
+                    <input type="text" id="subcat-edit-name-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Arrastre de Saldo (Rollover)</label>
+                    <select id="subcat-edit-rollover">
+                        <option value="none">Sin arrastre (Mes limpio)</option>
+                        <option value="positive">Guardar solo sobrante (+)</option>
+                        <option value="both">Arrastrar sobrante y déficit (+/-)</option>
+                    </select>
+                </div>
+                
+                <div class="switch-row">
+                    <div>
+                        <strong>Gasto Fijo</strong>
+                        <small>Reduce liquidez en Salud Financiera</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="subcat-edit-is-fixed">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
                 <div class="switch-row">
                     <div>
                         <strong>Personalizar valor por cada mes</strong>
                         <small>Activa para definir montos distintos en el año</small>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" id="cat-is-monthly-check">
+                        <input type="checkbox" id="subcat-is-monthly-check">
                         <span class="slider"></span>
                     </label>
                 </div>
-                <div id="cat-general-limit-box" class="form-group">
-                    <label>Monto Fijo Mensual ($)</label>
-                    <input type="text" id="cat-general-limit-input" class="money-input" inputmode="decimal" placeholder="0,00">
+
+                <div id="subcat-general-limit-box">
+                    <div class="form-group">
+                        <label>Monto Base ($)</label>
+                        <input type="text" id="subcat-general-limit-input" class="money-input" inputmode="decimal" placeholder="0,00">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Frecuencia de Cobro</label>
+                            <select id="subcat-freq-select">
+                                <option value="monthly">Mensual</option>
+                                <option value="bimonthly">Bimestral</option>
+                                <option value="quarterly">Trimestral</option>
+                                <option value="semiannual">Semestral</option>
+                                <option value="annual">Anual</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mes de Cobro (Inicial)</label>
+                            <select id="subcat-month-select" disabled>
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div id="cat-12months-grid" class="month-budget-grid hidden"></div>
-                <button type="submit" class="btn btn-primary" style="margin-top:12px;">Guardar Configuración</button>
+
+                <div id="subcat-12months-grid" class="month-budget-grid hidden"></div>
+                <button type="submit" class="btn btn-primary" style="margin-top:12px; width: 100%;">Guardar Subcategoría</button>
             </form>
         </div>
     </div>
@@ -1484,6 +1730,12 @@
                     <div class="combined-legend" id="debts-combined-legend"></div>
                 </div>
                 <div id="debts-breakdown-list"></div>
+                
+                <details id="debts-paid-accordion" class="changelog-accordion hidden" style="margin-top:14px; border-color:color-mix(in srgb, var(--positive) 30%, var(--border-color)); background:rgba(16,185,129,0.04);">
+                    <summary style="color:var(--positive); font-weight:800;">🎉 Créditos Cancelados <span>▾</span></summary>
+                    <div id="debts-paid-list" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+                </details>
+
                 <div class="drawer-divider"></div>
                 <h3 style="font-size:15px; font-weight:800; margin-bottom:10px;">Registrar Préstamo o Cupo</h3>
             <form id="new-debt-form" class="data-form">
@@ -1542,7 +1794,11 @@
             <!-- VISTA: DEUDAS A FAVOR (POR COBRAR) -->
             <div id="debts-receivable-view" class="hidden">
                 <div class="tc-summary-banner" style="margin-bottom:12px; background:rgba(16, 185, 129, 0.1); border-color:rgba(16, 185, 129, 0.3);">
-                    <div><small style="color:var(--text-muted); font-size:11px; display:block;">Dinero por cobrar (Activo)</small><strong id="receivables-total-amount" class="positive" style="font-size:17px;">$ 0,00</strong></div>
+                    <div>
+                        <small style="color:var(--text-muted); font-size:11px; display:block;">Dinero por cobrar</small>
+                        <strong id="receivables-total-amount" class="positive" style="font-size:17px;">$ 0,00</strong>
+                    </div>
+                    <button type="button" id="btn-print-cxc-report" class="mini-action-btn" style="color:var(--positive);">📄 PDF de Cobros</button>
                 </div>
                 <div id="receivables-breakdown-list"></div>
 
@@ -1593,18 +1849,25 @@
                     <div class="form-group"><input type="text" id="new-asset-name" placeholder="Nombre (Ej. Moto, Casa)" required></div>
                     <div class="form-group">
                         <select id="new-asset-category" required>
-                            <option value="Inmueble">🏠 Inmueble</option>
-                            <option value="Vehículo">🚗 Vehículo</option>
-                            <option value="Inversión">📈 Inversión</option>
-                            <option value="Tecnología">💻 Tecnología</option>
-                            <option value="Coleccionable">💎 Coleccionable</option>
-                            <option value="Otro">📦 Otro</option>
+                            <option value="Inmueble">Inmueble</option>
+                            <option value="Vehículo">Vehículo</option>
+                            <option value="Inversión">Inversión</option>
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Coleccionable">Coleccionable</option>
+                            <option value="Otro">Otro</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Valor Actual ($)</label><input type="text" id="new-asset-current" class="money-input" inputmode="decimal" required></div>
                     <div class="form-group"><label>Valor Compra ($)</label><input type="text" id="new-asset-purchase" class="money-input" inputmode="decimal" placeholder="Opcional"></div>
+                </div>
+                <div class="switch-row">
+                    <div>
+                        <strong>Visible en Hoja de Balance</strong>
+                        <small>Suma siempre al patrimonio, pero oculta la línea visual</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="new-asset-show-balance" checked><span class="slider"></span></label>
                 </div>
                 <button type="submit" class="btn btn-primary">+ Guardar Activo</button>
             </form>
@@ -1648,12 +1911,12 @@
                     <div class="form-group">
                         <label>Categoría</label>
                         <select id="edit-asset-category">
-                            <option value="Inmueble">🏠 Inmueble</option>
-                            <option value="Vehículo">🚗 Vehículo</option>
-                            <option value="Inversión">📈 Inversión</option>
-                            <option value="Tecnología">💻 Tecnología</option>
-                            <option value="Coleccionable">💎 Coleccionable</option>
-                            <option value="Otro">📦 Otro</option>
+                            <option value="Inmueble">Inmueble</option>
+                            <option value="Vehículo">Vehículo</option>
+                            <option value="Inversión">Inversión</option>
+                            <option value="Tecnología">Tecnología</option>
+                            <option value="Coleccionable">Coleccionable</option>
+                            <option value="Otro">Otro</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1662,6 +1925,13 @@
                     </div>
                 </div>
                 <div class="form-group"><label>Nuevo Valor Comercial ($)</label><input type="text" id="edit-asset-val-current" class="money-input" inputmode="decimal" required></div>
+                <div class="switch-row" style="margin-top:10px; margin-bottom:12px;">
+                    <div>
+                        <strong>Visible en Hoja de Balance</strong>
+                        <small>Suma siempre al patrimonio, pero oculta la línea visual</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="edit-asset-show-balance"><span class="slider"></span></label>
+                </div>
                 <button type="submit" class="btn btn-primary" style="padding:10px; font-size:13px; width:100%;">Guardar Nuevo Avalúo</button>
                 <button type="button" id="btn-asset-delete" class="btn btn-danger" style="padding:10px; font-size:13px; margin-top:8px; width:100%;">🗑️ Eliminar Activo</button>
             </form>
@@ -1720,8 +1990,10 @@
                         <label>Ciclo de Cobro</label>
                         <select id="new-sub-cycle">
                             <option value="monthly">Mensual</option>
-                            <option value="annual">Anual</option>
+                            <option value="bimonthly">Bimestral</option>
                             <option value="quarterly">Trimestral</option>
+                            <option value="semiannual">Semestral</option>
+                            <option value="annual">Anual</option>
                             <option value="weekly">Semanal</option>
                         </select>
                     </div>
@@ -1740,6 +2012,18 @@
                     <label>Categoría Presupuestal</label>
                     <select id="new-sub-category" required></select>
                 </div>
+                
+                <div class="switch-row" style="margin-bottom:12px;">
+                    <div>
+                        <strong>Reservar en Presupuesto</strong>
+                        <small>Añade este monto al límite de la categoría el mes que toque pagar</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="new-sub-reserve">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
                 <div class="form-row modal-actions-row">
                     <button type="button" id="btn-sub-cancel" class="btn btn-secondary hidden">Cancelar</button>
                     <button type="button" id="btn-sub-delete" class="btn btn-danger hidden">Eliminar</button>
@@ -1758,8 +2042,11 @@
                     <small id="analytics-month-label" style="color:var(--text-muted); font-size:11.5px; text-transform:capitalize;">Mes actual</small>
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <button type="button" id="btn-generate-pdf-report" class="mini-action-btn" style="color:#0ea5e9;">📄 PDF</button>
-                    <button type="button" id="open-annual-from-analytics-btn" class="mini-action-btn" style="color:var(--positive);">📅 12M</button>
+                    <button type="button" id="btn-generate-pdf-report" class="mini-action-btn" style="color:#0ea5e9;">
+                        <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; margin-bottom:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        PDF
+                    </button>
+                    <button type="button" id="open-annual-from-analytics-btn" class="mini-action-btn" style="color:var(--positive);">12M</button>
                     <button type="button" class="btn-close-modal">Cerrar</button>
                 </div>
             </div>
@@ -1818,9 +2105,13 @@
         <div class="modal-content" style="max-width:680px;">
             <div class="modal-header">
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <button type="button" id="annual-prev-year" class="mini-action-btn">‹</button>
+                    <button type="button" id="annual-prev-year" class="mini-action-btn">
+                        <svg class="ui-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
                     <h2 id="annual-year-title">2026</h2>
-                    <button type="button" id="annual-next-year" class="mini-action-btn">›</button>
+                    <button type="button" id="annual-next-year" class="mini-action-btn">
+                        <svg class="ui-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
                 </div>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
@@ -1856,27 +2147,27 @@
                         <small>/ 100</small>
                     </div>
                 </div>
-                <span id="health-modal-badge" class="widget-badge neutral">Faltan datos ⚪</span>
+                <span id="health-modal-badge" class="widget-badge neutral">Faltan datos</span>
             </div>
 
             <!-- Indicador de Tendencia Histórica -->
             <div id="health-trend-indicator" style="text-align:center; margin-top: -6px; margin-bottom: 14px; font-size: 11.5px; font-weight: 700; height: 18px;"></div>
 
             <div class="health-pillars-grid">
-                <button type="button" class="health-pillar-card" onclick="showHealthTip('flow')">
-                    <div class="pillar-top"><span class="pillar-icon" style="color:var(--positive);">📈</span><span class="pillar-score" id="pillar-score-flow">0/100</span></div>
+                <button type="button" class="health-pillar-card bento-card" onclick="showHealthTip('flow')">
+                    <div class="pillar-top"><span class="drawer-icon-box" style="color:var(--positive); background:rgba(16,185,129,0.12);"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span class="pillar-score" id="pillar-score-flow">0/100</span></div>
                     <strong>Flujo</strong><small>Ingresos vs Gastos</small>
                 </button>
-                <button type="button" class="health-pillar-card" onclick="showHealthTip('liquidity')">
-                    <div class="pillar-top"><span class="pillar-icon" style="color:#0ea5e9;">💧</span><span class="pillar-score" id="pillar-score-liquidity">0/100</span></div>
-                    <strong>Liquidez</strong><small>Fondo de reserva</small>
+                <button type="button" class="health-pillar-card bento-card" onclick="showHealthTip('liquidity')">
+                    <div class="pillar-top"><span class="drawer-icon-box" style="color:#0ea5e9; background:rgba(14,165,233,0.12);"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></span><span class="pillar-score" id="pillar-score-liquidity">0/100</span></div>
+                    <strong>Liquidez</strong><small id="pillar-liquidity-desc">Fondo de reserva</small>
                 </button>
-                <button type="button" class="health-pillar-card" onclick="showHealthTip('debt')">
-                    <div class="pillar-top"><span class="pillar-icon" style="color:var(--negative);">⚖️</span><span class="pillar-score" id="pillar-score-debt">0/100</span></div>
+                <button type="button" class="health-pillar-card bento-card" onclick="showHealthTip('debt')">
+                    <div class="pillar-top"><span class="drawer-icon-box" style="color:var(--negative); background:rgba(239,68,68,0.12);"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></span><span class="pillar-score" id="pillar-score-debt">0/100</span></div>
                     <strong>Deuda</strong><small>Carga mensual</small>
                 </button>
-                <button type="button" class="health-pillar-card" onclick="showHealthTip('networth')">
-                    <div class="pillar-top"><span class="pillar-icon" style="color:var(--accent);">🏛️</span><span class="pillar-score" id="pillar-score-networth">0/100</span></div>
+                <button type="button" class="health-pillar-card bento-card" onclick="showHealthTip('networth')">
+                    <div class="pillar-top"><span class="drawer-icon-box accent-box"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span class="pillar-score" id="pillar-score-networth">0/100</span></div>
                     <strong>Patrimonio</strong><small>Activos vs Pasivos</small>
                 </button>
             </div>
@@ -1888,7 +2179,7 @@
 
             <div class="glass-sub-box">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <strong style="font-size:13px;">💳 Análisis de Endeudamiento</strong>
+                    <strong style="font-size:13px;"><svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px; margin-bottom:-2px;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Análisis de Endeudamiento</strong>
                     <span id="cap-usage-badge" class="widget-badge good">0% / 30%</span>
                 </div>
                 <div class="pace-bar-track" style="margin-bottom:12px;"><div id="cap-usage-bar" class="pace-bar-fill positive-bg" style="width:0%;"></div></div>
@@ -1916,7 +2207,13 @@
             </div>
 
             <details class="changelog-accordion">
-                <summary>⚙️ Personalizar Metas de Salud <span>▾</span></summary>
+                <summary>
+                    <div style="display:flex; align-items:center; gap:6px; color:var(--text-main);">
+                        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                        Personalizar Metas de Salud
+                    </div>
+                    <span>▾</span>
+                </summary>
                 <form id="health-goals-form" class="data-form" style="margin-top:10px;">
                     <div class="form-row">
                         <div class="form-group"><label>Margen Ahorro (%)</label><input type="number" id="health-goal-margin" min="1" max="80" value="15"></div>
@@ -1945,49 +2242,64 @@
             <div id="profile-main-view" class="profile-menu-list">
                 <button type="button" class="profile-menu-btn" id="menu-salary-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(16,185,129,0.15); color:var(--positive);">💼</span>
+                        <span class="profile-menu-icon" style="background:rgba(16,185,129,0.15); color:var(--positive);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Mi Salario y Proyecciones</strong><small>Nómina, FSP, Retefuente y liquidación</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
                 <button type="button" class="profile-menu-btn" id="menu-tax-params-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(139,92,246,0.15); color:var(--accent);">⚖️</span>
+                        <span class="profile-menu-icon" style="background:rgba(139,92,246,0.15); color:var(--accent);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Parámetros Legales (UVT)</strong><small>SMMLV, Aux. Transporte y topes del año</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
                 <button type="button" class="profile-menu-btn" id="menu-theme-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(245,158,11,0.15); color:#f59e0b;">🎨</span>
+                        <span class="profile-menu-icon" style="background:rgba(245,158,11,0.15); color:#f59e0b;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Personalización Visual</strong><small>Cambia los colores y el tema de la app</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
                 <button type="button" class="profile-menu-btn" id="menu-notifications-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(56,189,248,0.15); color:#0284c7;">🔔</span>
+                        <span class="profile-menu-icon" style="background:rgba(56,189,248,0.15); color:#0284c7;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Alertas y Calendario iOS</strong><small>Días de aviso y avisos de presupuesto</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
                 <button type="button" class="profile-menu-btn" id="menu-backup-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(59,130,246,0.15); color:#2563eb;">☁️</span>
+                        <span class="profile-menu-icon" style="background:rgba(59,130,246,0.15); color:#2563eb;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Respaldo e Importación</strong><small>Exportar JSON o migrar CSV</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
                 <button type="button" class="profile-menu-btn" id="menu-security-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
-                        <span class="profile-menu-icon" style="background:rgba(239,68,68,0.15); color:var(--negative);">🔒</span>
+                        <span class="profile-menu-icon" style="background:rgba(239,68,68,0.15); color:var(--negative);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </span>
                         <div class="profile-menu-text"><strong>Seguridad y PIN</strong><small>Bloquear app y gestión de clave</small></div>
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
-                <button type="button" id="btn-lock-app-profile" class="btn btn-danger hidden" style="margin-top:8px;">🔒 Bloquear Aplicación</button>
+                <button type="button" id="btn-lock-app-profile" class="btn btn-danger hidden" style="margin-top:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Bloquear Aplicación</span>
+                </button>
                 <button type="button" id="profile-version-btn" class="version-footer-btn" style="margin-top:12px;" title="Ver notas de versión y novedades">
-                    &copy; 2026 Función IF • v3.3.0
+                    &copy; 2026 Función IF • v4.0.0
                 </button>
             </div>
 
@@ -1996,7 +2308,10 @@
                 <div class="modal-header">
                     <button type="button" id="back-from-salary-btn" class="mini-action-btn">‹ Volver</button>
                     <h3>Nómina y Prestaciones</h3>
-                    <button type="button" id="shortcut-to-tax-params-btn" class="mini-action-btn">⚖️ UVT</button>
+                    <button type="button" id="shortcut-to-tax-params-btn" class="mini-action-btn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                        <span>UVT</span>
+                    </button>
                 </div>
 
                 <form id="salary-config-form" class="data-form">
@@ -2006,9 +2321,12 @@
                     </div>
 
                     <!-- ETIQUETA ÚLTIMO AUMENTO REGISTRADO -->
-                    <div id="last-raise-banner" class="hidden" style="margin-bottom:10px; padding:8px 10px; border-radius:10px; background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.25); font-size:11.5px;">
+                    <div id="last-raise-banner" class="hidden" style="margin-bottom:10px; padding:9px 11px; border-radius:12px; background:rgba(16, 185, 129, 0.09); border:1px solid rgba(16, 185, 129, 0.25); font-size:11.5px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span style="color:var(--text-muted);">📈 Último aumento:</span>
+                            <span style="color:var(--text-muted); display:inline-flex; align-items:center; gap:5px; font-weight:600;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--positive)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                                Último aumento:
+                            </span>
                             <strong id="last-raise-text" class="positive">+$ 0 (0%)</strong>
                         </div>
                         <small id="last-raise-subtext" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:3px;"></small>
@@ -2016,7 +2334,13 @@
 
                     <!-- DESPLEGABLE: APLICAR AUMENTO DE SUELDO -->
                     <details id="salary-raise-accordion" class="changelog-accordion" style="margin-bottom:12px;">
-                        <summary style="color:var(--positive); font-weight:700;">📈 Aplicar Aumento de Sueldo <span>▾</span></summary>
+                        <summary style="color:var(--positive); font-weight:700;">
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                                Aplicar Aumento de Sueldo
+                            </span>
+                            <span>▾</span>
+                        </summary>
                         <div style="margin-top:10px;">
                             <div class="form-row">
                                 <div class="form-group">
@@ -2044,10 +2368,15 @@
                                 </div>
                             </div>
 
-                            <div class="switch-row" style="margin-bottom:8px; padding:8px 10px; background:rgba(139, 92, 246, 0.08); border-radius:8px; border:1px solid rgba(139, 92, 246, 0.2);">
-                                <div>
-                                    <strong style="font-size:12px;">🎁 ¿Tiene pago retroactivo?</strong>
-                                    <small>Calcula el excedente de meses o quincenas anteriores</small>
+                            <div class="switch-row" style="margin-bottom:8px; padding:8px 10px; background:var(--accent-soft); border-radius:12px; border:1px solid var(--accent-border);">
+                                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                                    <span style="color:var(--accent); display:flex; flex-shrink:0;">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                                    </span>
+                                    <div style="min-width:0;">
+                                        <strong style="font-size:12px;">¿Tiene pago retroactivo?</strong>
+                                        <small>Calcula el excedente de meses o quincenas anteriores</small>
+                                    </div>
                                 </div>
                                 <label class="switch"><input type="checkbox" id="raise-is-retro"><span class="slider"></span></label>
                             </div>
@@ -2092,13 +2421,17 @@
 
                             <div id="raise-preview-box" class="glass-sub-box hidden" style="font-size:11.5px; margin-bottom:10px;"></div>
                             <button type="button" id="btn-apply-salary-raise" class="btn btn-primary" style="background:var(--positive); border-color:var(--positive); padding:10px; font-size:13px;">
-                                ✅ Aplicar Aumento y Actualizar Presupuesto
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span>Aplicar Aumento y Actualizar Presupuesto</span>
                             </button>
                         </div>
                     </details>
 
                     <div class="glass-sub-box" style="padding:10px 12px;">
-                        <strong style="font-size:12px; display:block; margin-bottom:2px;">🚌 Auxilio de Transporte</strong>
+                        <strong style="font-size:12px; display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                            <span>Auxilio de Transporte</span>
+                        </strong>
                         <small id="salary-transport-rule-hint" style="display:block; font-size:10.5px; color:var(--text-muted); margin-bottom:8px;"></small>
                         <div class="switch-row" style="margin-bottom:6px; padding:7px 10px;">
                             <div><strong>Aplicar regla legal (≤ 2 SMMLV)</strong><small>Verifica automáticamente si tienes derecho</small></div>
@@ -2161,7 +2494,13 @@
                     </div>
 
                     <details class="changelog-accordion">
-                        <summary style="color: var(--accent);">🧾 Alivios Tributarios / Deducciones (Opcional) <span>▾</span></summary>
+                        <summary style="color: var(--accent);">
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                Alivios Tributarios / Deducciones (Opcional)
+                            </span>
+                            <span>▾</span>
+                        </summary>
                         <div style="margin-top: 10px;">
                             <div class="row-group" style="margin-bottom: 10px;">
                                 <div class="half">
@@ -2223,17 +2562,29 @@
 
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                             <h4 style="font-size:13px; font-weight:800;">Valores causados a fecha de hoy</h4>
-                            <button type="button" id="btn-copy-liquidation" class="mini-action-btn">📋 Copiar</button>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" id="btn-copy-liquidation" class="mini-action-btn">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button type="button" id="btn-print-liquidation-report" class="mini-action-btn" style="color:#0ea5e9;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                    <span>PDF</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="liq-item-card"><div><strong>Prima Proporcional</strong><small>Del semestre en curso</small></div><div style="text-align:right;"><strong id="liq-prima" class="positive">$ 0,00</strong><button type="button" id="btn-reg-liq-prima" class="btn-confirm-pending">+ Registrar</button></div></div>
-                        <div class="liq-item-card"><div><strong>Cesantías Proporcionales</strong><small>Acumuladas este año</small></div><div style="text-align:right;"><strong id="liq-cesantias" class="positive" style="display:block;">$ 0,00</strong><button type="button" id="btn-reg-liq-cesantias" class="btn-confirm-pending">+ Registrar</button></div></div>
+                        <div class="liq-item-card"><div><strong>Prima Proporcional</strong><small id="liq-prima-sub">Del semestre en curso</small></div><div style="text-align:right;"><strong id="liq-prima" class="positive">$ 0,00</strong><button type="button" id="btn-reg-liq-prima" class="btn-confirm-pending">+ Registrar</button></div></div>
+                        <div class="liq-item-card"><div><strong>Cesantías Proporcionales</strong><small id="liq-cesantias-sub">Acumuladas este año</small></div><div style="text-align:right;"><strong id="liq-cesantias" class="positive" style="display:block;">$ 0,00</strong><button type="button" id="btn-reg-liq-cesantias" class="btn-confirm-pending">+ Registrar</button></div></div>
                         <div class="liq-item-card"><div><strong>Int. Cesantías Prop.</strong><small>12% de las cesantías acumuladas</small></div><div style="text-align:right;"><strong id="liq-intereses" class="positive">$ 0,00</strong><button type="button" id="btn-reg-liq-intereses" class="btn-confirm-pending">+ Registrar</button></div></div>
 
                         <div class="glass-sub-box" style="margin-bottom:8px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <div>
-                                    <strong style="font-size:13.5px;">🏖️ Vacaciones Pendientes</strong>
+                                    <strong style="font-size:13.5px; display:flex; align-items:center; gap:6px;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                                        <span>Vacaciones Pendientes</span>
+                                    </strong>
                                     <small id="liq-vac-summary-hint" style="display:block; font-size:11px; color:var(--text-muted);">Causados: 0d • Pendientes: 0d</small>
                                 </div>
                                 <div style="text-align:right;">
@@ -2257,10 +2608,28 @@
                             <div><strong>Total Liquidación Neta</strong><small>Incluye vacaciones pendientes a hoy</small></div>
                             <strong id="liq-total" class="positive" style="font-size:16px;">$ 0,00</strong>
                         </div>
+
+                        <!-- RECORDATORIO LEGAL DE PROMEDIOS (ART. 253, 306 Y 192 CST) -->
+                        <details id="legal-average-reminder-box" class="changelog-accordion" style="margin-top:10px; border-color: var(--accent-border);">
+                            <summary style="color: var(--accent);">
+                                <span style="display:flex; align-items:center; gap:7px; min-width:0;">
+                                    <svg style="flex-shrink:0;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <span>Cómo se calculan tus bases y promedios (Ley Colombia)</span>
+                                </span>
+                                <span>▾</span>
+                            </summary>
+                            <div id="legal-average-reminder-content" style="margin-top:8px; font-size:11px; color:var(--text-muted); line-height:1.45;"></div>
+                        </details>
                     </div>
 
                     <details class="changelog-accordion" style="margin-top:10px;">
-                        <summary style="color:var(--accent);">🎯 Simulador de Bonificación Ocasional <span>▾</span></summary>
+                        <summary style="color:var(--accent);">
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                Simulador de Bonificación Ocasional
+                            </span>
+                            <span>▾</span>
+                        </summary>
                         <div style="margin-top:10px;">
                             <div class="form-row">
                                 <div class="form-group"><label>Valor Bono ($)</label><input type="text" id="sim-bonus-amount" class="money-input" inputmode="decimal" placeholder="Ej. 1.000.000"></div>
@@ -2380,11 +2749,20 @@
 
                 <div class="form-group">
                     <label>Modo de Pantalla</label>
-                    <select id="theme-mode-select">
-                        <option value="auto">🌓 Automático (Según el sistema)</option>
-                        <option value="light">☀️ Modo Claro</option>
-                        <option value="dark">🌙 Modo Oscuro</option>
-                    </select>
+                    <div class="segmented-control" id="theme-mode-segmented">
+                        <button type="button" class="segmented-btn active" data-mode="auto">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20Z" fill="currentColor" fill-opacity="0.25"/></svg>
+                            <span>Auto</span>
+                        </button>
+                        <button type="button" class="segmented-btn" data-mode="light">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                            <span>Claro</span>
+                        </button>
+                        <button type="button" class="segmented-btn" data-mode="dark">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                            <span>Oscuro</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="switch-row" style="margin-bottom:14px;">
@@ -2491,13 +2869,20 @@
                         <label class="switch"><input type="checkbox" id="profile-enable-pin"><span class="slider"></span></label>
                     </div>
                     <div id="profile-pin-group" class="hidden">
+                        <small id="profile-pin-mode-hint" class="hidden" style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:8px;">Déjalo en blanco si deseas conservar tu PIN actual.</small>
                         <div class="form-row">
-                            <div class="form-group"><label>Nuevo PIN (4-6 dígitos)</label><input type="password" id="profile-new-pin" inputmode="numeric" maxlength="6" placeholder="••••"></div>
-                            <div class="form-group"><label>Confirmar PIN</label><input type="password" id="profile-new-pin-confirm" inputmode="numeric" maxlength="6" placeholder="••••"></div>
+                            <div class="form-group"><label id="profile-new-pin-label">Crear PIN (4-6 dígitos)</label><input type="password" id="profile-new-pin" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="new-password"></div>
+                            <div class="form-group"><label id="profile-confirm-pin-label">Confirmar PIN</label><input type="password" id="profile-new-pin-confirm" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="new-password"></div>
                         </div>
-                        <p id="profile-pin-error" class="auth-error hidden"></p>
                     </div>
-                    <button type="submit" class="btn btn-primary">Actualizar Seguridad</button>
+                    <div id="profile-disable-pin-group" class="hidden">
+                        <div class="form-group">
+                            <label>Ingresa tu PIN actual para desactivar el bloqueo</label>
+                            <input type="password" id="profile-current-pin" inputmode="numeric" maxlength="6" placeholder="••••" autocomplete="current-password">
+                        </div>
+                    </div>
+                    <p id="profile-pin-error" class="auth-error hidden"></p>
+                    <button type="submit" id="profile-pin-submit-btn" class="btn btn-primary">Actualizar Seguridad</button>
                 </form>
                 <div class="drawer-divider" style="margin: 24px 0 16px 0;"></div>
                 <h4 style="color:var(--negative); font-size:16px; font-weight:800; margin-bottom:8px;">Zona de Peligro</h4>
