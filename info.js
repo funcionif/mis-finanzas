@@ -70,12 +70,11 @@ const openUniversalInfoModal = (sectionKey) => {
                         <li><b>Nómina, Retroactivos y Promedios Legales (CST):</b> Cálculo ponderado por días para Prima de Servicios (Art. 306 CST) y Cesantías (Art. 253 CST) ante aumentos de sueldo, vigencia retroactiva o ingresos variables, con desglose de fórmulas paso a paso en Liquidación a Hoy y liberación automática de libranzas saldadas.</li>
                         <li><b>Suscripciones Reservables y Vencimientos:</b> Reserva automática del valor de tus suscripciones dentro de su categoría presupuestal y tarjetas compactas de próximos vencimientos en el tablero.</li>
                         <li><b>Analítica Suavizada y Reportes PDF:</b> Gráficos SVG con curvas suaves y degradado del acento, comparativa simétrica de ingresos vs. gastos y reportes listos para imprimir en PDF.</li>
-                        <li><b>Seguridad PIN y Onboarding Editorial:</b> Pantalla de bienvenida en dos pasos, selector segmentado de modo de pantalla (Auto / Claro / Oscuro) blindado para iOS y gestión completa para activar, cambiar o desactivar el bloqueo con PIN desde el perfil.</li>
                     </ul>
                 </details>
 
                 <details class="changelog-accordion">
-                    <summary><span>🚀 Versión 3.3.0 Pro</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 3.3.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Gastos Compartidos y Deudas a Favor:</b> Divide cuentas pagadas por otros, gestiona cuentas por cobrar independientes de tu liquidez y concilia reembolsos mediante transferencias.</li>
                         <li><b>Alcancía de Monedas (Redondeo en Efectivo):</b> Redondea pagos en efectivo al siguiente múltiplo de $1.000 y envía el vuelto automáticamente a un bolsillo oculto usable como medio de pago.</li>
