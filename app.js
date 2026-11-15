@@ -7344,3 +7344,57 @@ if ('serviceWorker' in navigator && window.location.protocol.startsWith('http'))
     });
 }
 document.getElementById('toggle-archived-cats')?.addEventListener('change', renderBudgetView);
+// ... llamadas finales de inicialización de app.js ...
+applyColorModeUI(localStorage.getItem('myFinancesColorMode') || 'auto');
+applyThemeUI(localStorage.getItem('myFinancesTheme') || 'purple');
+applyWidgetOrder();
+initDashboardDragAndControls();
+renderAccountSelects();
+renderCategoryOptions('expense');
+initAuthUI();
+updateDashboard();
+
+// --- REGISTRO Y ACTUALIZACIÓN AUTOMÁTICA DEL SERVICE WORKER (iOS PWA) ---
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        try {
+            const reg = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+
+            const promptUpdate = (worker) => {
+                if (!worker) return;
+                const toast = document.getElementById('sw-update-toast');
+                if (toast) toast.classList.remove('hidden');
+                worker.postMessage({ type: 'SKIP_WAITING' });
+            };
+
+            if (reg.waiting) promptUpdate(reg.waiting);
+
+            reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        promptUpdate(newWorker);
+                    }
+                });
+            });
+
+            // Revisar actualizaciones cada vez que el iPhone trae la PWA al frente
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    reg.update().catch(() => {});
+                }
+            });
+        } catch (err) {
+            console.warn('SW error:', err);
+        }
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+        }
+    });
+}
