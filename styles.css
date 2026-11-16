@@ -474,7 +474,7 @@ h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
     margin-top: 15px;
     border: 1px solid var(--border-color);
 }
-.month-selector > button {
+.month-selector > button:not(.today-pill-btn) {
     background: none;
     border: none;
     color: var(--accent);
@@ -486,7 +486,7 @@ h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
     border-radius: 10px;
     transition: background 0.15s;
 }
-.month-selector > button:active { background: var(--hover-bg); }
+.month-selector > button:not(.today-pill-btn):active { background: var(--hover-bg); }
 
 .month-center-group { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; min-width: 0; flex-wrap: wrap; }
 .month-trigger {
@@ -538,7 +538,6 @@ h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
     box-shadow: 0 3px 10px var(--theme-shadow);
     transition: transform 0.15s;
 }
-@media (prefers-color-scheme: dark) { html:not([data-color-mode="light"]) .today-pill-btn { color: #0b1120; } }
 .today-pill-btn:active { transform: scale(0.94); }
 
 .quick-cal-popover {

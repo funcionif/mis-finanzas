@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v4.0.0)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v4.1.0)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 
 const openUniversalInfoModal = (sectionKey) => {
     const uModal = document.getElementById('universal-info-modal');
@@ -11,7 +11,50 @@ const openUniversalInfoModal = (sectionKey) => {
     const bodyEl = document.getElementById('universal-info-body');
     if (!uModal || !titleEl || !bodyEl) return;
 
+    // Cálculo en vivo del peso de la base de datos (UTF-16 usa 2 bytes por carácter)
+    let totalBytes = 0;
+    for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+            totalBytes += ((localStorage[key].length + key.length) * 2);
+        }
+    }
+    const storageKB = (totalBytes / 1024).toFixed(2);
+    const storagePct = Math.min(100, (storageKB / 5120) * 100).toFixed(1);
+    const txCount = (typeof financeData !== 'undefined' && financeData.transactions) ? financeData.transactions.length : 0;
+    const storageColor = storagePct > 80 ? 'var(--negative)' : (storagePct > 50 ? '#f59e0b' : 'var(--positive)');
+
     const contentMap = {
+        storage: {
+            title: 'Estado de Memoria',
+            html: `
+                <div class="glass-sub-box" style="font-size:12px; line-height:1.55;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <strong>Uso de Almacenamiento Local</strong>
+                        <span style="color:${storageColor}; font-weight:800;">${storagePct}%</span>
+                    </div>
+                    <div class="pace-bar-track" style="height:8px; margin-bottom:12px; background:var(--hover-bg); border-radius:8px;">
+                        <div class="pace-bar-fill" style="width:${storagePct}%; background-color:${storageColor}; height:100%; border-radius:8px; transition:width 0.5s ease;"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; color:var(--text-muted);">
+                        <span>Espacio ocupado:</span> <strong>${storageKB} KB</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; color:var(--text-muted);">
+                        <span>Límite seguro (iOS/Android):</span> <strong>~5.120 KB (5MB)</strong>
+                    </div>
+                    
+                    <div class="drawer-divider" style="margin:12px 0;"></div>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span style="color:var(--text-muted);">Movimientos guardados:</span> 
+                        <strong style="color:var(--text-main);">${txCount} registros</strong>
+                    </div>
+                    
+                    <p style="margin-top:14px; font-size:11px; color:var(--text-muted); background:rgba(245, 158, 11, 0.08); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.2);">
+                        <b>💡 Mantenimiento:</b> Al ser 100% Local-First, todos tus datos viven en tu navegador. Si te acercas al límite (más del 80%), ve a <b>Configuración > Copia de Seguridad</b> y utiliza el <b>Cierre de Año</b> para liberar espacio convirtiendo años viejos en saldos iniciales.
+                    </p>
+                </div>
+            `
+        },
         faq: {
             title: 'Guía Rápida y FAQ',
             html: `
@@ -62,14 +105,25 @@ const openUniversalInfoModal = (sectionKey) => {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>Versión 4.0.0 • Fintech Editorial (Actual)</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 4.1.0 (Actual) </span><span>▾</span></summary>
                     <ul>
-                        <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste en modo claro y oscuro, tipografía tabular de precisión con decimales atenuados, derivación tonal dinámica a partir de tu color de acento (<code>color-mix</code>) e iconografía vectorial SVG plana en toda la app.</li>
-                        <li><b>Presupuesto Restante Dinámico y Arrastre (Rollover):</b> Auto-llenado inteligente del saldo disponible real al registrar gastos, vista previa sincronizada de diferencia/variación y arrastre opcional por categoría o subcategoría (sin arrastre, solo sobrante <code>+</code> o sobrante y déficit <code>+/-</code>).</li>
-                        <li><b>Ahorro de Monedas Inteligente (Efectivo Colombia):</b> Cálculo del vuelto en monedas según denominaciones reales de billetes ($5.000 / $2.000), monto editable con píldoras rápidas y contabilidad en doble partida sin alterar tus gastos reales.</li>
-                        <li><b>Nómina, Retroactivos y Promedios Legales (CST):</b> Cálculo ponderado por días para Prima de Servicios (Art. 306 CST) y Cesantías (Art. 253 CST) ante aumentos de sueldo, vigencia retroactiva o ingresos variables, con desglose de fórmulas paso a paso en Liquidación a Hoy y liberación automática de libranzas saldadas.</li>
-                        <li><b>Suscripciones Reservables y Vencimientos:</b> Reserva automática del valor de tus suscripciones dentro de su categoría presupuestal y tarjetas compactas de próximos vencimientos en el tablero.</li>
-                        <li><b>Analítica Suavizada y Reportes PDF:</b> Gráficos SVG con curvas suaves y degradado del acento, comparativa simétrica de ingresos vs. gastos y reportes listos para imprimir en PDF.</li>
+                        <li><b>Lógica Bancaria Avanzada (TC):</b> Cálculo inteligente de pagos mínimos, cuota de manejo (condicional por uso/saldo) y seguro de deudores (por millón o fijo). Botones rápidos para facturar cargos mensuales.</li>
+                        <li><b>Ahorro Automático (Nómina):</b> Nueva opción "Descuento por nómina" en Bolsillos. Al registrar tu sueldo, retiene la cuota y la abona a tus metas de ahorro automáticamente.</li>
+                        <li><b>Modo Privacidad Global:</b> Nuevo botón oculto en la cabecera ("Ojo"). Tapa al instante todos tus saldos reales con asteriscos (incluyendo Libre Seguro, TCs y gráficos) para usar la app en espacios públicos.</li>
+                        <li><b>Préstamos Fijos Flexibles:</b> Los créditos fijos ahora permiten registrar desembolsos adicionales manteniendo su base matemática de amortización.</li>
+                        <li><b>Deudas vs. Cobros (CxC):</b> Separación nativa en la interfaz entre el dinero que debes (Pasivos/Rojo) y el dinero que te deben (Cuentas a Favor/Verde).</li>
+                        <li><b>Análisis Personalizable:</b> Ahora puedes reorganizar a tu gusto los gráficos del panel de Análisis (Patrimonio, Flujo, Resumen, Gastos) de forma independiente.</li>
+                        <li><b>Rendimiento y UX:</b> Optimización profunda (Delegación de eventos) para que el historial cargue al instante. Corrección de los decimales atenuados en dispositivos pequeños y precisión del Libre Seguro Hoy.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>🎨 Versión 4.0.0</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste, tipografía tabular con decimales atenuados y derivación tonal dinámica (<code>color-mix</code>).</li>
+                        <li><b>Presupuesto Restante Dinámico:</b> Auto-llenado del saldo disponible al registrar gastos y revisión de saldo en tiempo real.</li>
+                        <li><b>Ahorro de Monedas:</b> Redondeo inteligente del efectivo con contabilidad en doble partida (sin alterar el gasto original).</li>
+                        <li><b>Analítica Suavizada:</b> Gráficos SVG rediseñados y comparativa simétrica del flujo de caja.</li>
                     </ul>
                 </details>
 
@@ -192,7 +246,6 @@ const checkWhatsNewBanner = () => {
 };
 
 // Eventos del Centro de Ayuda y Menú Lateral
-// Nota: La clase .btn-close-modal ahora solo se gestiona en app.js para evitar doble cierre
 document.getElementById('drawer-version-btn')?.addEventListener('click', () => {
     if (typeof closeSideDrawer === 'function') closeSideDrawer();
     openUniversalInfoModal('about');
@@ -211,6 +264,11 @@ document.getElementById('drawer-help-terms')?.addEventListener('click', () => {
 document.getElementById('drawer-help-privacy')?.addEventListener('click', () => {
     if (typeof closeSideDrawer === 'function') closeSideDrawer();
     openUniversalInfoModal('privacy');
+});
+
+document.getElementById('drawer-system-storage')?.addEventListener('click', () => {
+    if (typeof closeSideDrawer === 'function') closeSideDrawer();
+    openUniversalInfoModal('storage');
 });
 
 document.getElementById('drawer-help-about')?.addEventListener('click', () => {

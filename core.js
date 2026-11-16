@@ -331,6 +331,7 @@ const formatNumberInput = (val, maxDecimals = 2) => {
 };
 
 const formatMoney = (amount) => {
+    if (localStorage.getItem('myFinancesPrivacyMode') === 'true') return amount < 0 ? '-****' : '****';
     const clean = round2(amount);
     return new Intl.NumberFormat('es-CO', {
         style: 'currency',
@@ -341,6 +342,7 @@ const formatMoney = (amount) => {
 };
 
 const formatCompact = (amount) => {
+    if (localStorage.getItem('myFinancesPrivacyMode') === 'true') return amount < 0 ? '-****' : '****';
     if (!financeData.useCompactNumbers) return formatMoney(amount);
     
     const abs = Math.abs(amount);
@@ -487,6 +489,7 @@ const getDefaultAccountId = (onlyAssets = false) => {
 };
 
 const isPeriodMatching = (freq, startMonth, currentMonthIndex) => {
+    if (currentMonthIndex < startMonth) return false;
     if (freq === 'monthly') return true;
     if (freq === 'bimonthly') return (currentMonthIndex - startMonth) % 2 === 0;
     if (freq === 'quarterly') return (currentMonthIndex - startMonth) % 3 === 0;
@@ -1018,7 +1021,7 @@ const getPendingCardPurchases = (cardId) => {
 
 const getPendingRevolvingPurchases = (debtId) => {
     return financeData.transactions
-        .filter(t => t.account === debtId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t))
+        .filter(t => t.account === debtId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t) && t.installments !== undefined)
         .map(t => {
             const inst = Math.max(1, parseInt(t.installments, 10) || 1);
             const paid = Math.max(0, parseInt(t.paidInstallments, 10) || 0);
@@ -1028,16 +1031,72 @@ const getPendingRevolvingPurchases = (debtId) => {
             const remSchedule = amort.schedule.slice(paid);
             const rawRemCapital = round2(remSchedule.reduce((s, r) => s + r.principal, 0));
             const remCapital = Math.max(0, round2(rawRemCapital - round2(t.extraPrincipalPaid || 0)));
-            const nextQuota = remSchedule.length > 0 ? Math.min(remSchedule[0].payment, round2(remCapital + remSchedule[0].interest)) : 0;
+            const nextInterest = remSchedule.length > 0 ? remSchedule[0].interest : 0;
+            const rawQuota = (t.monthlyQuota && t.monthlyQuota > 0) ? round2(t.monthlyQuota) : (remSchedule.length > 0 ? remSchedule[0].payment : 0);
+            const nextQuota = remSchedule.length > 0 ? Math.min(rawQuota, round2(remCapital + nextInterest)) : 0;
+            const nextPrincipal = Math.min(remCapital, Math.max(0, round2(nextQuota - nextInterest)));
 
             return {
                 tx: t, installments: inst, paidInstallments: paid,
                 remainingInstallments: Math.max(0, inst - paid),
-                rate, rateType, nextPeriod: paid + 1, nextQuota: round2(nextQuota), remCapital
+                rate, rateType, nextPeriod: paid + 1,
+                nextQuota: round2(nextQuota),
+                nextPrincipal: round2(nextPrincipal),
+                nextInterest: round2(nextInterest),
+                remCapital
             };
         })
         .filter(item => item.remainingInstallments > 0 && item.remCapital > 0)
         .sort((a, b) => a.tx.id - b.tx.id);
+};
+
+const getDebtMonthlyQuotaBreakdown = (debtAcc, currentBal) => {
+    const bal = Math.max(0, round2(currentBal || 0));
+    const subPurchases = getPendingRevolvingPurchases(debtAcc.id);
+    const subQuotas = round2(subPurchases.reduce((s, p) => s + p.nextQuota, 0));
+    const subCapital = round2(subPurchases.reduce((s, p) => s + p.remCapital, 0));
+    const subPrincipal = round2(subPurchases.reduce((s, p) => s + p.nextPrincipal, 0));
+    const subInterest = round2(subPurchases.reduce((s, p) => s + p.nextInterest, 0));
+
+    let baseBal = 0;
+    let baseQuota = 0;
+    let basePrincipal = 0;
+    let baseInterest = 0;
+
+    if (debtAcc.debtType !== 'revolving') {
+        baseBal = Math.max(0, round2(bal - subCapital));
+        const totalQuotes = debtAcc.debtTotalQuotes || 1;
+        const paidQuotes = debtAcc.debtPaidQuotes || 0;
+        if (baseBal > 0 && paidQuotes < totalQuotes) {
+            const amort = calculateAmortization(
+                debtAcc.debtOriginal || baseBal,
+                totalQuotes,
+                debtAcc.debtRate || 0,
+                debtAcc.debtRateType || 'monthly'
+            );
+            let q = round2(debtAcc.debtMonthlyPayment || 0);
+            if (q === 0) q = amort.payment;
+            baseInterest = round2(baseBal * amort.monthlyRate);
+            baseQuota = Math.min(q, round2(baseBal + baseInterest));
+            basePrincipal = Math.min(baseBal, Math.max(0, round2(baseQuota - baseInterest)));
+        }
+    }
+
+    return {
+        bal,
+        baseBal,
+        baseQuota,
+        basePrincipal,
+        baseInterest,
+        subPurchases,
+        subQuotas,
+        subCapital,
+        subPrincipal,
+        subInterest,
+        totalQuota: round2(baseQuota + subQuotas),
+        totalPrincipal: round2(basePrincipal + subPrincipal),
+        totalInterest: round2(baseInterest + subInterest)
+    };
 };
 
 const revertTransferAllocation = (tx) => {
@@ -1049,6 +1108,10 @@ const revertTransferAllocation = (tx) => {
         if (fromObj.category === 'pocket') adjustPocketBalance(fromObj.id, amt);
         if (toObj.category === 'pocket') adjustPocketBalance(toObj.id, -amt);
     }
+    
+    // Limpiar intereses generados automáticamente por esta transferencia
+    financeData.transactions = financeData.transactions.filter(t => t.linkedToTransfer !== tx.id);
+
     if (!Array.isArray(tx.allocatedItems)) return;
     tx.allocatedItems.forEach(item => {
         if (item.kind === 'cc_tx') {
@@ -1078,6 +1141,141 @@ const revertTransferAllocation = (tx) => {
     });
 };
 
+const getCardCycleActivity = (card, refDate = currentDate) => {
+    const cDay = Math.max(1, Math.min(31, parseInt(card.cutoffDay, 10) || 15));
+    const y = refDate.getFullYear();
+    const m = refDate.getMonth();
+    const daysInCurrMonth = new Date(y, m + 1, 0).getDate();
+
+    let cycleStart, cycleEnd;
+    if (refDate.getDate() <= cDay) {
+        const prevMonthDays = new Date(y, m, 0).getDate();
+        const prevCutoff = new Date(y, m - 1, Math.min(cDay, prevMonthDays), 23, 59, 59);
+        cycleStart = new Date(prevCutoff.getTime() + 1000);
+        cycleEnd = new Date(y, m, Math.min(cDay, daysInCurrMonth), 23, 59, 59);
+    } else {
+        const currCutoff = new Date(y, m, Math.min(cDay, daysInCurrMonth), 23, 59, 59);
+        const nextMonthDays = new Date(y, m + 2, 0).getDate();
+        cycleStart = new Date(currCutoff.getTime() + 1000);
+        cycleEnd = new Date(y, m + 1, Math.min(cDay, nextMonthDays), 23, 59, 59);
+    }
+
+    let cycleSpend = 0;
+    let cycleTxCount = 0;
+    const startMs = cycleStart.getTime();
+    const endMs = cycleEnd.getTime();
+
+    financeData.transactions.forEach(t => {
+        if (t.account === card.id && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
+            if (t.id >= startMs && t.id <= endMs) {
+                cycleSpend = round2(cycleSpend + round2(t.amount));
+                cycleTxCount++;
+            }
+        }
+    });
+
+    return { cycleStart, cycleEnd, cycleSpend, cycleTxCount };
+};
+
+const calculateCardMinPaymentEstimate = (card, currentDebt, refDate = currentDate) => {
+    const debt = Math.max(0, round2(currentDebt || 0));
+    const pending = getPendingCardPurchases(card.id);
+    const deferredQuota = round2(pending.reduce((s, p) => s + p.nextQuota, 0));
+    const deferredCapital = round2(pending.reduce((s, p) => s + p.remCapital, 0));
+    const cycleInfo = getCardCycleActivity(card, refDate);
+
+    // Saldo de deuda inicial (no asociado a compras diferidas registradas en la app)
+    const unallocatedDebt = Math.max(0, round2(debt - deferredCapital));
+    let initialQuotaApplied = 0;
+    let isInitialFallback12m = false;
+
+    if (unallocatedDebt > 0) {
+        const customInitQuota = round2(card.initialDebtQuota || 0);
+        if (customInitQuota > 0) {
+            initialQuotaApplied = Math.min(unallocatedDebt, customInitQuota);
+        } else {
+            initialQuotaApplied = round2(unallocatedDebt / 12);
+            isInitialFallback12m = true;
+        }
+    }
+
+    // Cuota de manejo genérica (saldo o uso, solo saldo, fija, o exonerada por compras)
+    let mgmtFeeAmt = 0;
+    let mgmtFeeStatus = 'disabled';
+    const hasMgmtFee = !!card.hasMgmtFee && round2(card.mgmtFee || 0) > 0;
+    const mgmtFeeRule = card.mgmtFeeRule || (card.mgmtFeeOnlyWithDebt === false ? 'always' : 'balance_or_use');
+    const waiverSpend = round2(card.mgmtFeeWaiverSpend || 0);
+
+    if (hasMgmtFee) {
+        const hasBalance = debt > 0;
+        const hasUsage = cycleInfo.cycleTxCount > 0;
+        let appliesByRule = false;
+
+        if (mgmtFeeRule === 'always') appliesByRule = true;
+        else if (mgmtFeeRule === 'balance_only') appliesByRule = hasBalance;
+        else appliesByRule = hasBalance || hasUsage;
+
+        if (!appliesByRule) {
+            mgmtFeeStatus = 'no_activity';
+        } else if (waiverSpend > 0 && cycleInfo.cycleSpend >= waiverSpend) {
+            mgmtFeeStatus = 'waived';
+        } else {
+            mgmtFeeAmt = round2(card.mgmtFee);
+            mgmtFeeStatus = 'charged';
+        }
+    }
+
+    // Seguro de vida deudores genérico
+    let insuranceAmt = 0;
+    let insuranceDetailLabel = '';
+    const hasInsurance = !!card.hasInsurance && round2(card.insurancePerMillion || 0) > 0;
+    const insuranceRule = card.insuranceRule || 'per_million_min1';
+    const insRate = round2(card.insurancePerMillion || 0);
+
+    if (hasInsurance && debt > 0) {
+        if (insuranceRule === 'fixed_if_debt') {
+            insuranceAmt = insRate;
+            insuranceDetailLabel = 'tarifa fija';
+        } else if (insuranceRule === 'per_million_ceil') {
+            const units = Math.max(1, Math.ceil(debt / 1000000));
+            insuranceAmt = round2(units * insRate);
+            insuranceDetailLabel = `${units}M fracción`;
+        } else if (insuranceRule === 'per_million_exact') {
+            const millions = debt / 1000000;
+            insuranceAmt = round2(millions * insRate);
+            insuranceDetailLabel = `${millions.toFixed(2).replace('.', ',')}M prop.`;
+        } else {
+            // Por millón adeudado con mínimo de 1 millón cuando 0 < deuda <= 1M
+            const isMin1M = debt <= 1000000;
+            const millions = isMin1M ? 1 : (debt / 1000000);
+            insuranceAmt = round2(millions * insRate);
+            insuranceDetailLabel = isMin1M ? 'mín. 1M' : `${millions.toFixed(2).replace('.', ',')}M prop.`;
+        }
+    }
+
+    const totalMinPayment = round2(deferredQuota + initialQuotaApplied + mgmtFeeAmt + insuranceAmt);
+
+    return {
+        debt,
+        cycleSpend: cycleInfo.cycleSpend,
+        cycleTxCount: cycleInfo.cycleTxCount,
+        deferredQuota,
+        deferredCount: pending.length,
+        unallocatedDebt,
+        initialQuotaApplied,
+        isInitialFallback12m,
+        hasMgmtFee,
+        mgmtFeeRule,
+        mgmtFeeStatus,
+        mgmtFeeAmt,
+        hasInsurance,
+        insuranceRule,
+        insuranceDetailLabel,
+        insuranceAmt,
+        totalMinPayment
+    };
+};
+
 const getCommittedMonthlyDebtQuotas = (snap) => {
     let committedMonthly = 0;
 
@@ -1085,29 +1283,16 @@ const getCommittedMonthlyDebtQuotas = (snap) => {
     financeData.customAccounts.filter(a => a.category === 'debt' && !a.payrollDeduction).forEach(d => {
         const bal = Math.max(0, round2(snap.bals[d.id] || 0));
         if (bal > 0) {
-            if (d.debtType === 'revolving') {
-                const revQuotas = getPendingRevolvingPurchases(d.id).reduce((s, p) => s + p.nextQuota, 0);
-                committedMonthly = round2(committedMonthly + revQuotas);
-            } else {
-                let q = round2(d.debtMonthlyPayment || 0);
-                if (q === 0) {
-                    q = calculateAmortization(d.debtOriginal || bal, d.debtTotalQuotes || 1, d.debtRate || 0, d.debtRateType || 'monthly').payment;
-                }
-                committedMonthly = round2(committedMonthly + q);
-            }
+            const qInfo = getDebtMonthlyQuotaBreakdown(d, bal);
+            committedMonthly = round2(committedMonthly + qInfo.totalQuota);
         }
     });
 
     financeData.customAccounts.filter(a => a.category === 'credit_card').forEach(c => {
         const bal = Math.max(0, round2(snap.bals[c.id] || 0));
-        if (bal > 0) {
-            const pending = getPendingCardPurchases(c.id);
-            if (pending.length > 0) {
-                const ccQuota = pending.reduce((s, p) => s + p.nextQuota, 0);
-                committedMonthly = round2(committedMonthly + Math.min(bal, ccQuota));
-            } else {
-                committedMonthly = round2(committedMonthly + round2(bal / 12));
-            }
+        const est = calculateCardMinPaymentEstimate(c, bal);
+        if (est.totalMinPayment > 0) {
+            committedMonthly = round2(committedMonthly + est.totalMinPayment);
         }
     });
 
@@ -1310,6 +1495,34 @@ const saveTaxParams = (params) => {
     return merged;
 };
 
+const getPocketPayrollMonthlyQuota = (pocket, refDate = currentDate) => {
+    if (!pocket || !pocket.payrollDeduction) return 0;
+    const refMonthId = getMonthId(refDate);
+    if (pocket.startDate && pocket.startDate.slice(0, 7) > refMonthId) return 0;
+
+    const balance = round2((pocket.principal || 0) + (pocket.yields || 0));
+    const goal = round2(pocket.goal || 0);
+    const customQuota = round2(pocket.customQuota || 0);
+
+    if (goal > 0) {
+        const remaining = Math.max(0, round2(goal - balance));
+        if (remaining <= 0) return 0;
+
+        let activeQuota = customQuota;
+        if (activeQuota <= 0 && pocket.targetDate) {
+            const refStr = refDate.toLocaleDateString('en-CA');
+            const effStart = (pocket.startDate && pocket.startDate > refStr) ? pocket.startDate : refStr;
+            const [sy, sm, sd] = effStart.split('-').map(Number);
+            const [ey, em, ed] = pocket.targetDate.split('-').map(Number);
+            const monthsLeft = Math.max(1, (ey - sy) * 12 + (em - sm) + (ed > sd ? 1 : 0));
+            activeQuota = round2(remaining / monthsLeft);
+        }
+        return activeQuota > 0 ? Math.min(remaining, activeQuota) : 0;
+    }
+
+    return customQuota > 0 ? customQuota : 0;
+};
+
 const calcArt383TableUVT = (uvtBase) => {
     if (uvtBase <= 95) return 0;
     if (uvtBase <= 150) return (uvtBase - 95) * 0.19;
@@ -1397,18 +1610,23 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
             return s;
         }, 0));
         
-        // Solo descuenta si hay saldo Y no se han superado las cuotas totales
-        if (bal > 0 && (d.debtType === 'revolving' || (d.debtPaidQuotes || 0) < (d.debtTotalQuotes || 1))) {
-            let quota = round2(d.debtMonthlyPayment || 0);
-            if (quota === 0 && d.debtType !== 'revolving') {
-                quota = calculateAmortization(d.debtOriginal || 0, d.debtTotalQuotes || 1, d.debtRate || 0, d.debtRateType || 'monthly').payment;
-            }
-            payrollDebtDeductions += quota;
+        if (bal > 0) {
+            const qInfo = getDebtMonthlyQuotaBreakdown(d, bal);
+            payrollDebtDeductions = round2(payrollDebtDeductions + qInfo.totalQuota);
         }
     });
 
+    let payrollSavingsDeductions = 0;
+    (financeData.pockets || []).filter(p => p.payrollDeduction).forEach(p => {
+        const pQuota = getPocketPayrollMonthlyQuota(p, today);
+        if (pQuota > 0) {
+            payrollSavingsDeductions = round2(payrollSavingsDeductions + pQuota);
+        }
+    });
+
+    const totalPayrollDeductions = round2(payrollDebtDeductions + payrollSavingsDeductions);
     const grossNet = round2(basic + effectiveTransport + nonSalary - health - pension - fsp - ret);
-    const net = Math.max(0, round2(grossNet - payrollDebtDeductions));
+    const net = Math.max(0, round2(grossNet - totalPayrollDeductions));
 
     const biweeklyRetMode = config.biweeklyRetMode || 'prorated';
     const gross1Q = round2((basic + effectiveTransport + nonSalary) / 2);
@@ -1421,11 +1639,11 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const ret1Q = biweeklyRetMode === 'second_half' ? 0 : round2(ret / 2);
     const ret2Q = biweeklyRetMode === 'second_half' ? ret : round2(ret - ret1Q);
 
-    const debt1Q = round2(payrollDebtDeductions / 2);
-    const debt2Q = round2(payrollDebtDeductions - debt1Q);
+    const ded1Q = round2(totalPayrollDeductions / 2);
+    const ded2Q = round2(totalPayrollDeductions - ded1Q);
 
-    const net1Q = Math.max(0, round2(gross1Q - ss1Q - ret1Q - debt1Q));
-    const net2Q = Math.max(0, round2(gross2Q - ss2Q - ret2Q - debt2Q));
+    const net1Q = Math.max(0, round2(gross1Q - ss1Q - ret1Q - ded1Q));
+    const net2Q = Math.max(0, round2(gross2Q - ss2Q - ret2Q - ded2Q));
 
     let startObj = new Date(today.getFullYear(), 0, 1);
     if (config.startDate) {
@@ -1583,7 +1801,7 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
         params, uvt, smmlv, basic, nonSalary, excessNonSalary, ibc, effectiveTransport, benefitsTransport, health, pension, fsp,
         ingresosBrutos, incrngo, rentaLiquida, dedPrepaid, dedHousing, dedDependents, dedVoluntary, totalDeduccionesArt387,
         exempt25, totalBeneficiosBrutos, beneficiosLimitados, baseGravable, numeroUVT, retProc, effectiveRetPct, ret,
-        net, grossNet, payrollDebtDeductions, biweeklyRetMode, gross1Q, gross2Q, ss1Q, ss2Q, ret1Q, ret2Q, net1Q, net2Q,
+        net, grossNet, payrollDebtDeductions, payrollSavingsDeductions, biweeklyRetMode, gross1Q, gross2Q, ss1Q, ss2Q, ret1Q, ret2Q, net1Q, net2Q,
         prestacionesBase: projCesantiasBase, primaBase, cesantiasBase,
         projPrimaJunBase, projPrimaDecBase, projCesantiasBase,
         halfPrimaJunNeta: primaJunCalc.halfNeta, halfPrimaDecNeta: primaDecCalc.halfNeta,
@@ -1735,6 +1953,85 @@ const assetColors = ['#0f4c81', '#0d9488', '#0284c7', '#059669', '#4f46e5', '#64
 const cardColors = ['#4f46e5', '#0284c7', '#7c3aed', '#0d9488', '#db2777', '#2563eb', '#059669', '#d97706'];
 const debtColors = ['#e11d48', '#d97706', '#dc2626', '#ea580c', '#be185d', '#b91c1c', '#9333ea', '#64748b'];
 const categoryColors = ['#007aff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+
+// --- COMPRESIÓN LOCAL: CIERRE DE AÑO ---
+window.archiveYearData = (targetYear) => {
+    const cutoffMonthId = `${targetYear}-12`;
+    const txsToDelete = [];
+    const txsToKeep = [];
+
+    financeData.transactions.forEach(t => {
+        if (t.monthId <= cutoffMonthId && t.status === 'closed') {
+            // Proteger compras a cuotas diferidas que aún no se pagan por completo
+            const isDeferred = t.installments > 1;
+            const isFullyPaid = isDeferred && ((t.paidInstallments || 0) >= t.installments);
+            
+            if (isDeferred && !isFullyPaid) {
+                txsToKeep.push(t);
+            } else {
+                txsToDelete.push(t);
+            }
+        } else {
+            txsToKeep.push(t);
+        }
+    });
+
+    if (txsToDelete.length === 0) return { deleted: 0 };
+
+    const netImpact = {};
+    txsToDelete.forEach(t => {
+        const amt = round2(t.amount);
+        const fromCat = getAccountObj(t.account).category;
+        
+        if (fromCat !== 'pocket') { // Los bolsillos se auto-consolidan
+            if (!netImpact[t.account]) netImpact[t.account] = 0;
+            const isLiab = isLiabilityCategory(fromCat);
+            if (t.type === 'income') netImpact[t.account] += isLiab ? -amt : amt;
+            else if (t.type === 'expense') netImpact[t.account] += isLiab ? amt : -amt;
+            else if (t.type === 'transfer') netImpact[t.account] += isLiab ? amt : -amt;
+        }
+
+        if (t.type === 'transfer' && t.toAccount) {
+            const toCat = getAccountObj(t.toAccount).category;
+            if (toCat !== 'pocket') {
+                if (!netImpact[t.toAccount]) netImpact[t.toAccount] = 0;
+                const isToLiab = isLiabilityCategory(toCat);
+                netImpact[t.toAccount] += isToLiab ? -amt : amt;
+            }
+        }
+    });
+
+    const consolidationDate = new Date(`${targetYear}-12-31T12:00:00`);
+    let addedCount = 0;
+
+    Object.keys(netImpact).forEach((accId, i) => {
+        const impact = round2(netImpact[accId]);
+        if (impact !== 0) {
+            const isLiab = isLiabilityCategory(getAccountObj(accId).category);
+            let tType = 'income';
+            if (isLiab) tType = impact > 0 ? 'expense' : 'income'; 
+            else tType = impact > 0 ? 'income' : 'expense'; 
+
+            txsToKeep.push({
+                id: consolidationDate.getTime() + i,
+                monthId: cutoffMonthId,
+                type: tType,
+                status: 'closed',
+                account: accId,
+                description: `📦 Saldo Consolidado Cierre ${targetYear}`,
+                amount: Math.abs(impact),
+                date: `31 dic, 12:00`,
+                isAdjustment: true
+            });
+            addedCount++;
+        }
+    });
+
+    financeData.transactions = txsToKeep.sort((a, b) => a.id - b.id);
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    return { deleted: txsToDelete.length, added: addedCount };
+};
+
 // ==========================================
 // FIN DE ARCHIVO: core.js
 // ==========================================
