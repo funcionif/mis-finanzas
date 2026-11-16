@@ -3,7 +3,7 @@
 // Optimizado para Safari iOS y PWA
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v4.1.1'; // <-- Incremento para forzar limpieza
+const CACHE_NAME = 'mis-finanzas-v4.1.2'; // <-- Incremento para forzar limpieza
 
 const CORE_ASSETS = [
     './',

@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v4.0.0)
+// INICIO DE ARCHIVO: core.js (v4.1.0)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -1867,7 +1867,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v4.0.0//ES',
+        'PRODID:-//Mis Finanzas//v4.1.0//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,

@@ -1,5 +1,5 @@
 // ==========================================
-// app.js (v4.0.0 - Fintech Editorial)
+// app.js (v4.1.0 - Fintech Editorial)
 // EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO
 // ==========================================
 
@@ -7676,7 +7676,7 @@ document.getElementById('btn-generate-pdf-report')?.addEventListener('click', ()
                 <tbody>${txHtml.length > 0 ? txHtml : '<tr><td colspan="5" style="text-align:center;">Sin movimientos este mes</td></tr>'}</tbody>
             </table>
         </div>
-        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v4.0.0.</div>`;
+        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v4.1.0.</div>`;
     window.print();
 });
 
@@ -7718,7 +7718,7 @@ document.getElementById('btn-print-cxc-report')?.addEventListener('click', () =>
             </div>`;
         });
     }
-    html += `<div class="print-footer">Soporte de gastos compartidos y préstamos informales. Mis Finanzas (Función IF) v4.0.0.</div>`;
+    html += `<div class="print-footer">Soporte de gastos compartidos y préstamos informales. Mis Finanzas (Función IF) v4.1.0.</div>`;
     rc.innerHTML = html;
     window.print();
 });
@@ -7761,7 +7761,7 @@ document.getElementById('btn-print-liquidation-report')?.addEventListener('click
             </table>
         </div>
         
-        <div class="print-footer">Cálculos tributarios y laborales basados en parámetros de ${m.params.year} ingresados por el usuario. Son estimaciones referenciales de Mis Finanzas (Función IF) v4.0.0.</div>`;
+        <div class="print-footer">Cálculos tributarios y laborales basados en parámetros de ${m.params.year} ingresados por el usuario. Son estimaciones referenciales de Mis Finanzas (Función IF) v4.1.0.</div>`;
     window.print();
 });
 
