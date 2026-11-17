@@ -1007,12 +1007,16 @@ const renderSmartAlerts = (monthId, snap) => {
             const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), c.paymentDay, 8, 30, 0);
             const diffDays = Math.ceil((payDate - currentDate) / (1000 * 3600 * 24));
             if (diffDays >= 0 && diffDays <= prefs.daysBefore) {
+                const est = calculateCardMinPaymentEstimate(c, bal);
+                const quotaText = est.totalMinPayment > 0 ? ` • <b>Cuota: ${formatMoneyHtml(est.totalMinPayment)}</b>` : '';
                 alerts.push({
                     id: `card_${c.id}_${currRealMonthId}`,
                     title: `${renderIcon('card', 14)} Pago Tarjeta ${c.name}`,
-                    desc: diffDays === 0 ? `Vence hoy • Saldo: ${formatMoney(bal)}` : `Vence en ${diffDays} día(s) (día ${c.paymentDay}) • Saldo: ${formatMoney(bal)}`,
+                    desc: diffDays === 0 
+                        ? `Vence hoy • Saldo: ${formatMoney(bal)}${quotaText}` 
+                        : `En ${diffDays} día(s) (día ${c.paymentDay}) • Saldo: ${formatMoney(bal)}${quotaText}`,
                     actionLabel: `${renderIcon('calendar', 12)} Calendario`,
-                    onAction: () => downloadIcsEvent(`Pagar Tarjeta ${c.name}`, `Pago tarjeta ${c.name} por saldo vigente de ${formatMoney(bal)}.`, payDate)
+                    onAction: () => downloadIcsEvent(`Pagar Tarjeta ${c.name}`, `Pago tarjeta ${c.name} • Cuota mínima estimada: ${formatMoney(est.totalMinPayment)} • Saldo vigente: ${formatMoney(bal)}.`, payDate)
                 });
             }
         }
