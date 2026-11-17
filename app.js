@@ -2725,7 +2725,56 @@ const renderAnalyticsBalanceSheet = (balances, netWorth, snap) => {
     });
 };
 
-// --- 11B. GENERADOR DE REPORTES PDF (EXTRACTO BANCARIO) ---
+// --- 11B. GENERADOR DE REPORTES PDF (COMPATIBLE CON iOS PWA STANDALONE) ---
+const triggerSafePdfPrint = (htmlContent, docTitle = 'Reporte - Mis Finanzas') => {
+    const container = document.getElementById('print-report-container');
+    if (container) container.innerHTML = htmlContent;
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (isStandalone) {
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+            const printCss = `
+                * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
+                body { margin: 14mm 15mm; color: #0f172a; background: #fff; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 22px; }
+                .print-brand { display: flex; align-items: center; gap: 10px; }
+                .print-brand-icon { width: 38px; height: 38px; background: #0f172a; color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+                .print-brand h1 { margin: 0; font-size: 18pt; font-weight: 800; letter-spacing: -0.4px; line-height: 1.1; }
+                .print-brand span { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; }
+                .print-meta { text-align: right; }
+                .print-meta p { margin: 0 0 3px 0; font-size: 9pt; color: #334155; }
+                .print-section { margin-bottom: 18px; page-break-inside: avoid; }
+                .print-section-title { font-size: 10.5pt; font-weight: 800; border-bottom: 1px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+                .print-kpi-grid { display: flex; gap: 12px; margin-bottom: 18px; }
+                .print-kpi-box { flex: 1; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+                .print-kpi-box small { display: block; font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+                .print-kpi-box strong { font-size: 14pt; font-weight: 800; color: #0f172a; }
+                .print-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 16px; }
+                .print-table th { background: #0f172a; color: #fff; padding: 7px 9px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 8pt; }
+                .print-table td, .print-table tfoot td { padding: 7px 9px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+                .print-table tr:nth-child(even) td { background-color: #f8fafc; }
+                .print-text-right { text-align: right !important; }
+                .print-text-center { text-align: center !important; }
+                .print-icon-wrap { display: inline-flex; align-items: center; color: #64748b; }
+                .print-positive { color: #059669 !important; font-weight: 700; }
+                .print-negative { color: #dc2626 !important; font-weight: 700; }
+                .print-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #64748b; }
+            `;
+            printWin.document.open();
+            printWin.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${docTitle}</title><style>${printCss}</style></head><body>${htmlContent}<script>window.onload = function() { setTimeout(function() { window.print(); }, 250); };<\/script></body></html>`);
+            printWin.document.close();
+            return;
+        }
+    }
+
+    if (container) {
+        void container.offsetHeight;
+        window.print();
+    }
+};
+
 document.getElementById('btn-generate-pdf-report')?.addEventListener('click', () => {
     const container = document.getElementById('print-report-container');
     if (!container) return;
@@ -2857,8 +2906,7 @@ document.getElementById('btn-generate-pdf-report')?.addEventListener('click', ()
         </div>
     `;
 
-    void container.offsetHeight;
-    window.print();
+    triggerSafePdfPrint(container.innerHTML, `Extracto_${monthName}`);
 });
 
 // --- 12. HISTORIAL CON BUSCADOR INSTANTÁNEO, CONTADOR Y CONFIRMACIÓN RÁPIDA ---
@@ -9877,11 +9925,7 @@ document.getElementById('btn-print-cxc-report')?.addEventListener('click', () =>
         });
     }
     html += `<div class="print-footer">Soporte de gastos compartidos y préstamos informales. Mis Finanzas (Función IF).</div>`;
-    rc.innerHTML = html;
-    
-    // Forzamos el reflujo del DOM para Safari iOS
-    void rc.offsetHeight;
-    window.print();
+    triggerSafePdfPrint(html, 'Deudas_a_Favor');
 });
 
 // 3. REPORTE LABORAL Y DE LIQUIDACIÓN
@@ -9935,9 +9979,7 @@ document.getElementById('btn-print-liquidation-report')?.addEventListener('click
         
         <div class="print-footer">Cálculos tributarios y laborales basados en parámetros de ${m.params.year} ingresados por el usuario. Son estimaciones referenciales de Mis Finanzas (Función IF).</div>`;
     
-    // Forzamos el reflujo del DOM para Safari iOS
-    void rc.offsetHeight;
-    window.print();
+    triggerSafePdfPrint(rc.innerHTML, 'Analisis_Laboral_Liquidacion');
 });
 
 // --- RENDERIZADO DE DEUDAS A FAVOR (CUENTAS POR COBRAR) ---
