@@ -2762,8 +2762,27 @@ const triggerSafePdfPrint = (htmlContent, docTitle = 'Reporte - Mis Finanzas') =
                 .print-negative { color: #dc2626 !important; font-weight: 700; }
                 .print-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #64748b; }
             `;
+            const toolbarCss = `
+                .pwa-print-bar { position: sticky; top: 0; z-index: 9999; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #0f172a; color: #fff; padding: 12px 16px; margin: -14mm -15mm 18px -15mm; box-shadow: 0 4px 12px rgba(15,23,42,0.15); }
+                .pwa-print-btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+                .pwa-btn-back { background: rgba(255,255,255,0.14); color: #fff; }
+                .pwa-btn-share { background: #0284c7; color: #fff; }
+                @media print { .pwa-print-bar { display: none !important; } }
+            `;
+            const toolbarHtml = `
+                <div class="pwa-print-bar">
+                    <button type="button" class="pwa-print-btn pwa-btn-back" onclick="window.close()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        Volver
+                    </button>
+                    <button type="button" class="pwa-print-btn pwa-btn-share" onclick="window.print()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                        Guardar PDF / Compartir
+                    </button>
+                </div>
+            `;
             printWin.document.open();
-            printWin.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${docTitle}</title><style>${printCss}</style></head><body>${htmlContent}<script>window.onload = function() { setTimeout(function() { window.print(); }, 250); };<\/script></body></html>`);
+            printWin.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${docTitle}</title><style>${printCss}${toolbarCss}</style></head><body>${toolbarHtml}${htmlContent}<script>window.onload = function() { setTimeout(function() { window.print(); }, 300); };<\/script></body></html>`);
             printWin.document.close();
             return;
         }
