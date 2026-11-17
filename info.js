@@ -156,7 +156,7 @@ function openUniversalInfoModal(sectionKey) {
                 </details>
 
                 <details class="changelog-accordion">
-                    <summary><span>Versión 2.0.0</span><span>▾</span></summary>
+                    <summary><span>🧬 Versión 2.0.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste, tipografía tabular con decimales atenuados y derivación tonal dinámica (<code>color-mix</code>).</li>
                         <li><b>Formularios Plegables e Inteligentes:</b> Todos los formularios de creación ahora son desplegables para maximizar el espacio en pantalla y se cierran al guardar.</li>
