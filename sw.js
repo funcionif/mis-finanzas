@@ -11,7 +11,7 @@ const CORE_ASSETS = [
     './styles.css?v=2.0.1',
     './core.js?v=2.0.1',
     './info.js?v=2.0.1',
-    './app.js?v=2.0.5',
+    './app.js?v=2.0.7',
     './manifest.json?v=2.0.1',
     './icon.png'
 ];
