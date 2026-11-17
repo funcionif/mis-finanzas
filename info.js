@@ -82,7 +82,7 @@ function openUniversalInfoModal(sectionKey) {
                     <p style="margin-bottom:8px;"><b>Conciliación Inteligente (Tap-to-Clear):</b> En el historial del mes, activa el botón de confirmación <b>(✓)</b>. Al tocar las transacciones, estas cambiarán a un tono verde para indicar que ese movimiento particular ya se ha verificado exitosamente contra el extracto real de tu banco.</p>
                     <p style="margin-bottom:8px;"><b>Lógica Bancaria y Tarjetas de Crédito:</b> Controla de forma exacta las fechas de corte, días de pago y tasas (Mensual o Efectiva Anual). El sistema calcula dinámicamente tu pago mínimo separando los componentes de abono a capital y cargos por intereses.</p>
                     <p style="margin-bottom:8px;"><b>Cuota de Manejo y Seguros:</b> Configura el comportamiento de tu banco. Establece cobros condicionales (Ej: Solo cobrar la cuota de manejo si existe saldo pendiente, o exonerar el cobro si el gasto mensual supera un tope específico). Soporte para cálculo de Seguro de Vida deudores por millón o fracción.</p>
-                    <p style="margin-bottom:8px;"><b>Múltiples Modalidades de Crédito:</b> Administra diferentes formatos de obligación: <i>Préstamos Fijos</i>, <i>Cupos Rotativos / BNPL (Como Addi o Sistecrédito)</i>, y <i>Créditos Educativos</i> (con soporte para agregar trámites adicionales a la liquidación o emitir un recibo de soporte PDF).</p>
+                    <p style="margin-bottom:8px;"><b>Múltiples Modalidades de Crédito:</b> Administra diferentes formatos de obligación: <i>Préstamos Fijos</i>, <i>Cupos Rotativos / BNPL (Como Addi o Sistecrédito)</i>, y <i>Créditos Educativos</i> (con soporte para agregar trámites adicionales a la liquidación o emitir un recibo de soporte txt).</p>
                     <p style="margin-bottom:12px;"><b>Planificador de Deudas (Salida Estratégica):</b> Integra un simulador que proyecta cascadas de pagos extra (usando Método Avalancha o Bola de Nieve) para calcular exactamente cuándo quedarás libre de obligaciones financieras y cuánto dinero ahorrarás en intereses. Se puede integrar con tus primas legales de forma automática.</p>
 
                     <h4 style="color:var(--accent); font-size:13px; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px; display:flex; align-items:center; gap:6px;">
@@ -104,7 +104,6 @@ function openUniversalInfoModal(sectionKey) {
                         ${renderIcon('heart-pulse', 16)} 6. Análisis Integral y Rendimiento
                     </h4>
                     <p style="margin-bottom:8px;"><b>Semáforo de Salud Financiera y Capacidad de Endeudamiento:</b> Una medición de 0 a 100 basada en 4 pilares: Flujo de caja neto, Meses de reserva en liquidez total, Porcentaje de carga de deuda, y un indicador de solvencia patrimonial. Informa el nivel de endeudamiento sano recomendado con base en tus ingresos base.</p>
-                    <p style="margin-bottom:8px;"><b>Reportes PDF (Extracto Bancario):</b> Construye dinámicamente un comprobante de actividad (Hoja de balance, Resumen de Flujo de Caja y Listado detallado de movimientos) en formato folio, limpio y vectorizado, sin interferencias de la interfaz de la app, listo para ser almacenado en los archivos del celular o impreso.</p>
                     <p style="margin-bottom:8px;"><b>Gráficos Vectoriales Propios:</b> El módulo Analítico renderiza de forma nativa gráficas precisas del Flujo de caja, control presupuestal, evolución del patrimonio neto, y el mapa diario de actividad en formato SVG, garantizando rendimiento puro sin depender de pesadas librerías de terceros (Chart.js u otros).</p>
                     <p style="margin-bottom:12px;"><b>Migración Silenciosa y Compresión (IndexedDB):</b> Sistema avanzado de limpieza y <i>Cierre de Año</i>. La plataforma consolida años anteriores en cuentas maestras (disminuyendo drásticamente el peso del <code>localStorage</code>) mientras traslada tu historial de transacciones detallado, en un hilo asíncrono, a la base de datos <code>IndexedDB</code> nativa, previniendo cuellos de botella de rendimiento y blindando tu memoria Local-First.</p>
                 </div>
@@ -150,7 +149,7 @@ function openUniversalInfoModal(sectionKey) {
                     <summary><span>✨ Versión 2.0.1 (Actual)</span><span>▾</span></summary>
                     <ul>
                         <li><b>Control Anual Rediseñado:</b> Nueva vista de balance anual con diseño vertical Bento UI, reemplazando la tabla horizontal para una mejor experiencia móvil sin scroll.</li>
-                        <li><b>Reportes PDF PWA:</b> Ajustes de compatibilidad en el motor de renderizado para Safari iOS, garantizando la correcta exportación de reportes (Extractos, Cobros y Liquidación).</li>
+                        <li><b>Formateador Ultracompacto:</b> Eliminación de decimales en el reporte anual para optimizar el espacio y mejorar la legibilidad de la cuadrícula.</li>
                         <li><b>Gestión de Deudas a Favor:</b> Nuevo selector de motivo en el registro de cobros (Préstamo vs Venta/Servicio) con vinculación directa al presupuesto de ingresos.</li>
                         <li><b>Correcciones (Bugfixes):</b> Solución al cálculo del presupuesto global en categorías que contienen subcategorías, y estabilización del scroll en el menú lateral.</li>
                     </ul>
@@ -160,24 +159,22 @@ function openUniversalInfoModal(sectionKey) {
                     <summary><span>Versión 2.0.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste, tipografía tabular con decimales atenuados y derivación tonal dinámica (<code>color-mix</code>).</li>
-                        <li><b>Formularios Plegables e Inteligentes:</b> Todos los formularios de creación (Categorías, Cuentas, Tarjetas, Préstamos, Cobros, Bolsillos, Activos y Suscripciones) ahora son desplegables al inicio de cada lista para maximizar el espacio en pantalla y se cierran automáticamente al guardar.</li>
-                        <li><b>Iconografía Vectorial 100% Unificada:</b> Eliminación total de emojis residuales en categorías, etiquetas de gasto/ingreso fijo, archivado y diagnósticos de Salud Financiera, reemplazados por íconos SVG planos y espaciado optimizado.</li>
-                        <li><b>Presupuesto Adaptativo y Barra Global:</b> Los formularios y modales de presupuesto mutan dinámicamente entre límites de gasto (rojo) y metas de ingreso (verde), incorporando además una barra de progreso global en la cabecera.</li>
-                        <li><b>Guía Contextual de Arrastre (Rollover):</b> Nuevo aviso explicativo dinámico con ejemplos en pesos colombianos ($100.000) que detalla el impacto del sobrante o déficit según el modo elegido.</li>
-                        <li><b>Lógica Bancaria Avanzada (TC):</b> Cálculo inteligente de pagos mínimos, cuota de manejo (condicional por uso/saldo) y seguro de deudores (por millón o fijo). Botones rápidos para facturar cargos mensuales.</li>
-                        <li><b>Omni-Modal y UX:</b> Centralización del registro. Colores dinámicos para prevenir errores (rojo, verde, morado) e iconos renovados.</li>
-                        <li><b>Ahorro de Monedas:</b> Redondeo inteligente del efectivo con contabilidad en doble partida (sin alterar el gasto original).</li>
-                        <li><b>Gestor Educativo:</b> Módulo de matrícula universitaria con plan de pagos, trámites extra, descarga de recibos (.txt) y alertas a 7 días.</li>
-                        <li><b>Gastos Compartidos y Deudas a Favor:</b> Divide cuentas pagadas por otros, gestiona cuentas por cobrar independientes de tu liquidez y concilia reembolsos mediante transferencias.</li>
+                        <li><b>Formularios Plegables e Inteligentes:</b> Todos los formularios de creación ahora son desplegables para maximizar el espacio en pantalla y se cierran al guardar.</li>
+                        <li><b>Iconografía Vectorial 100% Unificada:</b> Eliminación total de emojis residuales en categorías, reemplazados por íconos SVG planos y espaciado optimizado.</li>
+                        <li><b>Presupuesto Adaptativo y Barra Global:</b> Los formularios mutan dinámicamente entre límites de gasto y metas de ingreso, incorporando una barra de progreso global.</li>
+                        <li><b>Guía Contextual de Arrastre (Rollover):</b> Nuevo aviso explicativo dinámico que detalla el impacto del sobrante o déficit según el modo elegido.</li>
+                        <li><b>Lógica Bancaria Avanzada (TC):</b> Cálculo inteligente de pagos mínimos, cuota de manejo (condicional) y seguro de deudores.</li>
+                        <li><b>Ahorro de Monedas:</b> Redondeo inteligente del efectivo con contabilidad en doble partida.</li>
+                        <li><b>Gestor Educativo:</b> Módulo de matrícula universitaria con plan de pagos, trámites extra y alertas a 7 días.</li>
+                        <li><b>Gastos Compartidos y Deudas a Favor:</b> Divide cuentas pagadas por otros y gestiona cuentas por cobrar independientes de tu liquidez.</li>
                         <li><b>Presupuesto Restante Dinámico:</b> Auto-llenado del saldo disponible al registrar gastos y revisión de saldo en tiempo real.</li>
-                        <li><b>Aumento de Sueldo y Retroactivos:</b> Simula incrementos salariales con impacto neto real, define vigencia por quincena y programa pagos retroactivos.</li>
-                        <li><b>Ahorro Automático (Nómina):</b> Nueva opción "Descuento por nómina" en Bolsillos. Al registrar tu sueldo, retiene la cuota y la abona a tus metas de ahorro automáticamente.</li>
+                        <li><b>Aumento de Sueldo y Retroactivos:</b> Simula incrementos salariales con impacto neto real y programa pagos retroactivos.</li>
+                        <li><b>Ahorro Automático (Nómina):</b> Nueva opción "Descuento por nómina" en Bolsillos que abona a tus metas de ahorro automáticamente.</li>
                         <li><b>Bolsillos Ocultos:</b> Excluye metas de ahorro de la hoja de balance para proteger tu capital psicológico.</li>
                         <li><b>Suscripciones y Fijos:</b> Gestiona tus servicios recurrentes y recibe alertas tempranas para pagarlos con 1 solo toque.</li>
-                        <li><b>Modo Privacidad Global:</b> Nuevo botón oculto en la cabecera ("Ojo"). Tapa al instante todos tus saldos reales con asteriscos (incluyendo Libre Seguro, TCs y gráficos) para usar la app en espacios públicos.</li>
-                        <li><b>Préstamos Fijos Flexibles:</b> Los créditos fijos ahora permiten registrar desembolsos adicionales manteniendo su base matemática de amortización.</li>
-                        <li><b>Analítica Suavizada y Personalizable:</b> Gráficos SVG rediseñados. Ahora puedes reorganizar a tu gusto los gráficos del panel de Análisis de forma independiente.</li>
-                        <li><b>Rendimiento y Optimización:</b> Delegación de eventos para que el historial cargue al instante y exclusión inteligente de tasas al 0% en el Plan Avalancha.</li>
+                        <li><b>Modo Privacidad Global:</b> Nuevo botón oculto en la cabecera ("Ojo"). Tapa al instante todos tus saldos reales con asteriscos.</li>
+                        <li><b>Préstamos Fijos Flexibles:</b> Permiten registrar desembolsos adicionales manteniendo su base de amortización.</li>
+                        <li><b>Analítica Suavizada y Personalizable:</b> Gráficos SVG rediseñados y reorganizables a tu gusto.</li>
                     </ul>
                 </details>
 
@@ -185,12 +182,12 @@ function openUniversalInfoModal(sectionKey) {
                     <summary><span>💎 Versión 1.2.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Onboarding Mejorado:</b> Nueva experiencia de bienvenida en dos pasos, con firma visual de Función IF.</li>
-                        <li><b>Cupos Rotativos Consolidados:</b> Registra múltiples compras por comercio dentro de un mismo cupo (Addi, Sistecrédito) y controla si afectan el gasto del mes.</li>
+                        <li><b>Cupos Rotativos Consolidados:</b> Registra múltiples compras por comercio dentro de un mismo cupo (Addi, Sistecrédito).</li>
                         <li><b>Bolsillos Inteligentes:</b> Cálculo automático de cuotas y fechas objetivo para tus metas de ahorro.</li>
                         <li><b>Fondo de Cesantías:</b> Nuevo sistema para acumular y separar tus cesantías año tras año.</li>
-                        <li><b>Historial de Activos y ROI:</b> Lleva el registro de la valorización o depreciación de tu patrimonio y calcula tu Ganancia Real.</li>
+                        <li><b>Historial de Activos y ROI:</b> Lleva el registro de la valorización o depreciación de tu patrimonio.</li>
                         <li><b>Liquidación Completa:</b> Módulo mejorado de nómina con vacaciones compensadas y bonos ocasionales.</li>
-                        <li><b>Bolsillos en Transferencias:</b> Transfiere dinero desde o hacia tus bolsillos de ahorro directamente al registrar una transferencia.</li>
+                        <li><b>Bolsillos en Transferencias:</b> Transfiere dinero desde o hacia tus bolsillos de ahorro directamente.</li>
                     </ul>
                 </details>
 
@@ -206,7 +203,7 @@ function openUniversalInfoModal(sectionKey) {
                 <details class="changelog-accordion">
                     <summary><span>🧮 Versión 1.1.0</span><span>▾</span></summary>
                     <ul>
-                        <li>Módulo completo de Nómina Colombia (Art. 383 E.T., Ley 1393, FSP, quincenas 1Q/2Q y simulador de bonos).</li>
+                        <li>Módulo completo de Nómina Colombia (Art. 383 E.T., Ley 1393, FSP, quincenas y simulador de bonos).</li>
                         <li>Planificador multi-deuda con métodos Avalancha y Bola de Nieve.</li>
                         <li>Calculadora matemática integrada sin uso de <code>eval()</code>.</li>
                     </ul>
@@ -231,22 +228,8 @@ window.openUniversalInfoModal = openUniversalInfoModal;
 
 const checkWhatsNewBanner = () => {
     if (typeof authData === 'undefined' || !authData) return;
-    const lastSeen = localStorage.getItem('myFinancesLastSeenVersion');
-    if (lastSeen && lastSeen !== APP_VERSION) {
-        const toast = document.getElementById('sw-update-toast');
-        if (toast) {
-            toast.innerHTML = `Actualizado a v${APP_VERSION} • Toca aquí para ver novedades`;
-            toast.style.cursor = 'pointer';
-            toast.classList.remove('hidden');
-            toast.onclick = () => {
-                toast.classList.add('hidden');
-                openUniversalInfoModal('about');
-            };
-            setTimeout(() => toast.classList.add('hidden'), 7500);
-        }
-    }
+    
+    // Para esta versión (2.0.1+), actualizamos el registro silenciosamente 
+    // sin mostrar el banner de alerta al usuario.
     localStorage.setItem('myFinancesLastSeenVersion', APP_VERSION);
 };
-
-// Los clics del Centro de Ayuda son enrutados directamente por app.js hacia window.openUniversalInfoModal
-
