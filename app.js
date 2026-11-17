@@ -1008,13 +1008,18 @@ const renderSmartAlerts = (monthId, snap) => {
             const diffDays = Math.ceil((payDate - currentDate) / (1000 * 3600 * 24));
             if (diffDays >= 0 && diffDays <= prefs.daysBefore) {
                 const est = calculateCardMinPaymentEstimate(c, bal);
-                const quotaText = est.totalMinPayment > 0 ? ` • Cuota:<br><b>${formatMoneyHtml(est.totalMinPayment)}</b>` : '';
+                const daysLine = diffDays === 0
+                    ? `Hoy (día ${c.paymentDay})`
+                    : `En ${diffDays} día(s) (día ${c.paymentDay})`;
+                const balanceLine = `Saldo: ${formatMoney(bal)}`;
+                const quotaLine = est.totalMinPayment > 0
+                    ? `<span style="display:block; margin-top:2px; color:var(--text-main); font-weight:700;">Cuota: <b style="font-size:12.5px; font-weight:800;">${formatMoneyHtml(est.totalMinPayment)}</b></span>`
+                    : '';
+
                 alerts.push({
                     id: `card_${c.id}_${currRealMonthId}`,
                     title: `${renderIcon('card', 14)} Pago Tarjeta ${c.name}`,
-                    desc: diffDays === 0 
-                        ? `Hoy (día ${c.paymentDay}) • Saldo:<br>${formatMoney(bal)}${quotaText}` 
-                        : `En ${diffDays} día(s) (día ${c.paymentDay}) • Saldo:<br>${formatMoney(bal)}${quotaText}`,
+                    desc: `<span style="display:block; margin-top:2px;">${daysLine}</span><span style="display:block; margin-top:2px;">${balanceLine}</span>${quotaLine}`,
                     actionLabel: `${renderIcon('calendar', 12)} Calendario`,
                     onAction: () => downloadIcsEvent(`Pagar Tarjeta ${c.name}`, `Pago tarjeta ${c.name} • Cuota mínima estimada: ${formatMoney(est.totalMinPayment)} • Saldo vigente: ${formatMoney(bal)}.`, payDate)
                 });
