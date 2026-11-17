@@ -2725,73 +2725,33 @@ const renderAnalyticsBalanceSheet = (balances, netWorth, snap) => {
     });
 };
 
-// --- 11B. GENERADOR DE REPORTES PDF (COMPATIBLE CON iOS PWA STANDALONE) ---
-const triggerSafePdfPrint = (htmlContent, docTitle = 'Reporte - Mis Finanzas') => {
-    const container = document.getElementById('print-report-container');
-    if (container) container.innerHTML = htmlContent;
+// --- 11B. GENERADOR DE REPORTES PDF (MÉTODO SWAP PARA iOS PWA) ---
+const triggerSafePdfPrint = (htmlContent, docTitle = 'Reporte') => {
+    const originalTitle = document.title;
+    document.title = docTitle;
+    
+    // Ocultar la app completa
+    const appWrapper = document.getElementById('app-wrapper') || document.body.firstElementChild;
+    const originalDisplay = appWrapper.style.display;
+    appWrapper.style.display = 'none';
 
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    // Inyectar el reporte directamente en el body
+    const printContainer = document.createElement('div');
+    printContainer.id = 'temp-pwa-print-container';
+    printContainer.innerHTML = htmlContent;
+    document.body.appendChild(printContainer);
 
-    if (isStandalone) {
-        const printWin = window.open('', '_blank');
-        if (printWin) {
-            const printCss = `
-                * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
-                body { margin: 14mm 15mm; color: #0f172a; background: #fff; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 22px; }
-                .print-brand { display: flex; align-items: center; gap: 10px; }
-                .print-brand-icon { width: 38px; height: 38px; background: #0f172a; color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-                .print-brand h1 { margin: 0; font-size: 18pt; font-weight: 800; letter-spacing: -0.4px; line-height: 1.1; }
-                .print-brand span { font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; }
-                .print-meta { text-align: right; }
-                .print-meta p { margin: 0 0 3px 0; font-size: 9pt; color: #334155; }
-                .print-section { margin-bottom: 18px; page-break-inside: avoid; }
-                .print-section-title { font-size: 10.5pt; font-weight: 800; border-bottom: 1px solid #0f172a; padding-bottom: 4px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
-                .print-kpi-grid { display: flex; gap: 12px; margin-bottom: 18px; }
-                .print-kpi-box { flex: 1; padding: 10px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
-                .print-kpi-box small { display: block; font-size: 7.5pt; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
-                .print-kpi-box strong { font-size: 14pt; font-weight: 800; color: #0f172a; }
-                .print-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 16px; }
-                .print-table th { background: #0f172a; color: #fff; padding: 7px 9px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 8pt; }
-                .print-table td, .print-table tfoot td { padding: 7px 9px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
-                .print-table tr:nth-child(even) td { background-color: #f8fafc; }
-                .print-text-right { text-align: right !important; }
-                .print-text-center { text-align: center !important; }
-                .print-icon-wrap { display: inline-flex; align-items: center; color: #64748b; }
-                .print-positive { color: #059669 !important; font-weight: 700; }
-                .print-negative { color: #dc2626 !important; font-weight: 700; }
-                .print-footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #64748b; }
-            `;
-            const toolbarCss = `
-                .pwa-print-bar { position: sticky; top: 0; z-index: 9999; display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #0f172a; color: #fff; padding: 12px 16px; margin: -14mm -15mm 18px -15mm; box-shadow: 0 4px 12px rgba(15,23,42,0.15); }
-                .pwa-print-btn { border: none; border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-                .pwa-btn-back { background: rgba(255,255,255,0.14); color: #fff; }
-                .pwa-btn-share { background: #0284c7; color: #fff; }
-                @media print { .pwa-print-bar { display: none !important; } }
-            `;
-            const toolbarHtml = `
-                <div class="pwa-print-bar">
-                    <button type="button" class="pwa-print-btn pwa-btn-back" onclick="window.close()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                        Volver
-                    </button>
-                    <button type="button" class="pwa-print-btn pwa-btn-share" onclick="window.print()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                        Guardar PDF / Compartir
-                    </button>
-                </div>
-            `;
-            printWin.document.open();
-            printWin.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${docTitle}</title><style>${printCss}${toolbarCss}</style></head><body>${toolbarHtml}${htmlContent}<script>window.onload = function() { setTimeout(function() { window.print(); }, 300); };<\/script></body></html>`);
-            printWin.document.close();
-            return;
-        }
-    }
-
-    if (container) {
-        void container.offsetHeight;
+    // Dar tiempo al motor de renderizado de Safari
+    setTimeout(() => {
         window.print();
-    }
+        
+        // Restaurar la app inmediatamente después de que se cierre el diálogo de iOS
+        setTimeout(() => {
+            document.title = originalTitle;
+            document.body.removeChild(printContainer);
+            appWrapper.style.display = originalDisplay;
+        }, 300);
+    }, 150);
 };
 
 document.getElementById('btn-generate-pdf-report')?.addEventListener('click', () => {
