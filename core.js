@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v2.0.0)
+// INICIO DE ARCHIVO: core.js (v2.0.1)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -560,44 +560,29 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
         }
     });
 
-    // Si es categoría padre con subcategorías, consolida base y arrastre de cada subcategoría
-    if (!subObj && catObj.subcategories && catObj.subcategories.length > 0) {
-        let totalBase = reservedSubs;
-        let totalRollover = 0;
-        let totalCurrent = reservedSubs;
-        catObj.subcategories.forEach(sub => {
-            if (!sub.isArchived) {
-                const subSt = getCategoryBudgetStatus(catObj, sub, mIdx, y);
-                totalBase = round2(totalBase + subSt.baseLimit);
-                totalRollover = round2(totalRollover + subSt.rolloverAmt);
-                totalCurrent = round2(totalCurrent + subSt.currentLimit);
-            }
-        });
-        return { baseLimit: totalBase, reservedSubs, rolloverAmt: totalRollover, currentLimit: Math.max(0, totalCurrent) };
-    }
-
-    // 1. Calcular Límite Base del mes actual (Categoría simple o Subcategoría individual)
-    let baseLimit = 0;
+    // 1. Calcular Límite Base propio del mes actual (Categoría padre o Subcategoría individual)
+    let ownBaseLimit = 0;
     if (subObj) {
         if (subObj.isMonthly && Array.isArray(subObj.months)) {
-            baseLimit = round2(subObj.months[mIdx] || 0);
+            ownBaseLimit = round2(subObj.months[mIdx] || 0);
         } else if (subObj.limit > 0 && isPeriodMatching(subObj.frequency || 'monthly', subObj.startMonth || 0, mIdx)) {
-            baseLimit = round2(subObj.limit);
+            ownBaseLimit = round2(subObj.limit);
         }
     } else {
         const cfg = financeData.categoryBudgets[catObj.name];
         if (cfg) {
-            if (typeof cfg === 'number') baseLimit = round2(cfg);
-            else if (cfg.isMonthly && Array.isArray(cfg.months)) baseLimit = round2(cfg.months[mIdx] || 0);
-            else baseLimit = round2(cfg.general || 0);
+            if (typeof cfg === 'number') ownBaseLimit = round2(cfg);
+            else if (cfg.isMonthly && Array.isArray(cfg.months)) ownBaseLimit = round2(cfg.months[mIdx] || 0);
+            else ownBaseLimit = round2(cfg.general || 0);
         }
     }
 
-    baseLimit = round2(baseLimit + reservedSubs);
+    ownBaseLimit = round2(ownBaseLimit + reservedSubs);
 
-    // 3. Calcular Arrastre (Rollover) mes a mes dentro del año fiscal (Enero -> mIdx - 1)
-    let rolloverAmt = 0;
+    // 2. Calcular Arrastre (Rollover) propio mes a mes dentro del año fiscal (Enero -> mIdx - 1)
+    let ownRolloverAmt = 0;
     const rolloverMode = subObj ? (subObj.rollover || 'none') : (catObj.rollover || 'none');
+    const hasSubcats = !subObj && Array.isArray(catObj.subcategories) && catObj.subcategories.some(s => !s.isArchived);
     
     if (rolloverMode !== 'none' && mIdx > 0) {
         let runningRollover = 0;
@@ -638,11 +623,14 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
             });
             mLimit = round2(mLimit + mSubs);
 
-            // Gasto ejecutado en el mes i
+            // Ejecución en el mes i
             let mSpent = 0;
             financeData.transactions.forEach(t => {
                 if (t.monthId === tempMonthId && t.type === 'expense' && !t.isAdjustment && t.category === catObj.name) {
-                    if (!subObj || t.subcategory === subObj.name) {
+                    const matchesScope = subObj
+                        ? (t.subcategory === subObj.name)
+                        : (!hasSubcats || !t.subcategory || t.subcategory === 'General');
+                    if (matchesScope) {
                         mSpent = round2(mSpent + round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount));
                     }
                 }
@@ -658,11 +646,40 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
             }
         }
         
-        rolloverAmt = runningRollover;
+        ownRolloverAmt = runningRollover;
     }
 
-    const currentLimit = Math.max(0, round2(baseLimit + rolloverAmt));
-    return { baseLimit, reservedSubs, rolloverAmt, currentLimit };
+    const ownCurrentLimit = Math.max(0, round2(ownBaseLimit + ownRolloverAmt));
+
+    // 3. Si es categoría padre con subcategorías, consolida su presupuesto propio + el de cada subcategoría
+    if (!subObj && catObj.subcategories && catObj.subcategories.length > 0) {
+        let totalBase = ownBaseLimit;
+        let totalRollover = ownRolloverAmt;
+        let totalCurrent = ownCurrentLimit;
+        catObj.subcategories.forEach(sub => {
+            if (!sub.isArchived) {
+                const subSt = getCategoryBudgetStatus(catObj, sub, mIdx, y);
+                totalBase = round2(totalBase + subSt.baseLimit);
+                totalRollover = round2(totalRollover + subSt.rolloverAmt);
+                totalCurrent = round2(totalCurrent + subSt.currentLimit);
+            }
+        });
+        return {
+            baseLimit: totalBase,
+            reservedSubs,
+            rolloverAmt: totalRollover,
+            currentLimit: Math.max(0, totalCurrent),
+            ownCurrentLimit
+        };
+    }
+
+    return {
+        baseLimit: ownBaseLimit,
+        reservedSubs,
+        rolloverAmt: ownRolloverAmt,
+        currentLimit: ownCurrentLimit,
+        ownCurrentLimit
+    };
 };
 
 const getCategoryLimitForMonth = (catObj, monthIndex, year = null) => {
@@ -704,7 +721,9 @@ const getRemainingBudgetForSelection = (type, categoryName, subcategoryName, mon
     }
 
     const status = getCategoryBudgetStatus(catObj, subObj, monthIndex, year);
-    const totalLimit = status.currentLimit;
+    const totalLimit = (!subObj && subcategoryName === 'General' && hasSubcats && status.ownCurrentLimit > 0)
+        ? status.ownCurrentLimit
+        : status.currentLimit;
 
     let spent = 0;
     financeData.transactions.forEach(t => {
@@ -2392,7 +2411,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v2.0.0//ES',
+        'PRODID:-//Mis Finanzas//v2.0.1//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,

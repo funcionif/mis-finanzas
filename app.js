@@ -1,5 +1,5 @@
 // ==========================================
-// app.js (v2.0.0 - Fintech Editorial)
+// app.js (v2.0.1 - Fintech Editorial)
 // EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO
 // ==========================================
 
@@ -244,6 +244,57 @@ document.getElementById('quick-action-form')?.addEventListener('submit', (e) => 
     hasUnsavedChanges = false;
     quickActionHandler = null;
     document.getElementById('quick-action-modal')?.classList.add('hidden');
+});
+
+// --- 3.5 MODO EXCLUSIVO / MODO DIOS ---
+const getExclusiveKey = () => localStorage.getItem('myFinancesGodKey') || '@K3y$a%2026*';
+
+// Inicializar el estado al abrir la app
+if (localStorage.getItem('myFinancesExclusiveMode') === 'true') {
+    document.body.classList.add('exclusive-mode-active');
+    setTimeout(() => {
+        const switchEl = document.getElementById('profile-exclusive-mode');
+        if (switchEl) switchEl.checked = true;
+    }, 500);
+}
+
+// Escuchar el interruptor
+document.getElementById('profile-exclusive-mode')?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        const userInput = prompt('Ingresa el código de acceso exclusivo:');
+        if (userInput === getExclusiveKey()) {
+            localStorage.setItem('myFinancesExclusiveMode', 'true');
+            document.body.classList.add('exclusive-mode-active');
+            alert('Acceso concedido. Funciones exclusivas activadas.');
+        } else {
+            alert('Código incorrecto.');
+            e.target.checked = false; 
+        }
+    } else {
+        localStorage.removeItem('myFinancesExclusiveMode');
+        document.body.classList.remove('exclusive-mode-active');
+        alert('Funciones exclusivas desactivadas y ocultas.');
+    }
+});
+
+// Cambiar clave exclusiva
+document.getElementById('btn-change-god-key')?.addEventListener('click', () => {
+    const current = prompt('Ingresa tu código actual:');
+    if (current !== getExclusiveKey()) {
+        alert('Código actual incorrecto.');
+        return;
+    }
+    const newKey = prompt('Ingresa el NUEVO código de acceso:');
+    if (!newKey || newKey.trim() === '') return;
+    
+    const confirmKey = prompt('Confirma el NUEVO código:');
+    if (newKey !== confirmKey) {
+        alert('Los códigos no coinciden. Operacion cancelada.');
+        return;
+    }
+    
+    localStorage.setItem('myFinancesGodKey', newKey);
+    alert('Código de acceso exclusivo actualizado correctamente.');
 });
 
 // --- 4. TEMAS, MODO CLARO/OSCURO Y SEGURIDAD ---
@@ -520,12 +571,16 @@ window.openSideDrawer = () => {
         fabBtn?.classList.remove('active');
     }
     document.getElementById('quick-calendar-popover')?.classList.add('hidden');
+    document.body.classList.add('drawer-open');
     sideDrawerBackdrop?.classList.remove('hidden');
     sideDrawer?.classList.remove('closed');
     sideDrawer?.setAttribute('aria-hidden', 'false');
+    const scrollArea = sideDrawer?.querySelector('.drawer-scroll');
+    if (scrollArea) scrollArea.scrollTop = 0;
 };
 
 window.closeSideDrawer = () => {
+    document.body.classList.remove('drawer-open');
     sideDrawer?.classList.add('closed');
     sideDrawerBackdrop?.classList.add('hidden');
     sideDrawer?.setAttribute('aria-hidden', 'true');
@@ -2802,7 +2857,8 @@ document.getElementById('btn-generate-pdf-report')?.addEventListener('click', ()
         </div>
     `;
 
-    setTimeout(() => { window.print(); }, 150);
+    void container.offsetHeight;
+    window.print();
 });
 
 // --- 12. HISTORIAL CON BUSCADOR INSTANTÁNEO, CONTADOR Y CONFIRMACIÓN RÁPIDA ---
@@ -3239,30 +3295,17 @@ document.querySelectorAll('.pill-btn[data-filter]').forEach(btn => {
     });
 });
 
-// --- 13. CONTROL ANUAL CONSOLIDADO (PTTO VS REAL 12 MESES) ---
+// --- 13. CONTROL ANUAL CONSOLIDADO (DISEÑO BENTO VERTICAL) ---
 const renderAnnualControlTable = () => {
-    const thead = document.getElementById('annual-control-thead');
-    const tbody = document.getElementById('annual-control-tbody');
-    if (!thead || !tbody) return;
+    const container = document.getElementById('annual-control-view');
+    if (!container) return;
 
     if (document.getElementById('annual-year-title')) {
         document.getElementById('annual-year-title').innerText = annualViewYear;
     }
 
-    const shortMonths = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    let headHtml = `<tr><th>Concepto (${annualViewYear})</th>`;
-
-    shortMonths.forEach(m => {
-        headHtml += `<th colspan="2" style="text-align:center; border-left:1px solid rgba(148,163,184,0.2);">${m}</th>`;
-    });
-    headHtml += `<th colspan="2" style="text-align:center; border-left:2px solid rgba(148,163,184,0.35);">TOTAL AÑO</th></tr><tr><th>Categoría</th>`;
-
-    for (let i = 0; i < 13; i++) {
-        headHtml += `<th style="font-size:9px; border-left:1px solid rgba(148,163,184,0.15);">PTTO</th><th style="font-size:9px;">REAL</th>`;
-    }
-    headHtml += `</tr>`;
-    thead.innerHTML = headHtml;
-
+    const shortMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
     const incPtto = Array(12).fill(0), incReal = Array(12).fill(0);
     const expPtto = Array(12).fill(0), expReal = Array(12).fill(0);
 
@@ -3291,45 +3334,148 @@ const renderAnnualControlTable = () => {
         });
     };
 
-    const incRows = getCatMatrix('income'), expRows = getCatMatrix('expense');
+    const incRows = getCatMatrix('income');
+    const expRows = getCatMatrix('expense');
 
-    const buildRowHtml = (label, pArr, rArr, isSummary = false, colorType = 'neutral') => {
-        let row = `<tr class="${isSummary ? 'annual-summary-row' : ''}"><td>${label}</td>`;
-        let totP = 0, totR = 0;
+    let html = '';
 
-        for (let m = 0; m < 12; m++) {
-            totP = round2(totP + pArr[m]);
-            totR = round2(totR + rArr[m]);
-
-            let rColor = '';
-            if (colorType === 'income' && rArr[m] > 0) rColor = 'positive';
-            else if (colorType === 'expense' && pArr[m] > 0 && rArr[m] > pArr[m]) rColor = 'negative';
-            else if (colorType === 'net') rColor = rArr[m] >= 0 ? 'positive' : 'negative';
-
-            row += `<td style="color:var(--text-muted); border-left:1px solid rgba(148,163,184,0.15);">${pArr[m] > 0 ? formatCompact(pArr[m]) : '-'}</td>
-                    <td class="${rColor}"><b>${rArr[m] !== 0 ? formatCompact(rArr[m]) : '-'}</b></td>`;
-        }
-        row += `<td style="border-left:2px solid rgba(148,163,184,0.35); color:var(--text-muted);">${formatCompact(totP)}</td>
-                <td><b>${formatCompact(totR)}</b></td></tr>`;
-        return row;
+    const fmtAnnual = (val) => {
+        if (isPrivacyMode) return val < 0 ? '-****' : '****';
+        if (financeData.useCompactNumbers && Math.abs(val) >= 1000) return formatCompact(val);
+        const isNeg = val < 0;
+        const absVal = Math.round(Math.abs(val));
+        const numStr = absVal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        return (isNeg ? '-$' : '$') + numStr;
     };
 
-    let bodyHtml = '';
-    if (annualViewTab === 'summary' || annualViewTab === 'income') {
-        bodyHtml += buildRowHtml('📈 TOTAL INGRESOS', incPtto, incReal, true, 'income');
-        if (annualViewTab === 'income') incRows.forEach(r => bodyHtml += buildRowHtml(r.name, r.pttoArr, r.realArr, false, 'income'));
-    }
-    if (annualViewTab === 'summary' || annualViewTab === 'expense') {
-        bodyHtml += buildRowHtml('📉 TOTAL EGRESOS', expPtto, expReal, true, 'expense');
-        if (annualViewTab === 'expense') expRows.forEach(r => bodyHtml += buildRowHtml(r.name, r.pttoArr, r.realArr, false, 'expense'));
-    }
     if (annualViewTab === 'summary') {
-        const netPtto = incPtto.map((v, i) => round2(v - expPtto[i]));
-        const netReal = incReal.map((v, i) => round2(v - expReal[i]));
-        bodyHtml += buildRowHtml('⚖️ FLUJO NETO MES', netPtto, netReal, true, 'net');
+        let totIncP = 0, totIncR = 0, totExpP = 0, totExpR = 0;
+        for(let i = 0; i < 12; i++){ totIncP = round2(totIncP+incPtto[i]); totIncR = round2(totIncR+incReal[i]); totExpP = round2(totExpP+expPtto[i]); totExpR = round2(totExpR+expReal[i]); }
+        const totNetP = round2(totIncP - totExpP);
+        const totNetR = round2(totIncR - totExpR);
+
+        html += `
+        <div class="glass-sub-box" style="border-color:color-mix(in srgb, var(--accent) 30%, transparent); background:var(--card-bg); padding:12px 10px;">
+            <h4 style="font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:12px; text-align:center; display:flex; justify-content:center; align-items:center; gap:6px;">
+                <span style="color:var(--warning); display:flex;">${renderIcon('award', 16)}</span> BALANCE TOTAL AÑO ${annualViewYear}
+            </h4>
+            <div class="dash-strip-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom:0; padding:10px 4px; gap:4px;">
+                <div class="dash-strip-item"><small>Ingresos</small><strong class="positive" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.5px;">${fmtAnnual(totIncR)}</strong><span style="font-size:9.5px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ptto: ${fmtAnnual(totIncP)}</span></div>
+                <div class="dash-strip-item"><small>Egresos</small><strong class="negative" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.5px;">${fmtAnnual(totExpR)}</strong><span style="font-size:9.5px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ptto: ${fmtAnnual(totExpP)}</span></div>
+                <div class="dash-strip-item"><small>Flujo Neto</small><strong class="${totNetR>=0?'positive':'negative'}" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-0.5px;">${fmtAnnual(totNetR)}</strong><span style="font-size:9.5px; color:var(--text-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ptto: ${fmtAnnual(totNetP)}</span></div>
+            </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:4px; font-size:9.5px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin:16px 4px 6px 4px; padding-bottom:6px; border-bottom:1px solid var(--border-color);">
+            <div>Mes</div>
+            <div style="text-align:right;">Ptto</div>
+            <div style="text-align:right;">Real</div>
+            <div style="text-align:right;">Dif.</div>
+        </div>
+        `;
+
+        for (let i = 0; i < 12; i++) {
+            const netR = round2(incReal[i] - expReal[i]);
+            const netP = round2(incPtto[i] - expPtto[i]);
+            const diffInc = round2(incReal[i] - incPtto[i]);
+            const diffExp = round2(expReal[i] - expPtto[i]);
+            const diffNet = round2(netR - netP);
+            const currM = currentDate.getMonth();
+            const currY = currentDate.getFullYear();
+            const isFutureAndEmpty = annualViewYear >= currY && (annualViewYear > currY || i > currM) && incPtto[i]===0 && expPtto[i]===0 && incReal[i]===0 && expReal[i]===0;
+            
+            if(!isFutureAndEmpty) {
+                html += `
+                <div class="glass-sub-box" style="padding:12px 10px; margin-bottom:10px;">
+                    <h4 style="font-size:12px; font-weight:800; color:var(--text-main); margin-bottom:10px;">${shortMonths[i]} ${annualViewYear}</h4>
+                    <div style="display:grid; grid-template-columns: 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:4px; font-size:11px; margin-bottom:6px; align-items:center; letter-spacing:-0.3px;">
+                        <span style="color:var(--text-muted); font-weight:600;">Ingresos</span>
+                        <span style="color:var(--text-muted); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(incPtto[i])}</span>
+                        <strong class="positive" style="text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(incReal[i])}</strong>
+                        <span class="${diffInc >= 0 ? 'positive' : 'negative'}" style="text-align:right; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${diffInc >= 0 ? '+' : ''}${fmtAnnual(diffInc)}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:4px; font-size:11px; margin-bottom:8px; align-items:center; letter-spacing:-0.3px;">
+                        <span style="color:var(--text-muted); font-weight:600;">Egresos</span>
+                        <span style="color:var(--text-muted); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(expPtto[i])}</span>
+                        <strong class="negative" style="text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(expReal[i])}</strong>
+                        <span class="${diffExp <= 0 ? 'positive' : 'negative'}" style="text-align:right; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${diffExp > 0 ? '+' : ''}${fmtAnnual(diffExp)}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 50px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr); gap:4px; font-size:11.5px; padding-top:8px; border-top:1px dashed var(--border-color); align-items:center; letter-spacing:-0.3px;">
+                        <strong style="color:var(--text-main);">Neto</strong>
+                        <span style="color:var(--text-muted); text-align:right; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(netP)}</span>
+                        <strong class="${netR>=0?'positive':'negative'}" style="text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(netR)}</strong>
+                        <span class="${diffNet >= 0 ? 'positive' : 'negative'}" style="text-align:right; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${diffNet >= 0 ? '+' : ''}${fmtAnnual(diffNet)}</span>
+                    </div>
+                </div>`;
+            }
+        }
+
+    } else {
+        const isInc = annualViewTab === 'income';
+        const arrP = isInc ? incPtto : expPtto;
+        const arrR = isInc ? incReal : expReal;
+        const rows = isInc ? incRows : expRows;
+        const mainColor = isInc ? 'var(--positive)' : 'var(--negative)';
+        const title = isInc ? 'Total Ingresos' : 'Total Egresos';
+        const iconTotal = isInc ? renderIcon('trending-up', 16) : renderIcon('arrow-down-left', 16);
+
+        let totP = 0, totR = 0;
+        for(let i=0; i<12; i++){ totP = round2(totP+arrP[i]); totR = round2(totR+arrR[i]); }
+
+        html += `
+        <div class="glass-sub-box" style="border-color:${mainColor}; background:color-mix(in srgb, ${mainColor} 6%, transparent); margin-bottom:14px; padding:12px 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:13.5px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                    <span style="color:${mainColor}; display:inline-flex;">${iconTotal}</span> ${title}
+                </span>
+                <strong style="font-size:17px; color:${mainColor}; letter-spacing:-0.5px;">${fmtAnnual(totR)}</strong>
+            </div>
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted); margin-top:4px; text-align:right;">Presupuestado: ${fmtAnnual(totP)}</div>
+        </div>`;
+
+        rows.forEach(r => {
+            let catTotP = 0, catTotR = 0;
+            for(let i=0; i<12; i++){ catTotP = round2(catTotP+r.pttoArr[i]); catTotR = round2(catTotR+r.realArr[i]); }
+            
+            if (catTotP === 0 && catTotR === 0) return;
+
+            const iconHtml = getCategoryIcon(r.name, isInc ? 'income' : 'expense');
+            const catNameLabel = cleanCatName(r.name);
+
+            let monthsHtml = '';
+            for (let i = 0; i < 12; i++) {
+                if (r.pttoArr[i] === 0 && r.realArr[i] === 0) continue;
+                monthsHtml += `
+                <div style="display:grid; grid-template-columns: 50px minmax(0,1fr) minmax(0,1fr); gap:4px; align-items:center; font-size:11px; padding:8px 4px; border-bottom:1px solid var(--border-color); letter-spacing:-0.3px;">
+                    <span style="color:var(--text-muted); font-weight:600;">${shortMonths[i]}</span>
+                    <span style="color:var(--text-muted); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Ptto: ${fmtAnnual(r.pttoArr[i])}</span>
+                    <strong style="color:${mainColor}; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${fmtAnnual(r.realArr[i])}</strong>
+                </div>`;
+            }
+
+            html += `
+            <details class="changelog-accordion" style="margin-bottom:10px; padding:12px 14px;">
+                <summary style="display:flex; justify-content:space-between; align-items:flex-start; font-size:13px; font-weight:700; color:var(--text-main);">
+                    <span style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                        <span class="drawer-icon-box subtle-box" style="width:28px; height:28px; border-radius:8px; color:${mainColor}; flex-shrink:0;">${iconHtml}</span>
+                        <div style="display:flex; flex-direction:column; min-width:0; line-height:1.3;">
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px; display:block;">${catNameLabel}</span>
+                            <small style="font-size:10px; color:var(--text-muted); font-weight:600; margin-top:2px;">Ptto Anual: ${fmtAnnual(catTotP)}</small>
+                        </div>
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        <strong style="color:${mainColor}; font-size:14.5px; letter-spacing:-0.5px;">${fmtAnnual(catTotR)}</strong>
+                        <span style="color:var(--text-muted); font-size:12px; margin-top:2px;">▾</span>
+                    </div>
+                </summary>
+                <div style="margin-top:10px; padding-top:4px; border-top:1px dashed var(--border-color);">
+                    ${monthsHtml}
+                </div>
+            </details>`;
+        });
     }
 
-    tbody.innerHTML = bodyHtml;
+    container.innerHTML = html;
 };
 
 document.getElementById('open-annual-from-budget-btn')?.addEventListener('click', () => {
@@ -3758,10 +3904,11 @@ const renderBudgetView = () => {
                 ? `<span style="color:${remaining >= 0 ? 'var(--text-muted)' : 'var(--negative)'}; font-weight:600;">${remaining >= 0 ? `Quedan ${formatMoney(remaining)}` : `Excedido ${formatMoney(Math.abs(remaining))}`}</span>`
                 : `<span style="color:${remaining <= 0 ? 'var(--positive)' : 'var(--text-muted)'}; font-weight:600;">${remaining <= 0 ? '¡Meta superada!' : `Faltan ${formatMoney(remaining)}`}</span>`;
 
+            const catLimitLabel = currentBudgetType === 'expense' ? 'Límite' : 'Meta';
             progressHtml = `
                 <div style="margin-top:14px; margin-bottom:12px;">
                     <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:6px; font-weight:600; color:var(--text-muted);">
-                        <span>Límite: ${formatMoney(limit)}${catRollTag}</span>
+                        <span>${catLimitLabel}: ${formatMoney(limit)}${catRollTag}</span>
                         ${subText}
                     </div>
                     <div class="tc-mini-bar" style="height:8px; margin:0;"><div class="tc-mini-bar-fill" style="width:${pct}%; background-color:${barColor};"></div></div>
@@ -3779,7 +3926,9 @@ const renderBudgetView = () => {
                 const subStatus = getCategoryBudgetStatus(catObj, subObj, currentMonthIndex, viewDate.getFullYear());
                 const subLimitVal = subStatus.currentLimit;
                 const subSpent = totalsBySubcat[`${cat}::${subName}`] || 0;
-                const subFixedIcon = subObj.isFixed ? ` <span title="Gasto Fijo" style="color:var(--negative);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></span>` : '';
+                const subFixedIcon = subObj.isFixed ? ` <span title="${currentBudgetType === 'expense' ? 'Gasto Fijo' : 'Ingreso Fijo'}" style="color:${currentBudgetType === 'expense' ? 'var(--negative)' : 'var(--positive)'};"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg></span>` : '';
+                const subActualLabel = currentBudgetType === 'expense' ? 'Gasto' : 'Recibido';
+                const subLimitLabel = currentBudgetType === 'expense' ? 'Límite' : 'Meta';
                 
                 let subProgressHtml = '';
                 if (subLimitVal > 0) {
@@ -3787,12 +3936,12 @@ const renderBudgetView = () => {
                     const sBarColor = currentBudgetType === 'expense' && subSpent > subLimitVal ? 'var(--negative)' : 'var(--positive)';
                     subProgressHtml = `
                         <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-bottom:3px;">
-                            <span>Gasto: ${formatMoney(subSpent)}</span>
-                            <span>Límite: ${formatMoney(subLimitVal)}</span>
+                            <span>${subActualLabel}: ${formatMoney(subSpent)}</span>
+                            <span>${subLimitLabel}: ${formatMoney(subLimitVal)}</span>
                         </div>
                         <div class="tc-mini-bar" style="height:4px; margin:0; background:rgba(148,163,184,0.15);"><div class="tc-mini-bar-fill" style="width:${sPct}%; background-color:${sBarColor};"></div></div>`;
                 } else {
-                    subProgressHtml = `<div style="font-size:10.5px; color:var(--text-muted);">Gasto: ${formatMoney(subSpent)}</div>`;
+                    subProgressHtml = `<div style="font-size:10.5px; color:var(--text-muted);">${subActualLabel}: ${formatMoney(subSpent)}</div>`;
                 }
 
                 subcatsHtml += `
@@ -5825,14 +5974,43 @@ window.openReceivablesModal = () => {
     const rModal = document.getElementById('receivables-modal');
     if (!rModal) return;
     document.getElementById('debts-receivable-view')?.classList.remove('hidden');
+    
     if (typeof renderReceivablesBreakdown === 'function') {
         renderReceivablesBreakdown(currentBalances);
     }
+    
     const recvAccSel = document.getElementById('new-recv-account');
     if (recvAccSel) {
         const assets = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'asset' && !a.id.startsWith('CxC_')));
         recvAccSel.innerHTML = assets.map(a => `<option value="${a.id}">${stripLeadingEmoji(a.name)}${a.isDefault ? ' ★' : ''}</option>`).join('');
     }
+    
+    const recvCatSel = document.getElementById('new-recv-category');
+    if (recvCatSel) {
+        const list = [...(financeData.categories['income'] || [])].filter(c => !c.isArchived).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+        let html = '';
+
+        if (list.length === 0) {
+            html = `<option value="">Crea una categoría en la pestaña Presupuesto</option>`;
+        } else {
+            list.forEach(cat => {
+                const labelCat = cleanCatName(cat.name);
+                if (cat.subcategories && cat.subcategories.length > 0) {
+                    html += `<optgroup label="${labelCat}">`;
+                    html += `<option value="${cat.name}::General">${labelCat} (General)</option>`;
+                    const subs = [...cat.subcategories].filter(s => !s.isArchived).sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+                    subs.forEach(sub => {
+                        html += `<option value="${cat.name}::${sub.name}">↳ ${cleanCatName(sub.name)}</option>`;
+                    });
+                    html += `</optgroup>`;
+                } else {
+                    html += `<option value="${cat.name}::General">${labelCat}</option>`;
+                }
+            });
+        }
+        recvCatSel.innerHTML = html;
+    }
+    
     hasUnsavedChanges = false;
     rModal.classList.remove('hidden');
 };
@@ -9645,7 +9823,7 @@ document.getElementById('btn-generate-pdf-report')?.addEventListener('click', ()
                 <tbody>${txHtml.length > 0 ? txHtml : '<tr><td colspan="5" style="text-align:center;">Sin movimientos este mes</td></tr>'}</tbody>
             </table>
         </div>
-        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v2.0.0.</div>`;
+        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v2.0.1.</div>`;
     window.print();
 });
 
@@ -9654,41 +9832,55 @@ document.getElementById('btn-print-cxc-report')?.addEventListener('click', () =>
     const rc = document.getElementById('print-report-container');
     if (!rc) return;
     const receivables = financeData.customAccounts.filter(a => a.id.startsWith('CxC_'));
-    let html = `<style>${basePrintStyles}</style>
+    let html = `
         <div class="print-header">
-            <h1>Estado de Deudas a Favor (Cobros Pendientes)</h1>
-            <p><strong>Titular:</strong> ${authData ? authData.name : 'Usuario'} | <strong>Corte a:</strong> ${currentDate.toLocaleDateString('es-CO')} ${currentDate.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</p>
+            <div class="print-brand">
+                <div class="print-brand-icon">
+                    ${renderIcon('users', 24)}
+                </div>
+                <div>
+                    <h1>DEUDAS A FAVOR Y COBROS PENDIENTES</h1>
+                    <span>Función IF • Mis Finanzas</span>
+                </div>
+            </div>
+            <div class="print-meta">
+                <p><strong>Titular:</strong> ${authData ? authData.name : 'Usuario'}</p>
+                <p><strong>Generado:</strong> ${currentDate.toLocaleDateString('es-CO')} a las ${currentDate.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</p>
+            </div>
         </div>`;
     
     if (receivables.length === 0) {
-        html += '<p>No existen deudas a favor registradas en el sistema.</p>';
+        html += '<div class="print-section"><p>No existen deudas a favor registradas en el sistema.</p></div>';
     } else {
         receivables.forEach(acc => {
             const bal = round2(currentBalances[acc.id] || 0);
             if (bal === 0) return;
-            const nameClean = acc.name.replace('🤝 Me debe: ', '');
+            const nameClean = stripLeadingEmoji(acc.name).replace('Me debe:', '').trim();
             let txHtml = '';
             
             const accTxs = financeData.transactions.filter(t => t.account === acc.id || t.toAccount === acc.id).sort((a,b) => b.id - a.id);
             accTxs.forEach(t => {
                 const isLoan = (t.type === 'transfer' && t.toAccount === acc.id) || (t.type === 'income' && t.isAdjustment && t.account === acc.id);
                 const isPayment = (t.type === 'transfer' && t.account === acc.id) || (t.type === 'expense' && t.isAdjustment && t.account === acc.id);
-                if (isLoan) txHtml += `<tr><td>${t.date}</td><td>Préstamo / Gasto asignado</td><td>${t.description}</td><td class="print-text-right print-negative">-${formatMoney(t.amount)}</td></tr>`;
-                if (isPayment) txHtml += `<tr><td>${t.date}</td><td>Abono recibido</td><td>${t.description}</td><td class="print-text-right print-positive">+${formatMoney(t.amount)}</td></tr>`;
+                if (isLoan) txHtml += `<tr><td>${t.date.split(',')[0]}</td><td>Préstamo / Gasto asignado</td><td>${stripLeadingEmoji(t.description)}</td><td class="print-text-right"><span class="print-negative">-${formatMoney(t.amount)}</span></td></tr>`;
+                if (isPayment) txHtml += `<tr><td>${t.date.split(',')[0]}</td><td>Abono recibido</td><td>${stripLeadingEmoji(t.description)}</td><td class="print-text-right"><span class="print-positive">+${formatMoney(t.amount)}</span></td></tr>`;
             });
 
             html += `
-            <div class="print-section"><div class="print-section-title">Deudor: ${nameClean}</div>
+            <div class="print-section"><div class="print-section-title">Detalle de Deudor: ${nameClean}</div>
                 <table class="print-table">
-                    <thead><tr><th>Fecha</th><th>Concepto</th><th>Descripción</th><th class="print-text-right">Valor</th></tr></thead>
+                    <thead><tr><th style="width:15%;">Fecha</th><th style="width:30%;">Concepto</th><th style="width:35%;">Descripción</th><th class="print-text-right" style="width:20%;">Valor</th></tr></thead>
                     <tbody>${txHtml}</tbody>
-                    <tfoot><tr><th colspan="3">SALDO PENDIENTE POR COBRAR A LA FECHA</th><th class="print-text-right print-positive" style="font-size:12pt;">${formatMoney(bal)}</th></tr></tfoot>
+                    <tfoot><tr><td colspan="3" style="font-weight:700; text-align:right;">SALDO PENDIENTE POR COBRAR:</td><td class="print-text-right"><span class="print-positive" style="font-size:11pt;">${formatMoney(bal)}</span></td></tr></tfoot>
                 </table>
             </div>`;
         });
     }
-    html += `<div class="print-footer">Soporte de gastos compartidos y préstamos informales. Mis Finanzas (Función IF) v2.0.0.</div>`;
+    html += `<div class="print-footer">Soporte de gastos compartidos y préstamos informales. Mis Finanzas (Función IF).</div>`;
     rc.innerHTML = html;
+    
+    // Forzamos el reflujo del DOM para Safari iOS
+    void rc.offsetHeight;
     window.print();
 });
 
@@ -9699,10 +9891,21 @@ document.getElementById('btn-print-liquidation-report')?.addEventListener('click
     if (!rc || !salaryStr) return;
     const config = JSON.parse(salaryStr), m = calculateLaborMetrics(config, currentDate);
     
-    rc.innerHTML = `<style>${basePrintStyles}</style>
+    rc.innerHTML = `
         <div class="print-header">
-            <h1>Certificado de Análisis Laboral y Retención</h1>
-            <p><strong>Empleado:</strong> ${authData ? authData.name : 'Usuario'} | <strong>Fecha de Simulación:</strong> ${currentDate.toLocaleDateString('es-CO')} ${currentDate.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</p>
+            <div class="print-brand">
+                <div class="print-brand-icon">
+                    ${renderIcon('briefcase', 24)}
+                </div>
+                <div>
+                    <h1>ANÁLISIS LABORAL Y LIQUIDACIÓN</h1>
+                    <span>Función IF • Mis Finanzas</span>
+                </div>
+            </div>
+            <div class="print-meta">
+                <p><strong>Empleado:</strong> ${authData ? authData.name : 'Usuario'}</p>
+                <p><strong>Generado:</strong> ${currentDate.toLocaleDateString('es-CO')} a las ${currentDate.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</p>
+            </div>
         </div>
         
         <div class="print-section"><div class="print-section-title">1. Resumen Salarial Mensual</div>
@@ -9710,27 +9913,30 @@ document.getElementById('btn-print-liquidation-report')?.addEventListener('click
                 <tr><td>Sueldo Básico:</td><td class="print-text-right">${formatMoney(m.basic)}</td></tr>
                 <tr><td>Ingreso No Salarial / Bonos (Tope Ley 1393: ${m.params.nonSalaryCapPct}%):</td><td class="print-text-right">${formatMoney(m.nonSalary)}</td></tr>
                 <tr><td>Auxilio de Transporte Efectivo (Legal):</td><td class="print-text-right">${formatMoney(m.effectiveTransport)}</td></tr>
-                <tr><td>Deducciones de Ley (Salud, Pensión, FSP):</td><td class="print-text-right print-negative">-${formatMoney(m.health + m.pension + m.fsp)}</td></tr>
-                <tr><td>Retención en la Fuente (UVT ${m.params.year}):</td><td class="print-text-right print-negative">-${formatMoney(m.ret)}</td></tr>
-                <tr><td>Libranzas / Cuotas de Deuda Nómina:</td><td class="print-text-right print-negative">-${formatMoney(m.payrollDebtDeductions)}</td></tr>
-                <tr style="background:#f4f6f9;"><td><strong>SALARIO NETO EFECTIVO (A Recibir):</strong></td><td class="print-text-right print-positive" style="font-size:12pt;">${formatMoney(m.net)}</td></tr>
+                <tr><td>Deducciones de Ley (Salud, Pensión, FSP):</td><td class="print-text-right"><span class="print-negative">-${formatMoney(m.health + m.pension + m.fsp)}</span></td></tr>
+                <tr><td>Retención en la Fuente (UVT ${m.params.year}):</td><td class="print-text-right"><span class="print-negative">-${formatMoney(m.ret)}</span></td></tr>
+                <tr><td>Libranzas / Cuotas de Deuda Nómina:</td><td class="print-text-right"><span class="print-negative">-${formatMoney(m.payrollDebtDeductions)}</span></td></tr>
+                <tr style="background:#f8fafc;"><td style="font-weight:800;">SALARIO NETO EFECTIVO (A Recibir):</td><td class="print-text-right"><span class="print-positive" style="font-size:12pt;">${formatMoney(m.net)}</span></td></tr>
             </table>
         </div>
 
         <div class="print-section"><div class="print-section-title">2. Proyección de Prestaciones Sociales (Proporcional a la fecha)</div>
             <table class="print-table">
-                <thead><tr><th>Concepto Legal</th><th>Base de Cálculo ($)</th><th>Tiempo Causado</th><th class="print-text-right">Valor Consolidado</th></tr></thead>
+                <thead><tr><th style="width:38%;">Concepto Legal</th><th style="width:25%;">Base de Cálculo</th><th style="width:20%;">Tiempo Causado</th><th class="print-text-right" style="width:17%;">Valor</th></tr></thead>
                 <tbody>
-                    <tr><td>Prima de Servicios (Semestre en curso)</td><td>${formatMoney(m.primaBase)}</td><td>${m.daysSemester} días</td><td class="print-text-right print-positive">${formatMoney(m.liqPrima)}</td></tr>
-                    <tr><td>Cesantías (Año en curso)</td><td>${formatMoney(m.cesantiasBase)}</td><td>${m.daysYear} días</td><td class="print-text-right print-positive">${formatMoney(m.liqCesantias)}</td></tr>
-                    <tr><td>Intereses de Cesantías (12% Anual)</td><td>${formatMoney(m.liqCesantias)} (Cesantías)</td><td>${m.daysYear} días</td><td class="print-text-right print-positive">${formatMoney(m.liqIntereses)}</td></tr>
-                    <tr><td>Vacaciones Pendientes (Causadas - Tomadas)</td><td>${formatMoney(m.basic)}</td><td>${m.vacDaysPending} días pendientes</td><td class="print-text-right print-positive">${formatMoney(m.liqVacaciones)}</td></tr>
+                    <tr><td>Prima de Servicios (Semestre en curso)</td><td>${formatMoney(m.primaBase)}</td><td>${m.daysSemester} días</td><td class="print-text-right"><span class="print-positive">${formatMoney(m.liqPrima)}</span></td></tr>
+                    <tr><td>Cesantías (Año en curso)</td><td>${formatMoney(m.cesantiasBase)}</td><td>${m.daysYear} días</td><td class="print-text-right"><span class="print-positive">${formatMoney(m.liqCesantias)}</span></td></tr>
+                    <tr><td>Intereses de Cesantías (12% Anual)</td><td>${formatMoney(m.liqCesantias)} (Cesantías)</td><td>${m.daysYear} días</td><td class="print-text-right"><span class="print-positive">${formatMoney(m.liqIntereses)}</span></td></tr>
+                    <tr><td>Vacaciones Pendientes (Causadas - Tomadas)</td><td>${formatMoney(m.basic)}</td><td>${m.vacDaysPending} días</td><td class="print-text-right"><span class="print-positive">${formatMoney(m.liqVacaciones)}</span></td></tr>
                 </tbody>
-                <tfoot><tr><th colspan="3">TOTAL LIQUIDACIÓN SIMULADA AL CORTE</th><th class="print-text-right print-positive" style="font-size:13pt;">${formatMoney(m.liqPrima + m.liqCesantias + m.liqIntereses + m.liqVacaciones)}</th></tr></tfoot>
+                <tfoot><tr><td colspan="3" style="font-weight:700; text-align:right;">TOTAL LIQUIDACIÓN SIMULADA AL CORTE:</td><td class="print-text-right"><span class="print-positive" style="font-size:12pt;">${formatMoney(m.liqPrima + m.liqCesantias + m.liqIntereses + m.liqVacaciones)}</span></td></tr></tfoot>
             </table>
         </div>
         
-        <div class="print-footer">Cálculos tributarios y laborales basados en parámetros de ${m.params.year} ingresados por el usuario. Son estimaciones referenciales de Mis Finanzas (Función IF) v2.0.0.</div>`;
+        <div class="print-footer">Cálculos tributarios y laborales basados en parámetros de ${m.params.year} ingresados por el usuario. Son estimaciones referenciales de Mis Finanzas (Función IF).</div>`;
+    
+    // Forzamos el reflujo del DOM para Safari iOS
+    void rc.offsetHeight;
     window.print();
 });
 
@@ -9806,48 +10012,75 @@ document.querySelectorAll('#debts-type-pills .pill-btn').forEach(btn => {
     });
 });
 
+// Alternar campos según el motivo de la deuda a favor
+document.getElementById('new-recv-type')?.addEventListener('change', (e) => {
+    const isLoan = e.target.value === 'loan';
+    document.getElementById('group-new-recv-account')?.classList.toggle('hidden', !isLoan);
+    document.getElementById('group-new-recv-category')?.classList.toggle('hidden', isLoan);
+});
+
 // Guardar nueva deuda a favor
 document.getElementById('new-receivable-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const rawName = document.getElementById('new-recv-name').value.trim();
     const amount = parseMoneyInput(document.getElementById('new-recv-amount').value);
-    const sourceAcc = document.getElementById('new-recv-account').value;
-
+    const type = document.getElementById('new-recv-type')?.value || 'loan';
+    
     if (!rawName || amount <= 0) return;
 
     const accId = 'CxC_' + rawName.replace(/\s+/g, '_');
 
-    // Crear la cuenta si no existe
+    // Crear la cuenta si no existe (Cero emojis en la DB)
     if (!financeData.customAccounts.some(a => a.id === accId)) {
-        financeData.customAccounts.push({ id: accId, name: `🤝 Me debe: ${rawName}`, category: 'asset', isDefault: false, showWhenZero: true });
+        financeData.customAccounts.push({ id: accId, name: `Me debe: ${rawName}`, category: 'asset', isDefault: false, showWhenZero: true });
     }
 
     const now = new Date();
     const mId = getMonthId(now);
     const dateStr = `${now.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}, ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`;
 
-    if (sourceAcc === 'adjustment') {
-        // Ajuste directo (saldo inicial) sin restar de otra cuenta
+    if (type === 'loan') {
+        const sourceAcc = document.getElementById('new-recv-account')?.value;
+        if (sourceAcc === 'adjustment') {
+            // Ajuste directo (saldo inicial) sin restar de otra cuenta
+            financeData.transactions.push({
+                id: now.getTime(), monthId: mId, type: 'income', status: 'closed',
+                account: accId, description: 'Saldo Inicial (Préstamo a favor)', amount: amount,
+                date: dateStr, isAdjustment: true
+            });
+        } else {
+            // Transferencia automática de tu cuenta a la cuenta por cobrar
+            financeData.transactions.push({
+                id: now.getTime(), monthId: mId, type: 'transfer', status: 'closed',
+                account: sourceAcc, toAccount: accId, description: `Préstamo a ${rawName}`, amount: amount,
+                date: dateStr, isAdjustment: false
+            });
+        }
+    } else if (type === 'sale') {
+        // Ingreso por venta o servicio
+        const catVal = document.getElementById('new-recv-category')?.value || 'Otros Ingresos::General';
+        const [catName, subName] = catVal.split('::');
         financeData.transactions.push({
             id: now.getTime(), monthId: mId, type: 'income', status: 'closed',
-            account: accId, description: 'Saldo Inicial (Préstamo a favor)', amount: amount,
-            date: dateStr, isAdjustment: true
-        });
-    } else {
-        // Transferencia automática de tu cuenta a la cuenta por cobrar
-        financeData.transactions.push({
-            id: now.getTime(), monthId: mId, type: 'transfer', status: 'closed',
-            account: sourceAcc, toAccount: accId, description: `💸 Préstamo a ${rawName}`, amount: amount,
+            account: accId, category: catName, subcategory: subName || 'General',
+            description: `Venta/Servicio por cobrar a ${rawName}`, amount: amount,
             date: dateStr, isAdjustment: false
         });
     }
 
     localStorage.setItem('myFinances', JSON.stringify(financeData));
-    document.getElementById('new-receivable-form').reset();
+    e.target.reset();
+    document.getElementById('new-recv-type')?.dispatchEvent(new Event('change'));
+    setTimeout(() => e.target.closest('details')?.removeAttribute('open'), 50);
     hasUnsavedChanges = false;
     updateDashboard();
-    renderReceivablesBreakdown();
-    alert(`✅ Deuda a favor de ${formatMoney(amount)} registrada a nombre de ${rawName}.`);
+    
+    // Refrescar modal de cuentas por cobrar si está abierto
+    if (typeof renderReceivablesBreakdown === 'function' && typeof currentBalances !== 'undefined') {
+        renderReceivablesBreakdown(currentBalances);
+    }
+    
+    alert(`Deuda a favor de ${formatMoney(amount)} registrada a nombre de ${rawName}.`);
 });
 
 // --- LÓGICA VISUAL: AHORRO DE MONEDAS EN EFECTIVO (DENOMINACIONES COLOMBIA) ---

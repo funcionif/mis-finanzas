@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.0.0)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.0.1)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 
 function openUniversalInfoModal(sectionKey) {
     const uModal = document.getElementById('universal-info-modal');
@@ -147,7 +147,17 @@ function openUniversalInfoModal(sectionKey) {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>Versión 2.0.0 (Actual)</span><span>▾</span></summary>
+                    <summary><span>✨ Versión 2.0.1 (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Control Anual Rediseñado:</b> Nueva vista de balance anual con diseño vertical Bento UI, reemplazando la tabla horizontal para una mejor experiencia móvil sin scroll.</li>
+                        <li><b>Reportes PDF PWA:</b> Ajustes de compatibilidad en el motor de renderizado para Safari iOS, garantizando la correcta exportación de reportes (Extractos, Cobros y Liquidación).</li>
+                        <li><b>Gestión de Deudas a Favor:</b> Nuevo selector de motivo en el registro de cobros (Préstamo vs Venta/Servicio) con vinculación directa al presupuesto de ingresos.</li>
+                        <li><b>Correcciones (Bugfixes):</b> Solución al cálculo del presupuesto global en categorías que contienen subcategorías, y estabilización del scroll en el menú lateral.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>Versión 2.0.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Estética Fintech Editorial y Bento UI:</b> Superficies mate de alto contraste, tipografía tabular con decimales atenuados y derivación tonal dinámica (<code>color-mix</code>).</li>
                         <li><b>Formularios Plegables e Inteligentes:</b> Todos los formularios de creación (Categorías, Cuentas, Tarjetas, Préstamos, Cobros, Bolsillos, Activos y Suscripciones) ahora son desplegables al inicio de cada lista para maximizar el espacio en pantalla y se cierran automáticamente al guardar.</li>
