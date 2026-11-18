@@ -1,5 +1,5 @@
 // ==========================================
-// app.js (v2.0.1 - Fintech Editorial)
+// app.js (v2.1.0 - Fintech Editorial)
 // EL PINTOR: INTERFAZ, EVENTOS Y RENDERIZADO
 // ==========================================
 
@@ -7,6 +7,63 @@ let isDashboardEditMode = false;
 let historySearchQuery = '';
 let lastPlannerScheduleText = '';
 let isPrivacyMode = localStorage.getItem('myFinancesPrivacyMode') === 'true';
+
+// --- MODO DEMO ---
+const applyDemoData = () => {
+    const d = new Date();
+    const curY = d.getFullYear();
+    const curM = d.getMonth();
+    const pad = (n) => String(n).padStart(2, '0');
+    const curId = `${curY}-${pad(curM + 1)}`;
+    const now = d.getTime();
+
+    const dTrans = [
+        { id: now-86400000*20, monthId: curId, type: 'income', status: 'closed', account: 'Efectivo', category: 'Salario / Nómina', description: 'Pago de quincena', amount: 1500000, date: `${d.getDate()-20} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*18, monthId: curId, type: 'expense', status: 'closed', account: 'Efectivo', category: 'Vivienda y Servicios', description: 'Arriendo', amount: 800000, date: `${d.getDate()-18} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*15, monthId: curId, type: 'expense', status: 'closed', account: 'Efectivo', category: 'Alimentación', description: 'Mercado Exito', amount: 250000, date: `${d.getDate()-15} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*10, monthId: curId, type: 'expense', status: 'closed', account: 'Efectivo', category: 'Transporte', description: 'Gasolina', amount: 60000, date: `${d.getDate()-10} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*5, monthId: curId, type: 'expense', status: 'closed', account: 'Demo_CC', category: 'Alimentación', description: 'Restaurante', amount: 85000, date: `${d.getDate()-5} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*2, monthId: curId, type: 'expense', status: 'closed', account: 'Demo_CC', category: 'Entretenimiento', description: 'Cine', amount: 45000, date: `${d.getDate()-2} ${getShortMonthLabel(d)}` },
+        { id: now-86400000*1, monthId: curId, type: 'expense', status: 'pending', account: 'Efectivo', category: 'Salud', description: 'Cita médica (agendada)', amount: 40000, date: 'Mañana' }
+    ];
+
+    financeData.customAccounts = [
+        { id: 'Efectivo', name: 'Cuenta Nómina', category: 'asset', isDefault: true, showWhenZero: false },
+        { id: 'Demo_CC', name: 'Tarjeta Crédito Clásica', category: 'credit_card', isDefault: false, creditLimit: 2000000, cutoffDay: 15, paymentDay: 30, rate: 2.1, rateType: 'monthly' },
+        { id: 'Demo_Debt', name: 'Crédito Vehículo', category: 'debt', debtType: 'fixed', isDefault: false, debtOriginal: 15000000, debtTotalQuotes: 48, debtPaidQuotes: 12, debtRate: 1.8, debtRateType: 'monthly', debtMonthlyPayment: 420000, paymentDay: 5 }
+    ];
+    
+    financeData.pockets = [
+        { id: 'Demo_Pck', name: 'Vacaciones', goal: 2000000, principal: 400000, yields: 12000, activeQuota: 150000, startDate: `${curY}-01-01`, targetDate: `${curY}-12-15` }
+    ];
+
+    financeData.subscriptions = [
+        { id: 'Demo_Sub1', name: 'Netflix Premium', amount: 39900, cycle: 'monthly', nextBillingDate: `${curY}-${pad(curM+1)}-${pad(Math.min(28, d.getDate()+3))}`, accountId: 'Demo_CC', category: 'Entretenimiento', status: 'active' }
+    ];
+
+    financeData.transactions = dTrans;
+    financeData.categoryBudgets = { 'Alimentación': 600000, 'Entretenimiento': 200000, 'Vivienda y Servicios': 900000, 'Transporte': 150000 };
+    financeData.isDemoMode = true;
+
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+};
+
+const clearDemoDataAndStart = () => {
+    financeData = {
+        transactions: [],
+        customAccounts: [{ id: 'Efectivo', name: 'Efectivo', category: 'asset', isDefault: false, showWhenZero: false }],
+        monthlyBudget: 0,
+        fixedAssets: [],
+        pockets: [],
+        subscriptions: [],
+        hideZeroAccounts: false,
+        categories: financeData.categories, 
+        preferences: financeData.preferences,
+        isDemoMode: false
+    };
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    localStorage.removeItem('myFinancesSalary');
+};
 
 // --- ICONOGRAFÍA VECTORIAL ---
 const getAccountIcon = (category) => {
@@ -299,7 +356,7 @@ document.getElementById('btn-change-god-key')?.addEventListener('click', () => {
 
 // --- 4. TEMAS, MODO CLARO/OSCURO Y SEGURIDAD ---
 const applyColorModeUI = (mode) => {
-    const cleanMode = ['light', 'dark', 'auto'].includes(mode) ? mode : 'auto';
+    const cleanMode = ['light', 'dark', 'black', 'auto'].includes(mode) ? mode : 'auto';
     localStorage.setItem('myFinancesColorMode', cleanMode);
     if (cleanMode === 'auto') {
         document.documentElement.removeAttribute('data-color-mode');
@@ -311,25 +368,43 @@ const applyColorModeUI = (mode) => {
     });
 };
 
-const applyThemeUI = (themeValue) => {
-    const colors = getThemeColors(themeValue);
+const applyThemeUI = (themeValue = null) => {
+    const trip = financeData.tripMode || {};
+    let activeTheme = themeValue || localStorage.getItem('myFinancesTheme') || 'purple';
+    
+    // Si el modo viaje está activo, sobreescribir el tema principal temporalmente
+    if (trip.active) {
+        activeTheme = (financeData.preferences && financeData.preferences.tripTheme) ? financeData.preferences.tripTheme : '#0ea5e9';
+    }
+
+    const colors = getThemeColors(activeTheme);
     document.documentElement.style.setProperty('--accent', colors.accent);
     document.documentElement.style.setProperty('--theme-gradient', colors.gradient);
     document.documentElement.style.setProperty('--theme-shadow', colors.shadow);
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) metaTheme.setAttribute('content', colors.accent);
+    
+    // Sincronizar el selector normal (ocultando que cambió si el viaje está activo)
     const picker = document.getElementById('custom-theme-color');
-    if (picker) {
+    if (picker && !trip.active) {
         picker.value = colors.accent;
-        const isPreset = Array.from(document.querySelectorAll('.theme-color-btn')).some(b => b.getAttribute('data-theme') === themeValue);
+        const isPreset = Array.from(document.querySelectorAll('.theme-color-btn')).some(b => b.getAttribute('data-theme') === activeTheme);
         const pickerWrap = picker.closest('.custom-color-row') || picker.parentElement;
         if (pickerWrap) {
             pickerWrap.style.borderColor = !isPreset ? 'var(--accent)' : '';
             pickerWrap.style.boxShadow = !isPreset ? '0 0 0 2px var(--accent-soft)' : '';
         }
     }
+    
+    // Sincronizar el selector de viaje
+    const tripPicker = document.getElementById('trip-theme-color');
+    if (tripPicker && financeData.preferences && financeData.preferences.tripTheme) {
+        tripPicker.value = financeData.preferences.tripTheme;
+    }
+
+    // Botones predeterminados (quitar el marco activo si el viaje tomó control)
     document.querySelectorAll('.theme-color-btn').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-theme') === themeValue);
+        b.classList.toggle('active', !trip.active && b.getAttribute('data-theme') === activeTheme);
     });
 };
 
@@ -374,6 +449,29 @@ const syncUserUI = () => {
         if (confirmPinLabel) confirmPinLabel.innerText = 'Confirmar PIN';
         if (submitBtn) submitBtn.innerText = 'Guardar y Activar PIN';
     }
+
+    if (financeData.isDemoMode) {
+        let demoBanner = document.getElementById('demo-mode-profile-banner');
+        if (!demoBanner) {
+            const wrap = document.getElementById('profile-main-view');
+            demoBanner = document.createElement('div');
+            demoBanner.id = 'demo-mode-profile-banner';
+            demoBanner.style.cssText = 'background:rgba(59, 130, 246, 0.1); border:1px dashed #3b82f6; border-radius:12px; padding:14px; margin-bottom:14px; text-align:center;';
+            demoBanner.innerHTML = `
+                <strong style="color:#3b82f6; font-size:13.5px; display:block; margin-bottom:6px;">Modo Demostración Activo</strong>
+                <small style="color:var(--text-muted); font-size:11.5px; display:block; margin-bottom:12px;">Estás viendo datos de prueba.</small>
+                <button type="button" id="btn-clear-demo" class="btn btn-primary" style="width:100%; font-size:13px; background:#ef4444; border-color:#ef4444;">Limpiar datos y Empezar</button>
+            `;
+            wrap?.insertBefore(demoBanner, wrap.firstChild);
+            
+            document.getElementById('btn-clear-demo')?.addEventListener('click', () => {
+                if (confirm('¿Borrar los datos de prueba e iniciar tu cuenta real en limpio?')) {
+                    clearDemoDataAndStart();
+                    location.reload();
+                }
+            });
+        }
+    }
 };
 
 const initAuthUI = (forceLock = false) => {
@@ -406,15 +504,256 @@ const initAuthUI = (forceLock = false) => {
     }
 };
 
-document.getElementById('btn-welcome-next')?.addEventListener('click', () => {
+const ONBOARDING_SLIDES = [
+    {
+        title: 'Tu bóveda financiera, 100% tuya',
+        desc: 'Organiza cuentas, tarjetas y bolsillos directamente en tu teléfono, sin vincular claves bancarias ni subir datos a la nube.',
+        art: `
+            <div style="width:100%; display:flex; flex-direction:column; justify-content:center; gap:8px;">
+                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:14px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 6px 16px rgba(0,0,0,0.05);">
+                    <div style="display:flex; align-items:center; gap:8px; text-align:left;">
+                        <span style="width:28px; height:28px; border-radius:8px; background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--accent); display:flex; align-items:center; justify-content:center;">${renderIcon('shield', 15)}</span>
+                        <div>
+                            <strong style="display:block; font-size:11.5px; color:var(--text-main);">Privacidad Local-First</strong>
+                            <small style="font-size:9.5px; color:var(--text-muted);">Cifrado en tu dispositivo</small>
+                        </div>
+                    </div>
+                    <span style="font-size:9.5px; font-weight:800; color:var(--positive); background:color-mix(in srgb, var(--positive) 14%, transparent); padding:2px 7px; border-radius:99px;">Activo</span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:11px; padding:8px 6px; text-align:center;">
+                        <span style="color:var(--positive); display:inline-flex;">${renderIcon('bank', 14)}</span>
+                        <small style="display:block; font-size:9.5px; font-weight:700; color:var(--text-main); margin-top:2px;">Liquidez</small>
+                    </div>
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:11px; padding:8px 6px; text-align:center;">
+                        <span style="color:var(--accent); display:inline-flex;">${renderIcon('card', 14)}</span>
+                        <small style="display:block; font-size:9.5px; font-weight:700; color:var(--text-main); margin-top:2px;">Tarjetas</small>
+                    </div>
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:11px; padding:8px 6px; text-align:center;">
+                        <span style="color:#f59e0b; display:inline-flex;">${renderIcon('piggy', 14)}</span>
+                        <small style="display:block; font-size:9.5px; font-weight:700; color:var(--text-main); margin-top:2px;">Bolsillos</small>
+                    </div>
+                </div>
+            </div>
+        `
+    },
+    {
+        title: 'Anticipa tu Libre Seguro Hoy',
+        desc: 'Descuenta automáticamente tus compromisos y proyecta tu saldo día por día para detectar puntos bajos antes de que ocurran.',
+        art: `
+            <div style="width:100%; display:flex; flex-direction:column; justify-content:center;">
+                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:16px; padding:11px 13px; box-shadow:0 8px 20px rgba(0,0,0,0.06); text-align:left; width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:10px; font-weight:700; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px;">${renderIcon('shield', 12)} Libre Seguro Hoy</span>
+                        <span style="font-size:9.5px; font-weight:800; color:var(--accent);">Proyección</span>
+                    </div>
+                    <div style="font-size:16px; font-weight:800; color:var(--text-main); margin-bottom:6px;">$ 1.480.000<span style="font-size:11px; opacity:0.55;">,00</span></div>
+                    <svg viewBox="0 0 220 44" style="width:100%; height:40px; display:block; overflow:visible;">
+                        <defs>
+                            <linearGradient id="onbCurveGrad" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stop-color="#3b82f6"/>
+                                <stop offset="55%" stop-color="#8b5cf6"/>
+                                <stop offset="100%" stop-color="#10b981"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M 4 28 Q 48 10, 92 34 T 174 14 L 216 6" fill="none" stroke="url(#onbCurveGrad)" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="96" cy="34" r="4" fill="#ef4444" stroke="var(--card-bg)" stroke-width="1.5"/>
+                        <circle cx="216" cy="6" r="4.5" fill="#10b981" stroke="var(--card-bg)" stroke-width="1.5"/>
+                    </svg>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; font-weight:700; color:var(--text-muted); margin-top:2px;">
+                        <span>Hoy</span>
+                        <span style="color:#ef4444;">● Punto bajo</span>
+                        <span class="positive">Cierre mes</span>
+                    </div>
+                </div>
+            </div>
+        `
+    },
+    {
+        title: 'Detecta fugas y viaja sin enredos',
+        desc: 'Identifica tus días de mayor gasto discrecional con el mapa de calor y aísla el presupuesto de tus viajes en un solo toque.',
+        art: `
+            <div style="width:100%; display:flex; flex-direction:column; justify-content:center;">
+                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:16px; padding:11px 12px; box-shadow:0 8px 20px rgba(0,0,0,0.06); width:100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <span style="font-size:10px; font-weight:800; color:var(--text-main);">Intensidad diaria</span>
+                        <span style="font-size:9.5px; font-weight:800; color:#0ea5e9; background:rgba(14,165,233,0.12); padding:2px 8px; border-radius:99px;">✈ Modo Viaje</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; margin-bottom:8px;">
+                        <span style="height:22px; border-radius:6px; background:rgba(16,185,129,0.16); font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; color:var(--text-main);">12</span>
+                        <span style="height:22px; border-radius:6px; background:rgba(16,185,129,0.16); font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; color:var(--text-main);">13</span>
+                        <span style="height:22px; border-radius:6px; background:rgba(245,158,11,0.24); font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; color:var(--text-main);">14</span>
+                        <span style="height:22px; border-radius:6px; background:rgba(245,158,11,0.24); font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; color:var(--text-main);">15</span>
+                        <span style="height:22px; border-radius:6px; background:rgba(239,68,68,0.28); font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; color:#ef4444;">16</span>
+                        <span style="height:22px; border-radius:6px; border:1.5px solid var(--accent); font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center; color:var(--accent);">17</span>
+                        <span style="height:22px; border-radius:6px; background:var(--hover-bg); font-size:9px; color:var(--text-muted); display:flex; align-items:center; justify-content:center;">18</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:9.5px; color:var(--text-muted); font-weight:600;">
+                        <span>Solo variable</span>
+                        <span>Prom. activo: <b style="color:var(--text-main);">$ 38.450</b></span>
+                    </div>
+                </div>
+            </div>
+        `
+    },
+    {
+        title: 'Nómina, deudas e interés compuesto',
+        desc: 'Calcula tu salario y retención en Colombia, acelera la salida de deudas y proyecta el crecimiento de tu ahorro a largo plazo.',
+        art: `
+            <div style="width:100%; display:flex; flex-direction:column; justify-content:center; gap:7px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:8px 10px; text-align:left;">
+                        <small style="font-size:9px; font-weight:700; color:var(--text-muted); display:block;">Nómina & UVT</small>
+                        <strong style="font-size:11.5px; color:var(--text-main);">Art. 383 • 2026</strong>
+                    </div>
+                    <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:8px 10px; text-align:left;">
+                        <small style="font-size:9px; font-weight:700; color:var(--text-muted); display:block;">Plan Deudas</small>
+                        <strong style="font-size:11.5px; color:var(--positive);">Avalancha</strong>
+                    </div>
+                </div>
+                <div style="background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:9px 11px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 6px 16px rgba(0,0,0,0.05);">
+                    <div style="text-align:left;">
+                        <small style="font-size:9.5px; font-weight:700; color:var(--text-muted); display:block;">Interés Compuesto (8% E.A.)</small>
+                        <strong style="font-size:13px; color:var(--positive);">+$ 19.196.207 <span style="font-size:9.5px; color:var(--text-muted); font-weight:600;">en rendim.</span></strong>
+                    </div>
+                    <span style="width:28px; height:28px; border-radius:50%; background:rgba(245,158,11,0.16); color:#f59e0b; display:flex; align-items:center; justify-content:center;">${renderIcon('trending-up', 15)}</span>
+                </div>
+            </div>
+        `
+    }
+];
+
+const goToWelcomeRegistration = () => {
     document.getElementById('welcome-step-1')?.classList.add('hidden');
     document.getElementById('welcome-step-2')?.classList.remove('hidden');
     setTimeout(() => document.getElementById('welcome-name')?.focus(), 100);
-});
+};
+
+const initOnboardingCarousel = () => {
+    const step1 = document.getElementById('welcome-step-1');
+    if (!step1 || step1.dataset.onbReady === '1') return;
+    step1.dataset.onbReady = '1';
+
+    let activeSlide = 0;
+    let touchStartX = 0;
+
+    step1.innerHTML = `
+        <div id="onb-cover-screen" class="onb-stage">
+            <div class="onb-top-bar"></div>
+            <div>
+                <div class="onb-cover-icon">
+                    <img src="icon.png" alt="Logo Mis Finanzas" class="onb-logo-light" onerror="this.style.display='none'; this.parentElement.querySelector('.onb-logo-fallback')?.classList.remove('hidden');">
+                    <img src="icon2.png" alt="Logo Mis Finanzas" class="onb-logo-dark" onerror="this.src='icon.png'; this.onerror=function(){ this.style.display='none'; this.parentElement.querySelector('.onb-logo-fallback')?.classList.remove('hidden'); };">
+                    <svg class="onb-logo-fallback hidden" width="56" height="56" viewBox="0 0 120 120" fill="none">
+                        <defs>
+                            <linearGradient id="mfInfGrad" x1="20" y1="90" x2="85" y2="35" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#3b82f6"/>
+                                <stop offset="100%" stop-color="#8b5cf6"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M26 88 L56 58 C66 48 62 32 48 32 C34 32 28 48 36 60" stroke="url(#mfInfGrad)" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M48 74 C58 86 78 84 84 68 C89 55 78 42 64 46" stroke="#8b5cf6" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M52 66 C62 72 72 66 80 54 L94 34" stroke="#f59e0b" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M80 32 L98 28 L94 46" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h2 class="onb-slide-title" style="font-size:25px;">¡Hola!</h2>
+                <p class="onb-slide-desc">Bienvenido a <b>Mis Finanzas</b>, tu centro privado para controlar dinero, deudas y metas desde tu dispositivo.</p>
+                <button type="button" id="btn-onb-start-tour" class="btn btn-primary" style="width:100%; margin-top:24px; padding:13px; font-size:14px;">Saber cómo</button>
+            </div>
+            <div style="padding-top:14px;">
+                <button type="button" id="btn-onb-skip-cover" class="onb-skip-btn" style="font-size:13px;">Omitir demostración</button>
+            </div>
+        </div>
+
+        <div id="onb-slides-screen" class="onb-stage hidden">
+            <div class="onb-top-bar">
+                <span id="onb-step-counter" class="onb-step-pill">1 / 4</span>
+                <button type="button" id="btn-onb-skip-slides" class="onb-skip-btn">Omitir</button>
+            </div>
+            <div id="onb-slide-body" class="onb-anim-enter">
+                <div id="onb-slide-art" class="onb-showcase-frame"></div>
+                <h2 id="onb-slide-title" class="onb-slide-title"></h2>
+                <p id="onb-slide-desc" class="onb-slide-desc"></p>
+            </div>
+            <div>
+                <div id="onb-dots-row" class="onb-dots-row"></div>
+                <button type="button" id="btn-onb-next-slide" class="btn btn-primary" style="width:100%; padding:13px; font-size:14px;">Siguiente</button>
+            </div>
+        </div>
+    `;
+
+    const renderSlide = (idx) => {
+        activeSlide = Math.max(0, Math.min(ONBOARDING_SLIDES.length - 1, idx));
+        const slide = ONBOARDING_SLIDES[activeSlide];
+        const isLast = activeSlide === ONBOARDING_SLIDES.length - 1;
+
+        const bodyEl = document.getElementById('onb-slide-body');
+        if (bodyEl) {
+            bodyEl.classList.remove('onb-anim-enter');
+            void bodyEl.offsetWidth;
+            bodyEl.classList.add('onb-anim-enter');
+        }
+        const artEl = document.getElementById('onb-slide-art');
+        const titleEl = document.getElementById('onb-slide-title');
+        const descEl = document.getElementById('onb-slide-desc');
+        const nextBtn = document.getElementById('btn-onb-next-slide');
+        const dotsEl = document.getElementById('onb-dots-row');
+
+        if (artEl) artEl.innerHTML = slide.art;
+        if (titleEl) titleEl.textContent = slide.title;
+        if (descEl) descEl.textContent = slide.desc;
+        if (nextBtn) nextBtn.textContent = isLast ? 'Empecemos' : 'Siguiente';
+        if (dotsEl) {
+            dotsEl.innerHTML = ONBOARDING_SLIDES.map((_, i) =>
+                `<button type="button" class="onb-dot ${i === activeSlide ? 'active' : ''}" data-onb-idx="${i}" aria-label="Hoja ${i + 1}"></button>`
+            ).join('');
+            dotsEl.querySelectorAll('.onb-dot').forEach(dot => {
+                dot.addEventListener('click', () => renderSlide(parseInt(dot.getAttribute('data-onb-idx'), 10)));
+            });
+        }
+    };
+
+    document.getElementById('btn-onb-start-tour')?.addEventListener('click', () => {
+        document.getElementById('onb-cover-screen')?.classList.add('hidden');
+        document.getElementById('onb-slides-screen')?.classList.remove('hidden');
+        renderSlide(0);
+    });
+
+    const skipCoverBtn = document.getElementById('btn-onb-skip-cover');
+    if (skipCoverBtn) {
+        skipCoverBtn.innerText = 'Omitir demostración';
+        skipCoverBtn.style.color = 'var(--accent)';
+        skipCoverBtn.addEventListener('click', goToWelcomeRegistration);
+    }
+    
+    document.getElementById('btn-onb-skip-slides')?.addEventListener('click', goToWelcomeRegistration);
+
+    document.getElementById('btn-onb-next-slide')?.addEventListener('click', () => {
+        if (activeSlide < ONBOARDING_SLIDES.length - 1) renderSlide(activeSlide + 1);
+        else goToWelcomeRegistration();
+    });
+
+    const slidesScreen = document.getElementById('onb-slides-screen');
+    slidesScreen?.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches[0]) touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    slidesScreen?.addEventListener('touchend', (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) < 42) return;
+        if (dx < 0 && activeSlide < ONBOARDING_SLIDES.length - 1) renderSlide(activeSlide + 1);
+        else if (dx > 0 && activeSlide > 0) renderSlide(activeSlide - 1);
+    }, { passive: true });
+};
+
+document.addEventListener('DOMContentLoaded', initOnboardingCarousel);
 
 document.getElementById('btn-welcome-back')?.addEventListener('click', () => {
     document.getElementById('welcome-step-2')?.classList.add('hidden');
     document.getElementById('welcome-step-1')?.classList.remove('hidden');
+    document.getElementById('onb-slides-screen')?.classList.add('hidden');
+    document.getElementById('onb-cover-screen')?.classList.remove('hidden');
     document.getElementById('welcome-error')?.classList.add('hidden');
 });
 
@@ -817,16 +1156,24 @@ document.addEventListener('click', async (e) => {
         else if (id === 'drawer-debts') { if (attemptCloseModals()) { document.getElementById('debts-modal')?.classList.remove('hidden'); let totalLoansDebt = 0; financeData.customAccounts.forEach(acc => { if (acc.category === 'debt' && currentBalances[acc.id] > 0) totalLoansDebt = round2(totalLoansDebt + currentBalances[acc.id]); }); renderDebtsBreakdown(currentBalances, totalLoansDebt); } }
         else if (id === 'drawer-receivables') { if (attemptCloseModals()) openReceivablesModal(); }
         else if (id === 'drawer-debt-planner') { if (attemptCloseModals()) { document.getElementById('debt-planner-modal')?.classList.remove('hidden'); renderDebtPlanner(); } }
-        else if (id === 'drawer-pockets') { if (attemptCloseModals()) { document.getElementById('pockets-modal')?.classList.remove('hidden'); renderPocketsView(); } }
+        else if (id === 'drawer-pockets') { if (attemptCloseModals()) { openSavingsSection('pockets'); } }
+        else if (id === 'drawer-savings-calc') { if (attemptCloseModals()) { openSavingsSection('simulator'); } }
+        else if (id === 'drawer-card-advisor') { if (attemptCloseModals()) { openCardAdvisorModal(); } }
+        else if (id === 'drawer-smart-purchase') { if (attemptCloseModals()) { openSmartPurchaseModal(); } }
+        else if (id === 'drawer-credit-sim') { if (attemptCloseModals()) { openCreditSimulatorModal(); } }
+        else if (id === 'drawer-credit-compare') { if (attemptCloseModals()) { openCreditCompareModal(); } }
+        else if (id === 'drawer-month-recap') { if (attemptCloseModals()) { openMonthlyRecapModal(); } }
         else if (id === 'drawer-budget') { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(document.getElementById('nav-budget')); } }
         else if (id === 'drawer-expenses') { if (attemptCloseModals()) { document.getElementById('expenses-modal')?.classList.remove('hidden'); renderExpensesBreakdown(getMonthId(viewDate)); } }
         else if (id === 'drawer-subscriptions') { if (attemptCloseModals()) { document.getElementById('subscriptions-modal')?.classList.remove('hidden'); renderSubscriptionsView(); } }
+        else if (id === 'drawer-trip-mode') { if (attemptCloseModals()) { document.getElementById('trip-mode-modal')?.classList.remove('hidden'); renderTripModeUI(); } }
         else if (id === 'drawer-salary') { if (attemptCloseModals()) { document.getElementById('profile-modal')?.classList.remove('hidden'); document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-salary-view')?.classList.remove('hidden'); renderSalaryUI(true); } }
         else if (id === 'drawer-health') { if (attemptCloseModals()) document.getElementById('widget-financial-health')?.click(); }
         else if (id === 'drawer-analytics') { if (attemptCloseModals()) { document.getElementById('analytics-modal')?.classList.remove('hidden'); setActiveNav(document.getElementById('nav-analytics')); } }
         else if (id === 'drawer-annual') { if (attemptCloseModals()) { document.getElementById('annual-control-modal')?.classList.remove('hidden'); annualViewYear = viewDate.getFullYear(); renderAnnualControlTable(); } }
         else if (id === 'drawer-assets') { if (attemptCloseModals()) { document.getElementById('assets-modal')?.classList.remove('hidden'); renderAssetsBreakdown(); } }
         else if (id === 'drawer-tax') { if (attemptCloseModals()) { document.getElementById('profile-modal')?.classList.remove('hidden'); document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-tax-params-view')?.classList.remove('hidden'); renderTaxParamsUI(); } }
+        else if (id === 'drawer-trash') { if (attemptCloseModals()) { document.getElementById('trash-modal')?.classList.remove('hidden'); renderTrashModal(); } }
         else if (id === 'drawer-backup') { if (attemptCloseModals()) { document.getElementById('profile-modal')?.classList.remove('hidden'); document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-backup-view')?.classList.remove('hidden'); } }
         else if (id === 'drawer-version-btn' || id === 'drawer-help-about') { if (attemptCloseModals()) { if (typeof openUniversalInfoModal === 'function') openUniversalInfoModal('about'); } }
         else if (id === 'drawer-help-faq') { if (attemptCloseModals()) { if (typeof openUniversalInfoModal === 'function') openUniversalInfoModal('faq'); } }
@@ -893,21 +1240,33 @@ document.addEventListener('click', async (e) => {
     }
 
     // 5. Navegación Dock Inferior, Perfil y Footers de Versión
-    const navBtn = e.target.closest('.nav-item, #profile-trigger-btn, .profile-menu-btn, #shortcut-to-tax-params-btn, #home-version-btn, #profile-version-btn, #back-from-salary-btn, #back-from-tax-params-btn, #back-from-theme-btn, #back-from-notifications-btn, #back-from-backup-btn, #back-from-security-btn');
+    const navBtn = e.target.closest('.nav-item, #profile-trigger-btn, .profile-menu-btn, #shortcut-to-tax-params-btn, #home-version-btn, #profile-version-btn, #back-from-salary-btn, #back-from-tax-params-btn, #back-from-theme-btn, #back-from-currency-btn, #back-from-notifications-btn, #back-from-backup-btn, #back-from-security-btn');
     if (navBtn) {
         const id = navBtn.id;
         if (id === 'nav-home') { forceCloseAllModals(); setActiveNav(document.getElementById('nav-home')); }
         else if (id === 'nav-analytics') { if (attemptCloseModals()) { document.getElementById('analytics-modal')?.classList.remove('hidden'); setActiveNav(document.getElementById('nav-analytics')); } }
         else if (id === 'nav-budget') { if (attemptCloseModals()) { document.getElementById('budget-modal')?.classList.remove('hidden'); renderBudgetView(); setActiveNav(document.getElementById('nav-budget')); } }
         else if (id === 'home-version-btn' || id === 'profile-version-btn') { window.openUniversalInfoModal?.('about'); }
-        else if (id === 'profile-trigger-btn') { if (attemptCloseModals()) { document.getElementById('profile-modal')?.classList.remove('hidden'); document.getElementById('profile-main-view')?.classList.remove('hidden'); ['profile-salary-view', 'profile-tax-params-view', 'profile-theme-view', 'profile-notifications-view', 'profile-backup-view', 'profile-security-view'].forEach(x => document.getElementById(x)?.classList.add('hidden')); } }
+        else if (id === 'profile-trigger-btn') { if (attemptCloseModals()) { document.getElementById('profile-modal')?.classList.remove('hidden'); document.getElementById('profile-main-view')?.classList.remove('hidden'); ['profile-salary-view', 'profile-tax-params-view', 'profile-theme-view', 'profile-currency-view', 'profile-notifications-view', 'profile-backup-view', 'profile-security-view'].forEach(x => document.getElementById(x)?.classList.add('hidden')); } }
         else if (id === 'menu-salary-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-salary-view')?.classList.remove('hidden'); renderSalaryUI(true); }
         else if (id === 'menu-tax-params-btn' || id === 'shortcut-to-tax-params-btn') { document.getElementById('profile-salary-view')?.classList.add('hidden'); document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-tax-params-view')?.classList.remove('hidden'); renderTaxParamsUI(); }
         else if (id === 'menu-theme-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-theme-view')?.classList.remove('hidden'); }
-        else if (id === 'menu-notifications-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-notifications-view')?.classList.remove('hidden'); const prefs = getNotificationPrefs(); document.getElementById('notif-days-before').value = prefs.daysBefore; document.getElementById('notif-budget-pct').value = prefs.budgetPct; document.getElementById('notif-pending-enabled').checked = !!prefs.pendingEnabled; syncDismissedAlertsButton(); }
+        else if (id === 'menu-currency-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-currency-view')?.classList.remove('hidden'); syncCurrencyPrefs(); }
+        else if (id === 'menu-notifications-btn') { 
+            document.getElementById('profile-main-view')?.classList.add('hidden'); 
+            document.getElementById('profile-notifications-view')?.classList.remove('hidden'); 
+            const prefs = getNotificationPrefs(); 
+            document.getElementById('notif-days-before').value = prefs.daysBefore; 
+            document.getElementById('notif-budget-pct').value = prefs.budgetPct; 
+            document.getElementById('notif-pending-enabled').checked = !!prefs.pendingEnabled; 
+            if(document.getElementById('pref-show-projections')) document.getElementById('pref-show-projections').checked = financeData.preferences?.showProjections !== false;
+            if(document.getElementById('pref-remember-account')) document.getElementById('pref-remember-account').checked = financeData.preferences?.rememberAccount !== false;
+            if(document.getElementById('pref-remember-category')) document.getElementById('pref-remember-category').checked = financeData.preferences?.rememberCategory !== false;
+            syncDismissedAlertsButton(); 
+        }
         else if (id === 'menu-backup-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-backup-view')?.classList.remove('hidden'); }
         else if (id === 'menu-security-btn') { document.getElementById('profile-main-view')?.classList.add('hidden'); document.getElementById('profile-security-view')?.classList.remove('hidden'); syncUserUI(); }
-        else if (id.startsWith('back-from-')) { ['profile-salary-view', 'profile-tax-params-view', 'profile-theme-view', 'profile-notifications-view', 'profile-backup-view', 'profile-security-view'].forEach(x => document.getElementById(x)?.classList.add('hidden')); document.getElementById('profile-main-view')?.classList.remove('hidden'); }
+        else if (id.startsWith('back-from-')) { ['profile-salary-view', 'profile-tax-params-view', 'profile-theme-view', 'profile-currency-view', 'profile-notifications-view', 'profile-backup-view', 'profile-security-view'].forEach(x => document.getElementById(x)?.classList.add('hidden')); document.getElementById('profile-main-view')?.classList.remove('hidden'); }
         return;
     }
 
@@ -1188,7 +1547,7 @@ document.getElementById('btn-restore-dismissed-alerts')?.addEventListener('click
 });
 // --- 7. TABLERO PERSONALIZABLE (ORDEN DE WIDGETS) ---
 const DEFAULT_WIDGET_ORDER = ['cash-flow', 'summary-rings', 'budget-preview', 'balance-sheet', 'credit-cards', 'debts-summary', 'history-list'];
-const DEFAULT_ANALYTICS_ORDER = ['analytics-networth', 'analytics-cashflow', 'analytics-balancesheet', 'analytics-daily', 'analytics-donut'];
+const DEFAULT_ANALYTICS_ORDER = ['analytics-networth', 'analytics-cashflow', 'analytics-balancesheet', 'analytics-daily', 'analytics-donut', 'analytics-tags', 'analytics-ant'];
 
 let analyticsOrder = [];
 
@@ -1232,7 +1591,9 @@ const WIDGET_NAMES = {
     'analytics-cashflow': 'Flujo de Caja',
     'analytics-balancesheet': 'Hoja de Balance',
     'analytics-daily': 'Resumen Diario',
-    'analytics-donut': 'Distribución de Gastos'
+    'analytics-donut': 'Distribución de Gastos',
+    'analytics-tags': 'Proyectos (#Tags)',
+    'analytics-ant': 'Gastos Hormiga y Suscripciones'
 };
 
 const refreshEditControlsLimits = (containerId = 'dashboard-widgets-container', selectorAttr = 'data-widget-id') => {
@@ -1366,6 +1727,7 @@ const initDashboardDragAndControls = () => {
 document.addEventListener('DOMContentLoaded', () => {
     applyWidgetOrder();
     initDashboardDragAndControls();
+    if (typeof renderTripModeBanner === 'function') renderTripModeBanner();
 });
 
 // --- 8. SELECTORES DE CUENTAS (CON BOLSILLOS) Y CATEGORÍAS ---
@@ -1570,238 +1932,193 @@ const updateDashboard = () => {
     }, 50);
 
     // Mover el Badge fuera de las columnas para que no rompa el diseño (Banner ancho abajo)
-    let safeBadge = document.getElementById('safe-to-spend-badge');
-    if (!safeBadge) {
-        safeBadge = document.createElement('div');
-        safeBadge.id = 'safe-to-spend-badge';
-        safeBadge.style.cssText = 'margin-top:14px; font-size:12px; font-weight:600; color:var(--text-muted); background:var(--hover-bg); display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color);';
-        const flowWidget = document.getElementById('widget-cash-flow');
-        if (flowWidget) flowWidget.appendChild(safeBadge);
-    }
+        let safeBadge = document.getElementById('safe-to-spend-badge');
+        if (!safeBadge) {
+            safeBadge = document.createElement('div');
+            safeBadge.id = 'safe-to-spend-badge';
+            safeBadge.title = 'Toca para ver la proyección día por día';
+            safeBadge.style.cssText = 'margin-top:14px; font-size:12px; font-weight:600; color:var(--text-muted); background:var(--hover-bg); display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:12px; border:1px solid var(--border-color); cursor:pointer;';
+            safeBadge.innerHTML = '<span style="display:flex; align-items:center; gap:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Libre Seguro Hoy:</span> <span style="display:inline-flex; align-items:center; gap:5px;"><span id="libre-seguro-amount" style="font-size:14px; color:var(--text-main); font-weight:800;">$ 0,00</span><span style="color:var(--text-muted); font-size:15px; font-weight:700;">›</span></span>';
+            safeBadge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof openCashProjectionModal === 'function') openCashProjectionModal();
+            });
+            const flowWidget = document.getElementById('widget-cash-flow');
+            if (flowWidget) flowWidget.appendChild(safeBadge);
+        }
 
-    if (viewMonthId === currentMonthId) {
-        let pendingExp = 0;
-        financeData.transactions.forEach(t => {
-            if (t.monthId === currentMonthId && t.type === 'expense' && t.status === 'pending') {
-                pendingExp = round2(pendingExp + round2(t.budgetedAmount || t.amount));
+if (viewMonthId === currentMonthId && document.getElementById('libre-seguro-amount')) {
+            const { safeToSpend } = computeSafeToSpendToday(currentMonthId, currSnap);
+            document.getElementById('libre-seguro-amount').innerText = formatMoney(safeToSpend);
+        }
+
+        let positiveAssetTotal = 0, positiveLoansTotal = 0;
+        financeData.customAccounts.forEach(acc => {
+            const b = round2(currentBalances[acc.id] || 0);
+            if (acc.category === 'asset' && b > 0) positiveAssetTotal = round2(positiveAssetTotal + b);
+            if (acc.category === 'debt' && b > 0) positiveLoansTotal = round2(positiveLoansTotal + b);
+        });
+
+        // Banner de Modo Demo en el Tablero si la app está vacía
+        let emptyDemoBanner = document.getElementById('dashboard-empty-demo-banner');
+        if (financeData.transactions.length === 0 && !financeData.isDemoMode) {
+            if (!emptyDemoBanner) {
+                const dashContainer = document.getElementById('dashboard-widgets-container');
+                emptyDemoBanner = document.createElement('div');
+                emptyDemoBanner.id = 'dashboard-empty-demo-banner';
+                emptyDemoBanner.style.cssText = 'background:linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1)); border:1px dashed #8b5cf6; border-radius:16px; padding:18px 16px; text-align:center; margin-bottom:14px; box-shadow:0 8px 24px rgba(139, 92, 246, 0.15);';
+                emptyDemoBanner.innerHTML = `
+                    <div style="width:48px; height:48px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; margin:0 auto 12px auto; box-shadow:0 4px 12px rgba(0,0,0,0.05); color:#8b5cf6;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    </div>
+                    <strong style="color:var(--text-main); font-size:15px; display:block; margin-bottom:6px;">Tu tablero está en blanco</strong>
+                    <small style="color:var(--text-muted); font-size:12.5px; display:block; margin-bottom:16px; line-height:1.4;">Comienza a registrar tus cuentas y gastos, o carga datos de prueba para explorar cómo funciona la app sin miedo a dañar nada.</small>
+                    <button type="button" id="btn-dash-load-demo" class="btn btn-primary" style="width:100%; font-size:13.5px; padding:12px;">Poblar con datos de prueba</button>
+                `;
+                dashContainer?.insertBefore(emptyDemoBanner, dashContainer.firstChild);
+
+                emptyDemoBanner.querySelector('#btn-dash-load-demo')?.addEventListener('click', () => {
+                    if (typeof applyDemoData === 'function') {
+                        applyDemoData();
+                        updateDashboard();
+                        location.reload();
+                    }
+                });
+            }
+        } else if (emptyDemoBanner) {
+            emptyDemoBanner.remove();
+        }
+
+        renderAccountsBreakdown(currentBalances, positiveAssetTotal);
+
+        // 3. RENDER WIDGET METAS AHORRO (BOLSILLOS)
+        let totalPocketsGoal = 0, sumBal = 0;
+        financeData.pockets.forEach(p => {
+            const g = round2(p.goal ? p.goal : 0);
+            totalPocketsGoal = round2(totalPocketsGoal + g);
+            if (g > 0) {
+                const pPrincipal = p.principal ? p.principal : 0;
+                const pYields = p.yields ? p.yields : 0;
+                sumBal += Math.min(g, round2(pPrincipal + pYields));
             }
         });
-        
-        // 1. Calcular Presupuesto Restante
-        let totalLimit = 0, totalSpentExp = 0;
-        financeData.categories.expense.forEach(c => { totalLimit += getCategoryLimitForMonth(c, currentDate.getMonth()); });
+
+        let pocketsPct = 0;
+        if (totalPocketsGoal > 0) pocketsPct = Math.min(100, Math.round((sumBal / totalPocketsGoal) * 100));
+        else if (currSnap && currSnap.pocketsTotal > 0) pocketsPct = 100;
+
+        if (document.getElementById('pockets-ring-pct')) document.getElementById('pockets-ring-pct').innerText = `${pocketsPct}%`;
+        if (document.getElementById('pockets-saved-total')) {
+            document.getElementById('pockets-saved-total').innerText = `${formatCompact(currSnap ? (currSnap.allPocketsTotal || currSnap.pocketsTotal || 0) : 0)} de ${formatCompact(totalPocketsGoal)}`;
+        }
+
+        const goalsCircle = document.getElementById('pockets-ring-progress');
+        if (goalsCircle) {
+            if (pocketsPct === 100 && totalPocketsGoal > 0) goalsCircle.style.stroke = 'var(--positive)';
+            else goalsCircle.style.stroke = 'var(--accent)';
+            const visualPct = Math.max(0.5, pocketsPct);
+            setTimeout(() => { goalsCircle.style.strokeDashoffset = 251.2 - (251.2 * visualPct / 100); }, 150);
+        }
+
+        // 3.5 RENDER WIDGET SALUD FINANCIERA
+        const healthData = calculateFinancialHealth(viewMonthId, currSnap);
+        const hScoreEl = document.getElementById('health-score-val');
+        const hBadgeEl = document.getElementById('health-score-badge');
+        const hCircleEl = document.getElementById('health-ring-progress');
+        if (hScoreEl && hBadgeEl && hCircleEl) {
+            if (healthData.isNeutral) {
+                hScoreEl.innerText = '--';
+                hBadgeEl.innerText = 'Faltan datos ⚪';
+                hBadgeEl.className = 'widget-badge neutral';
+                hCircleEl.style.strokeDashoffset = 251.2;
+            } else {
+                const gScore = healthData.scores.global;
+                hScoreEl.innerText = gScore;
+                hCircleEl.style.stroke = gScore >= 80 ? 'var(--positive)' : (gScore >= 50 ? '#f59e0b' : 'var(--negative)');
+                setTimeout(() => { hCircleEl.style.strokeDashoffset = 251.2 - (251.2 * Math.max(2, gScore) / 100); }, 150);
+                if (gScore >= 80) { hBadgeEl.innerText = 'Excelente 🟢'; hBadgeEl.className = 'widget-badge good'; }
+                else if (gScore >= 50) { hBadgeEl.innerText = 'Aceptable 🟡'; hBadgeEl.className = 'widget-badge warn'; }
+                else { hBadgeEl.innerText = 'En Riesgo 🔴'; hBadgeEl.className = 'widget-badge danger'; }
+            }
+        }
+
+        // 4. RENDER WIDGET PRESUPUESTO
+        let globalLimit = 0, totalSpentExp = 0;
+        financeData.categories.expense.forEach(c => { globalLimit += getCategoryLimitForMonth(c, viewDate.getMonth()); });
         financeData.transactions.forEach(t => { 
-            if (t.monthId === currentMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) { 
+            if (!t.isDeleted && t.monthId === viewMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) { 
                 totalSpentExp = round2(totalSpentExp + round2(t.amount)); 
             } 
         });
-        const budgetRemaining = Math.max(0, round2(totalLimit - totalSpentExp));
-        
-        // 2. Calcular Cuotas de Deudas (Restar lo que debes este mes)
-        const monthlyDebtPayments = getCommittedMonthlyDebtQuotas(currSnap);
-        
-        // El Libre Seguro real resta los gastos pendientes, el presupuesto faltante y las deudas
-        const obligations = round2(pendingExp + budgetRemaining + monthlyDebtPayments);
-        const safeToSpend = Math.max(0, round2(currSnap.assetsTotal - obligations));
-        
-        safeBadge.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><span class="drawer-icon-box subtle-box" style="width:24px; height:24px; color:var(--accent);">${renderIcon('shield', 14)}</span> Libre Seguro Hoy:</div> <b style="color:var(--text-main); font-size:14.5px;">${formatMoneyHtml(safeToSpend)}</b>`;
-        safeBadge.classList.remove('hidden');
-    } else {
-        safeBadge.classList.add('hidden');
-    }
 
-    // 2. RENDER WIDGET SALUD FINANCIERA
-    const healthData = calculateFinancialHealth(viewMonthId, currSnap);
-    if (document.getElementById('health-score-val')) {
-        document.getElementById('health-score-val').innerText = healthData.isNeutral ? '--' : healthData.scores.global;
-    }
+        const budgetPct = globalLimit > 0 ? Math.min(100, (totalSpentExp / globalLimit) * 100) : 0;
+        const bFill = document.getElementById('dash-budget-fill');
+        const bBadge = document.getElementById('dash-budget-badge');
+        const bPace = document.getElementById('dash-budget-pace-marker');
 
-    const badgeEl = document.getElementById('health-score-badge');
-    const healthCircle = document.getElementById('health-ring-progress');
-
-    let hColor = 'var(--positive)';
-    if (badgeEl) {
-        badgeEl.style.marginTop = '6px';
-        if (healthData.isNeutral) { 
-            badgeEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Faltan datos</span>`; 
-            badgeEl.className = 'widget-badge neutral'; 
-            hColor = 'rgba(148, 163, 184, 0.45)'; 
+        if (document.getElementById('dash-budget-spent-text')) {
+            document.getElementById('dash-budget-spent-text').innerText = `Gastado: ${formatMoney(totalSpentExp)}`;
         }
-        else if (healthData.scores.global >= 80) { 
-            badgeEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Excelente</span>`; 
-            badgeEl.className = 'widget-badge good'; 
-            hColor = 'var(--positive)'; 
+        if (document.getElementById('dash-budget-rem-text')) {
+            const remBudget = Math.max(0, round2(globalLimit - totalSpentExp));
+            document.getElementById('dash-budget-rem-text').innerText = `Disponible: ${formatMoney(remBudget)}`;
         }
-        else if (healthData.scores.global >= 50) { 
-            badgeEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Estable</span>`; 
-            badgeEl.className = 'widget-badge warn'; 
-            hColor = '#f59e0b'; 
-        }
-        else { 
-            badgeEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Riesgo Alto</span>`; 
-            badgeEl.className = 'widget-badge danger'; 
-            hColor = 'var(--negative)'; 
-        }
-    }
-    if (healthCircle) {
-        healthCircle.style.stroke = hColor;
-        const healthVisualPct = Math.max(0.5, healthData.isNeutral ? 0 : healthData.scores.global);
-        setTimeout(() => { healthCircle.style.strokeDashoffset = 251.2 - (251.2 * healthVisualPct / 100); }, 100);
-    }
 
-    // 3. RENDER WIDGET METAS AHORRO (BOLSILLOS)
-    let totalPocketsGoal = 0, sumBal = 0;
-    financeData.pockets.forEach(p => {
-        const g = round2(p.goal || 0);
-        totalPocketsGoal = round2(totalPocketsGoal + g);
-        if (g > 0) {
-            sumBal += Math.min(g, round2((p.principal || 0) + (p.yields || 0)));
-        }
-    });
+        if (bFill) {
+            if (globalLimit > 0) {
+                bFill.style.backgroundColor = budgetPct > 90 ? 'var(--negative)' : (budgetPct > 75 ? '#f59e0b' : 'var(--positive)');
+                setTimeout(() => { bFill.style.width = `${budgetPct}%`; }, 200);
 
-    let pocketsPct = 0;
-    if (totalPocketsGoal > 0) pocketsPct = Math.min(100, Math.round((sumBal / totalPocketsGoal) * 100));
-    else if (currSnap.pocketsTotal > 0) pocketsPct = 100;
-
-    if (document.getElementById('pockets-ring-pct')) document.getElementById('pockets-ring-pct').innerText = `${pocketsPct}%`;
-    if (document.getElementById('pockets-saved-total')) {
-        document.getElementById('pockets-saved-total').innerText = `${formatCompact(currSnap.allPocketsTotal)} de ${formatCompact(totalPocketsGoal)}`;
-    }
-
-    const goalsCircle = document.getElementById('pockets-ring-progress');
-    if (goalsCircle) {
-        if (pocketsPct === 100 && totalPocketsGoal > 0) goalsCircle.style.stroke = 'var(--positive)';
-        else goalsCircle.style.stroke = 'var(--accent)';
-        const visualPct = Math.max(0.5, pocketsPct);
-        setTimeout(() => { goalsCircle.style.strokeDashoffset = 251.2 - (251.2 * visualPct / 100); }, 150);
-    }
-
-    // 4. RENDER WIDGET PRESUPUESTO
-    let globalLimit = 0, totalSpentExp = 0;
-    financeData.categories.expense.forEach(c => { globalLimit += getCategoryLimitForMonth(c, viewDate.getMonth()); });
-    financeData.transactions.forEach(t => { if (t.monthId === viewMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) { totalSpentExp = round2(totalSpentExp + round2(t.amount)); } });
-
-    const budgetPct = globalLimit > 0 ? Math.min(100, (totalSpentExp / globalLimit) * 100) : 0;
-    const bFill = document.getElementById('dash-budget-fill');
-    const bBadge = document.getElementById('dash-budget-badge');
-    const bPace = document.getElementById('dash-budget-pace-marker');
-
-    if (bFill) {
-        if (globalLimit > 0) {
-            bFill.style.backgroundColor = budgetPct > 90 ? 'var(--negative)' : (budgetPct > 75 ? '#f59e0b' : 'var(--positive)');
-            setTimeout(() => { bFill.style.width = `${budgetPct}%`; }, 200);
-
-            const rem = Math.max(0, round2(globalLimit - totalSpentExp));
-            const mDays = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-            const remainingDays = viewMonthId === getMonthId(currentDate) ? Math.max(1, mDays - currentDate.getDate() + 1) : mDays;
-            const dailyAvailable = round2(rem / remainingDays);
-            
-            if (document.getElementById('dash-budget-spent-text')) document.getElementById('dash-budget-spent-text').innerText = `Gastado: ${formatMoney(totalSpentExp)}`;
-            if (document.getElementById('dash-budget-rem-text')) document.getElementById('dash-budget-rem-text').innerHTML = `Libre: ${formatMoney(rem)} <small style="font-weight:600; color:var(--text-muted);">(${formatMoney(dailyAvailable)}/día)</small>`;
-
-            if (bBadge) {
-                if (budgetPct <= 75) { bBadge.className = 'widget-badge good'; bBadge.innerText = 'En control'; }
-                else if (budgetPct <= 95) { bBadge.className = 'widget-badge warn'; bBadge.innerText = 'Precaución'; }
-                else { bBadge.className = 'widget-badge danger'; bBadge.innerText = 'Excedido'; }
-            }
-
-            const idealPace = viewMonthId === getMonthId(currentDate) ? (currentDate.getDate() / mDays) * 100 : (viewMonthId < getMonthId(currentDate) ? 100 : 0);
-
-            if (bPace) {
-                if (viewMonthId === getMonthId(currentDate)) {
-                    bPace.classList.remove('hidden');
-                    bPace.style.left = `${idealPace}%`;
-                    const hintEl = document.getElementById('dash-budget-pace-hint');
-                    if (hintEl) {
-                        const paceDiff = budgetPct - idealPace;
-                        if (paceDiff > 5) hintEl.innerHTML = `Llevas un <b>ritmo de gasto alto</b> para la fecha (ideal: ${Math.round(idealPace)}%).`;
-                        else if (paceDiff < -5) hintEl.innerHTML = `Llevas un ritmo <b>ahorrativo</b> (ideal: ${Math.round(idealPace)}%).`;
-                        else hintEl.innerHTML = `Ritmo de gasto <b>acorde al calendario</b> (ideal: ${Math.round(idealPace)}%).`;
-                    }
-                } else {
-                    bPace.classList.add('hidden');
-                    if (document.getElementById('dash-budget-pace-hint')) document.getElementById('dash-budget-pace-hint').innerText = '';
+                const rem = Math.max(0, round2(globalLimit - totalSpentExp));
+                const mDays = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+                
+                if (bBadge) {
+                    bBadge.innerText = rem > 0 ? `Quedan ${formatMoney(rem)}` : `Excedido ${formatMoney(Math.abs(rem))}`;
+                    bBadge.className = rem > 0 ? 'widget-badge good' : 'widget-badge danger';
                 }
+                if (bPace) {
+                    bPace.classList.remove('hidden');
+                    const todayPos = viewMonthId === getMonthId(currentDate) ? Math.min(100, (currentDate.getDate() / mDays) * 100) : 100;
+                    bPace.style.left = `${todayPos}%`;
+                }
+            } else {
+                bFill.style.width = '0%';
+                if (bBadge) { bBadge.innerText = 'Sin presupuesto'; bBadge.className = 'widget-badge neutral'; }
             }
-        } else {
-            bFill.style.width = '0%';
-            if (bBadge) { bBadge.className = 'widget-badge neutral'; bBadge.innerText = 'Sin definir'; }
-            if (document.getElementById('dash-budget-spent-text')) document.getElementById('dash-budget-spent-text').innerText = `Gastado: ${formatMoney(totalSpentExp)}`;
-            if (document.getElementById('dash-budget-rem-text')) document.getElementById('dash-budget-rem-text').innerText = 'Define topes';
-            if (bPace) bPace.classList.add('hidden');
-            if (document.getElementById('dash-budget-pace-hint')) document.getElementById('dash-budget-pace-hint').innerText = '';
         }
-    }
 
-    const budgetCatsPreview = document.getElementById('dash-budget-top-cats');
-    if (budgetCatsPreview) {
-        const totalsByCat = {};
-        financeData.transactions.filter(t => t.monthId === viewMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)).forEach(t => {
-            totalsByCat[t.category || '📦 Otros'] = round2((totalsByCat[t.category || '📦 Otros'] || 0) + round2(t.amount));
-        });
-        const sortedCats = Object.entries(totalsByCat).sort((a, b) => b[1] - a[1]).slice(0, 3);
-        if (sortedCats.length === 0) budgetCatsPreview.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">Sin gastos registrados.</span>';
-        else budgetCatsPreview.innerHTML = sortedCats.map(([cat, amt]) => `<div class="dash-budget-cat-row"><span>${cleanCatName(cat)}</span><b>${formatCompact(amt)}</b></div>`).join('');
-    }
+        // 5. RENDER ALERTAS, CALENDARIO, HOJA DE BALANCE Y GRÁFICOS DE ANÁLISIS
+        try { renderSmartAlerts(viewMonthId, currSnap); } catch (e) { console.error(e); }
+        try { renderCalendar(viewDate, 'calendar-days-grid'); } catch (e) { console.error(e); }
+        try { renderBalanceSheet(currentBalances, currSnap.netWorth, currSnap); } catch (e) { console.error(e); }
+        try { renderDashboardCardsSummary(currentBalances); } catch (e) { console.error(e); }
+        try { renderDashboardDebtsSummary(currentBalances); } catch (e) { console.error(e); }
+        try { renderNetWorthChart(viewDate, prevDate, prevSnap, currSnap); } catch (e) { console.error(e); }
+        try { renderCashFlowChart(viewDate, prevDate); } catch (e) { console.error(e); }
+        try { renderDailySummary(); } catch (e) { console.error(e); }
+        try { renderBudgetDonut(viewMonthId, monthlyExpense); } catch (e) { console.error(e); }
+        try { renderAnalyticsBalanceSheet(currentBalances, currSnap.netWorth, currSnap); } catch (e) { console.error(e); }
+        try { if (typeof renderAnalyticsTagsCard === 'function') renderAnalyticsTagsCard(); } catch (e) { console.error(e); }
+        try { if (typeof renderAnalyticsAntExpensesCard === 'function') renderAnalyticsAntExpensesCard(); } catch (e) { console.error(e); }
 
-    renderSmartAlerts(viewMonthId, currSnap);
-    renderTransactionHistory(viewMonthId, currSnap, projectionData);
-    renderBalanceSheet(currentBalances, currSnap.netWorth, currSnap);
-    renderDashboardCardsSummary(currentBalances);
-    renderDashboardDebtsSummary(currentBalances);
-
-    renderNetWorthChart(viewDate, prevDate, prevSnap, currSnap);
-    renderCashFlowChart(viewDate, prevDate);
-    renderAnalyticsBalanceSheet(currentBalances, currSnap.netWorth, currSnap);
-    renderDailySummary();
-    renderBudgetDonut(viewMonthId, monthlyExpense);
-    renderCalendar(viewDate, 'calendar-days-grid');
-
-    let positiveAssetTotal = 0, positiveLoansTotal = 0;
-    financeData.customAccounts.forEach(acc => {
-        const b = round2(currentBalances[acc.id] || 0);
-        if (acc.category === 'asset' && b > 0) positiveAssetTotal = round2(positiveAssetTotal + b);
-        if (acc.category === 'debt' && b > 0) positiveLoansTotal = round2(positiveLoansTotal + b);
-    });
-
-    renderAccountsBreakdown(currentBalances, positiveAssetTotal);
-    renderCardsBreakdown(currentBalances);
-    renderDebtsBreakdown(currentBalances, positiveLoansTotal);
-    renderExpensesBreakdown(viewMonthId);
-
-    const bModal = document.getElementById('budget-modal');
-    if (bModal && !bModal.classList.contains('hidden')) renderBudgetView();
+        // 6. RENDER HISTORIAL Y PROYECCIONES
+        try { renderTransactionHistory(viewMonthId, currSnap, projectionData); } catch (e) { console.error(e); }
+        if (typeof renderTripModeBanner === 'function') renderTripModeBanner();
 };
+
+let calendarHeatmapMode = 'variable'; // 'variable' | 'total'
 
 const renderCalendar = (baseDate, containerId) => {
     const grid = document.getElementById(containerId);
     if (!grid) return;
     grid.innerHTML = '';
-    const year = baseDate.getFullYear(), month = baseDate.getMonth();
-    const firstDayOfWeek = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const todayStr = currentDate.toLocaleDateString('en-CA');
-    const viewMonthId = getMonthId(baseDate);
 
-    const dayActivity = {};
-    financeData.transactions.forEach(t => {
-        if (t.monthId === viewMonthId) {
-            const dStr = new Date(t.id).toLocaleDateString('en-CA');
-            if (!dayActivity[dStr]) dayActivity[dStr] = { inc: false, exp: false, trf: false, pend: false };
-            if (t.status === 'pending') dayActivity[dStr].pend = true;
-            else if (t.type === 'income') dayActivity[dStr].inc = true;
-            else if (t.type === 'expense') dayActivity[dStr].exp = true;
-            else if (t.type === 'transfer') dayActivity[dStr].trf = true;
-        }
-    });
+    const { offset, days, avgDailySpend, zeroSpendDays, maxElapsedDay } = computeCalendarHeatmapData(baseDate, calendarHeatmapMode);
 
-    const offset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
     for (let i = 0; i < offset; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dStr = new Date(year, month, day).toLocaleDateString('en-CA');
-        const act = dayActivity[dStr];
-        const classes = `cal-day ${dStr === todayStr ? 'today' : ''} ${selectedCalendarDay === dStr ? 'selected' : ''}`;
+    days.forEach(({ day, dStr, act, daySpend, heatClass, isToday }) => {
+        const classes = `cal-day ${heatClass} ${isToday ? 'today' : ''} ${selectedCalendarDay === dStr ? 'selected' : ''}`;
         let dots = '';
         if (act) {
             if (act.inc) dots += `<span class="cal-dot positive-bg"></span>`;
@@ -1811,6 +2128,7 @@ const renderCalendar = (baseDate, containerId) => {
         }
         const cell = document.createElement('div');
         cell.className = classes;
+        if (daySpend > 0) cell.title = `${day}/${baseDate.getMonth() + 1}: ${formatMoney(daySpend)}`;
         cell.innerHTML = `<span>${day}</span><div class="cal-dots">${dots}</div>`;
         cell.onclick = () => {
             selectedCalendarDay = (selectedCalendarDay === dStr) ? null : dStr;
@@ -1818,7 +2136,62 @@ const renderCalendar = (baseDate, containerId) => {
             updateDashboard();
         };
         grid.appendChild(cell);
+    });
+
+    let footerEl = document.getElementById('calendar-heatmap-footer');
+    if (!footerEl && grid) {
+        footerEl = document.createElement('div');
+        footerEl.id = 'calendar-heatmap-footer';
+        footerEl.className = 'cal-heatmap-footer';
+        grid.insertAdjacentElement('afterend', footerEl);
     }
+    if (footerEl) {
+        const isVarMode = calendarHeatmapMode === 'variable';
+        const modeLabel = isVarMode ? 'Solo variable' : 'Gasto total';
+        const tooltipText = isVarMode 
+            ? '<b>Solo Variable:</b> Mide tu intensidad de gasto diario ignorando gastos fijos marcados en tu presupuesto y viajes. (Mide tus hábitos/fugas)'
+            : '<b>Gasto Total:</b> Incluye todo: fijos, suscripciones, compras y viajes. (Mide el impacto real en tu bolsillo)';
+        const zeroText = maxElapsedDay > 0 ? `<b class="positive">${zeroSpendDays}d</b> sin gasto` : 'Mes futuro';
+        
+        footerEl.innerHTML = `
+            <div class="cal-heatmap-row">
+                <div class="cal-heat-scale">
+                    <span class="cal-heat-item"><i class="cal-heat-swatch low"></i>Bajo</span>
+                    <span class="cal-heat-item"><i class="cal-heat-swatch med"></i>Medio</span>
+                    <span class="cal-heat-item"><i class="cal-heat-swatch high"></i>Alto</span>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <button type="button" id="toggle-cal-heat-mode" class="mini-action-btn" style="font-size:10px; padding:2px 8px;">${modeLabel}</button>
+                    <span class="cal-heat-info-icon" id="info-cal-heat-mode">i
+                        <span class="cal-heat-tooltip">${tooltipText}</span>
+                    </span>
+                </div>
+            </div>
+            <div class="cal-heatmap-row">
+                <span>${zeroText}</span>
+                <span>Prom. día activo: <b style="color:var(--text-main);">${formatCompact(avgDailySpend)}</b></span>
+            </div>
+        `;
+
+        footerEl.querySelector('#toggle-cal-heat-mode')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            calendarHeatmapMode = calendarHeatmapMode === 'variable' ? 'total' : 'variable';
+            renderCalendar(baseDate, containerId);
+        });
+
+        footerEl.querySelector('#info-cal-heat-mode')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const icon = e.currentTarget;
+            const wasActive = icon.classList.contains('active');
+            document.querySelectorAll('.cal-heat-info-icon').forEach(el => el.classList.remove('active'));
+            if (!wasActive) icon.classList.add('active');
+        });
+
+        grid.parentNode.addEventListener('click', () => {
+            document.querySelectorAll('.cal-heat-info-icon').forEach(el => el.classList.remove('active'));
+        }, { once: true });
+    }
+
     const clearBtn = document.getElementById('clear-day-filter-btn');
     if (clearBtn) { if (selectedCalendarDay) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); }
 };
@@ -2804,7 +3177,7 @@ const renderTransactionHistory = (monthId, snap, projectionData) => {
         }
     }
 
-    let filteredTxs = financeData.transactions.filter(t => t.monthId === monthId);
+    let filteredTxs = financeData.transactions.filter(t => !t.isDeleted && getTxMonthId(t) === monthId);
 
     if (selectedCalendarDay) {
         filteredTxs = filteredTxs.filter(t => new Date(t.id).toLocaleDateString('en-CA') === selectedCalendarDay);
@@ -2816,7 +3189,7 @@ const renderTransactionHistory = (monthId, snap, projectionData) => {
             
             // -- INYECTAR OBLIGACIONES VIRTUALES COMO "PENDIENTES" --
             const currentMonthId = getMonthId(currentDate);
-            if (monthId >= currentMonthId) { // Solo mostrar TO-DO list en mes actual o futuros
+            if (monthId >= currentMonthId && financeData.preferences?.showProjections !== false) {
                 
                 // 1. Suscripciones y Fijos
                 financeData.subscriptions.forEach(sub => {
@@ -2916,13 +3289,22 @@ const renderTransactionHistory = (monthId, snap, projectionData) => {
 
     if (historySearchQuery) {
         const q = historySearchQuery.toLowerCase();
+        const cleanTagQuery = q.startsWith('#') ? q.slice(1) : q;
         filteredTxs = filteredTxs.filter(t => {
             const acc = getAccountObj(t.account).name.toLowerCase();
             const toAcc = t.toAccount ? getAccountObj(t.toAccount).name.toLowerCase() : '';
             const cat = (t.category || '').toLowerCase();
             const desc = (t.description || '').toLowerCase();
-            return desc.includes(q) || cat.includes(q) || acc.includes(q) || toAcc.includes(q);
+            const tagsArr = Array.isArray(t.tags) ? t.tags.map(tg => tg.toLowerCase()) : [];
+            const matchesTag = q.startsWith('#')
+                ? tagsArr.some(tg => tg === cleanTagQuery || tg.includes(cleanTagQuery))
+                : tagsArr.some(tg => tg.includes(cleanTagQuery));
+            return desc.includes(q) || cat.includes(q) || acc.includes(q) || toAcc.includes(q) || matchesTag;
         });
+    }
+
+    if (typeof renderHistoryTagsUI === 'function') {
+        renderHistoryTagsUI(monthId, filteredTxs);
     }
 
     filteredTxs.sort((a, b) => {
@@ -3031,6 +3413,11 @@ const renderTransactionHistory = (monthId, snap, projectionData) => {
         
         if (t.type === 'expense' && t.installments && t.installments > 1) {
             badgesHtml += `<div style="color:var(--text-muted); font-weight:600; margin-top:4px; font-size:11px; display:flex; align-items:center; gap:4px;">${renderIcon('card', 12)} Cuotas: ${t.paidInstallments || 0}/${t.installments}</div>`;
+        }
+
+        if (Array.isArray(t.tags) && t.tags.length > 0) {
+            const pills = t.tags.map(tg => `<span class="tx-tag-pill" onclick="filterByTxTag('${tg}', event)">#${tg}</span>`).join('');
+            badgesHtml += `<div class="tx-tags-row">${pills}</div>`;
         }
 
         const baseAmt = isPending ? round2(t.budgetedAmount || t.amount) : round2(t.amount);
@@ -3176,37 +3563,7 @@ const renderAnnualControlTable = () => {
     }
 
     const shortMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    
-    const incPtto = Array(12).fill(0), incReal = Array(12).fill(0);
-    const expPtto = Array(12).fill(0), expReal = Array(12).fill(0);
-
-    const getCatMatrix = (type) => {
-        const sortedCats = [...(financeData.categories[type] || [])].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
-        return sortedCats.map(catObj => {
-            const pttoArr = Array(12).fill(0), realArr = Array(12).fill(0);
-            for (let m = 0; m < 12; m++) {
-                const mId = `${annualViewYear}-${String(m + 1).padStart(2, '0')}`;
-                const lim = getCategoryLimitForMonth(catObj, m);
-                pttoArr[m] = lim;
-
-                realArr[m] = round2(financeData.transactions
-                    .filter(t => t.monthId === mId && t.type === type && t.category === catObj.name && !t.isAdjustment && isTxClosed(t))
-                    .reduce((s, t) => s + round2(t.amount), 0));
-
-                if (type === 'income') {
-                    incPtto[m] = round2(incPtto[m] + lim);
-                    incReal[m] = round2(incReal[m] + realArr[m]);
-                } else {
-                    expPtto[m] = round2(expPtto[m] + lim);
-                    expReal[m] = round2(expReal[m] + realArr[m]);
-                }
-            }
-            return { name: catObj.name, pttoArr, realArr };
-        });
-    };
-
-    const incRows = getCatMatrix('income');
-    const expRows = getCatMatrix('expense');
+    const { incPtto, incReal, expPtto, expReal, incRows, expRows } = computeAnnualControlMatrix(annualViewYear);
 
     let html = '';
 
@@ -3389,18 +3746,22 @@ const renderAccountsBreakdown = (balances, totalLiquidity) => {
 
     assets.forEach((acc, index) => {
         const balance = round2(balances[acc.id] || 0);
-        const percentage = totalLiquidity > 0 ? Math.max(0, (balance / totalLiquidity) * 100) : 0;
+        const isExcluded = acc.excludeFromLiquidity === true;
+        const percentage = (totalLiquidity > 0 && !isExcluded) ? Math.max(0, (balance / totalLiquidity) * 100) : 0;
         const color = assetColors[index % assetColors.length];
         const starTag = acc.isDefault ? ` <span style="color:var(--accent); display:inline-flex; vertical-align:middle;" title="Predeterminada"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>` : '';
+        const excludedTag = isExcluded ? `<span class="widget-badge neutral" style="font-size:9px; padding:2px 6px;">Excluida de liquidez</span>` : '';
 
         if (percentage > 0) {
             combinedBar.innerHTML += `<div class="segment" style="width:${percentage}%; background-color:${color};"></div>`;
         }
-        combinedLegend.innerHTML += `
-            <div class="legend-item">
-                <span class="dot" style="background-color:${color};"></span>
-                <span>${acc.name} ${percentage.toFixed(0)}%</span>
-            </div>`;
+        if (!isExcluded) {
+            combinedLegend.innerHTML += `
+                <div class="legend-item">
+                    <span class="dot" style="background-color:${color};"></span>
+                    <span>${acc.name} ${percentage.toFixed(0)}%</span>
+                </div>`;
+        }
 
         const deleteBtnHTML = acc.id !== 'Efectivo'
             ? `<button type="button" onclick="event.stopPropagation(); deleteAccount('${acc.id}')" style="background:rgba(255,59,48,0.15); border:none; color:var(--negative); cursor:pointer; font-weight:bold; padding:5px 10px; border-radius:6px; margin-left:10px;">X</button>`
@@ -3408,9 +3769,12 @@ const renderAccountsBreakdown = (balances, totalLiquidity) => {
 
         list.innerHTML += `
             <div class="acc-list-item" onclick="openAccountDetail('${acc.id}', 'asset')">
-                <div class="acc-list-name">
+                <div class="acc-list-name" style="gap:6px;">
                     <span class="dot" style="background-color:${color};"></span>
-                    <span>${acc.name}${starTag}</span>
+                    <div>
+                        <span>${acc.name}${starTag}</span>
+                        ${excludedTag ? `<div style="margin-top:4px;">${excludedTag}</div>` : ''}
+                    </div>
                 </div>
                 <div style="display:flex; align-items:center;">
                     <span class="acc-list-balance">${formatMoney(balance)}</span>
@@ -3636,7 +4000,7 @@ const renderExpensesBreakdown = (viewMonthId) => {
     combinedLegend.innerHTML = '';
     list.innerHTML = '';
 
-    const monthExpenses = financeData.transactions.filter(t => t.monthId === viewMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
+    const monthExpenses = financeData.transactions.filter(t => !t.isDeleted && getTxMonthId(t) === viewMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
     const totalSpent = round2(monthExpenses.reduce((sum, t) => sum + round2(t.amount), 0));
 
     if (document.getElementById('expenses-total-amount')) document.getElementById('expenses-total-amount').innerText = formatMoney(totalSpent);
@@ -3728,7 +4092,7 @@ const renderBudgetView = () => {
     const showArchived = document.getElementById('toggle-archived-cats')?.checked;
     let categories = [...(financeData.categories[currentBudgetType] || [])].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     if (!showArchived) categories = categories.filter(c => !c.isArchived);
-    const monthTransactions = financeData.transactions.filter(t => t.monthId === viewMonthId && t.type === currentBudgetType && !t.isAdjustment && isTxClosed(t));
+    const monthTransactions = financeData.transactions.filter(t => !t.isDeleted && getTxMonthId(t) === viewMonthId && t.type === currentBudgetType && !t.isAdjustment && isTxClosed(t));
     const totalsByCat = {}, totalsBySubcat = {};
 
     monthTransactions.forEach(t => {
@@ -4274,13 +4638,14 @@ document.getElementById('add-account-form')?.addEventListener('submit', (e) => {
     const name = document.getElementById('new-account-name').value.trim();
     const initial = parseMoneyInput(document.getElementById('new-account-initial').value);
     const makeDefault = !!document.getElementById('new-account-default')?.checked;
+    const excludeLiquidity = !document.getElementById('new-account-liquidity')?.checked;
 
     if (!name || financeData.customAccounts.some(a => a.id.toLowerCase() === name.toLowerCase())) {
         alert('Nombre de cuenta inválido o duplicado.');
         return;
     }
 
-    financeData.customAccounts.push({ id: name, name, category: 'asset', isDefault: false, showWhenZero: false });
+    financeData.customAccounts.push({ id: name, name, category: 'asset', isDefault: false, showWhenZero: false, excludeFromLiquidity: excludeLiquidity });
     if (makeDefault) setDefaultAccount(name, false);
 
     if (initial > 0) {
@@ -4920,6 +5285,11 @@ window.openAccountDetail = (accountId, originType = 'home') => {
 
     if (document.getElementById('account-show-when-zero')) {
         document.getElementById('account-show-when-zero').checked = !!acc.showWhenZero;
+    }
+    if (document.getElementById('account-include-liquidity')) {
+        const liqCheck = document.getElementById('account-include-liquidity');
+        liqCheck.checked = !acc.excludeFromLiquidity;
+        liqCheck.dispatchEvent(new Event('change')); // Fuerza a que se actualice el texto de ayuda
     }
 
     const currentBal = round2(currentBalances[acc.id] || 0);
@@ -5904,57 +6274,6 @@ document.getElementById('back-to-accounts-btn')?.addEventListener('click', () =>
 // --- BOLSILLOS DE AHORRO ---
 let userEditedNewPocketQuota = false;
 
-const calcMonthsBetweenDates = (startStr, endStr) => {
-    if (!endStr) return 0;
-    const todayStr = currentDate.toLocaleDateString('en-CA');
-    const [sy, sm, sd] = (startStr || todayStr).split('-').map(Number);
-    const [ey, em, ed] = endStr.split('-').map(Number);
-    return Math.max(1, (ey - sy) * 12 + (em - sm) + (ed > sd ? 1 : 0));
-};
-
-const getEffectiveStartStr = (startDateStr) => {
-    const todayStr = currentDate.toLocaleDateString('en-CA');
-    return (startDateStr && startDateStr > todayStr) ? startDateStr : todayStr;
-};
-
-const computePocketMetrics = (p) => {
-    const principal = round2(p.principal || 0);
-    const yields = round2(p.yields || 0);
-    const balance = round2(principal + yields);
-    const goal = round2(p.goal || 0);
-    const remaining = Math.max(0, round2(goal - balance));
-    const customQuota = round2(p.customQuota || 0);
-
-    let suggestedQuota = 0;
-    let monthsLeft = 0;
-    let totalMonths = 0;
-
-    if (p.targetDate) {
-        const effStart = getEffectiveStartStr(p.startDate);
-        monthsLeft = calcMonthsBetweenDates(effStart, p.targetDate);
-        totalMonths = calcMonthsBetweenDates(p.startDate || effStart, p.targetDate);
-        if (remaining > 0) {
-            suggestedQuota = round2(remaining / monthsLeft);
-        }
-    }
-
-    const activeQuota = customQuota > 0 ? customQuota : suggestedQuota;
-
-    // Indicador de ritmo si tiene fecha de inicio, fecha objetivo y meta
-    let paceStatus = null;
-    if (goal > 0 && p.startDate && p.targetDate && remaining > 0) {
-        const todayStr = currentDate.toLocaleDateString('en-CA');
-        if (todayStr > p.startDate && totalMonths > 1) {
-            const elapsedMonths = Math.max(0, totalMonths - monthsLeft);
-            const expectedBalance = round2((goal / totalMonths) * elapsedMonths);
-            if (balance >= expectedBalance * 0.95) paceStatus = { label: 'Al día', cls: 'good' };
-            else paceStatus = { label: 'Atrasado', cls: 'warn' };
-        }
-    }
-
-    return { principal, yields, balance, goal, remaining, monthsLeft, totalMonths, suggestedQuota, customQuota, activeQuota, paceStatus };
-};
-
 const updateNewPocketQuotaPreview = (forceRecalc = false) => {
     const goal = parseMoneyInput(document.getElementById('new-pocket-goal')?.value);
     const initial = parseMoneyInput(document.getElementById('new-pocket-initial')?.value);
@@ -5990,13 +6309,26 @@ document.getElementById('new-pocket-quota')?.addEventListener('input', () => {
 });
 
 const renderPocketsView = () => {
+    if (typeof initPocketsAndSimulatorTabs === 'function') initPocketsAndSimulatorTabs();
     const list = document.getElementById('pockets-list-container');
     if (!list) return;
     list.innerHTML = '';
     let totalSaved = 0, totalYields = 0, totalMonthlySuggested = 0;
 
     if (!financeData.pockets || financeData.pockets.length === 0) {
-        list.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:18px 0;">No tienes bolsillos creados.</p>';
+        list.innerHTML = `
+            <div style="background:var(--card-inner-bg); border:2px dashed color-mix(in srgb, var(--accent) 30%, transparent); border-radius:18px; padding:26px 20px; text-align:center; margin:10px 0 20px 0; position:relative; overflow:hidden;">
+                <!-- Brillo de fondo sutil -->
+                <div style="position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:color-mix(in srgb, var(--accent) 12%, transparent); border-radius:50%; filter:blur(24px);"></div>
+                
+                <div style="width:56px; height:56px; border-radius:16px; background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 15%, transparent), var(--card-inner-bg)); border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto; color:var(--accent); box-shadow:0 8px 16px rgba(0,0,0,0.04); position:relative; z-index:1;">
+                    ${renderIcon('trending-up', 26)}
+                </div>
+                <h4 style="margin:0 0 8px 0; font-size:17px; font-weight:800; color:var(--text-main); position:relative; z-index:1;">Dale un propósito a tu dinero</h4>
+                <p style="margin:0 0 22px 0; font-size:12.5px; color:var(--text-muted); line-height:1.5; position:relative; z-index:1;">El saldo libre en tu cuenta de gastos es una tentación constante. <b>Aísla tus excedentes</b>, ponles una fecha límite y míralos crecer a tu favor.</p>
+                <button type="button" class="btn btn-primary" style="width:100%; font-size:13.5px; font-weight:700; padding:12px; box-shadow:0 6px 16px color-mix(in srgb, var(--accent) 25%, transparent); position:relative; z-index:1;" onclick="const formDet = document.getElementById('add-pocket-form').closest('details'); if(formDet) formDet.open = true; setTimeout(() => document.getElementById('new-pocket-name').focus(), 100);">+ Crear mi primer bolsillo</button>
+            </div>
+        `;
     } else {
         financeData.pockets.forEach(p => {
             const m = computePocketMetrics(p);
@@ -6092,8 +6424,8 @@ const renderPocketsView = () => {
                             <strong style="font-size:14px; display:flex; align-items:center; gap:6px;"><span style="color:var(--positive); display:inline-flex;">${renderIcon('piggy', 16)}</span> ${stripLeadingEmoji(p.name)}${p.entity ? ` (${p.entity})` : ''}${paceBadge}</strong>
                             <small style="display:block; font-size:11px; color:var(--text-muted);">${dateLabel}${m.yields > 0 ? ` • Rend: +${formatMoney(m.yields)}` : ''}</small>
                         </div>
-                        <div style="text-align:right; display:flex; align-items:center; gap:6px;">
-                            <strong class="positive" style="font-size:15px;">${formatMoney(m.balance)}</strong>
+                        <div style="text-align:right; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            <strong class="positive" style="font-size:15px; white-space:nowrap;">${formatMoney(m.balance)}</strong>
                             <button type="button" onclick="openEditPocket('${p.id}')" title="Editar bolsillo" style="background:var(--hover-bg); border:1px solid var(--border-color); color:var(--text-main); padding:4px 6px; border-radius:6px; cursor:pointer; display:inline-flex;">${renderIcon('edit', 13)}</button>
                             <button type="button" onclick="deletePocket('${p.id}')" title="Eliminar bolsillo" style="background:none; border:none; color:var(--negative); font-size:11px; font-weight:bold; cursor:pointer;">X</button>
                         </div>
@@ -7195,7 +7527,7 @@ window.openOmniModal = (config = {}) => {
         mode = 'create', txId = null, type = 'expense', title = null,
         lockType = false, amount = '', account = '', toAccount = '',
         category = '', description = '', status = 'closed',
-        dateMs = null, hideRecurrence = false
+        dateMs = null, hideRecurrence = false, installments = 1
     } = config;
 
     forceCloseAllModals();
@@ -7220,7 +7552,15 @@ window.openOmniModal = (config = {}) => {
         document.getElementById('amount').value = formatNumberInput(amount);
         document.getElementById('amount').dispatchEvent(new Event('input'));
     }
-    if (account) document.getElementById('account').value = account;
+    if (account) {
+        document.getElementById('account').value = account;
+        if (type === 'expense') {
+            if (installments > 1 && document.getElementById('trans-installments')) {
+                document.getElementById('trans-installments').value = installments;
+            }
+            updateCCInstallmentsPreview(true);
+        }
+    }
     if (toAccount && type === 'transfer') document.getElementById('to-account').value = toAccount;
     if (category && type !== 'transfer') {
         document.getElementById('trans-category').value = category;
@@ -7329,7 +7669,8 @@ form?.addEventListener('submit', (e) => {
     const recurrence = !editId ? (document.getElementById('trans-recurrence')?.value || 'none') : 'none';
     const recCount = recurrence !== 'none' ? Math.max(2, Math.min(60, parseInt(document.getElementById('trans-recurrence-count')?.value, 10) || 12)) : 1;
     const account = document.getElementById('account').value, toAccount = document.getElementById('to-account').value;
-    const description = document.getElementById('description').value.trim(), amount = parseMoneyInput(document.getElementById('amount').value);
+    let description = document.getElementById('description').value.trim();
+    const amount = parseMoneyInput(document.getElementById('amount').value);
     const budgetedVal = parseMoneyInput(document.getElementById('trans-budgeted-amount')?.value);
     const baseDateObj = new Date(`${document.getElementById('trans-date').value}T${document.getElementById('trans-time').value}`);
 
@@ -7610,31 +7951,8 @@ document.getElementById('widget-financial-health')?.addEventListener('click', ()
     document.getElementById('health-goal-debt').value = hData.goals.debt;
     document.getElementById('health-goal-networth').value = hData.goals.networth;
 
-    const cap = calculateBorrowingCapacity(monthId);
-    
-    // 1. Sumar los Gastos Fijos marcados en el presupuesto
-    let totalFixedExpenses = 0;
-    const mIdx = viewDate.getMonth();
-    (financeData.categories.expense || []).forEach(c => {
-        if (c.isFixed) {
-            totalFixedExpenses += getCategoryLimitForMonth(c, mIdx) || 0;
-        } else if (c.subcategories) {
-            c.subcategories.forEach(sub => {
-                if (sub.isFixed) totalFixedExpenses += (sub.limit || 0);
-            });
-        }
-    });
-
-    // 2. Matemática del Flujo Libre
-    const healthyDebtLimit = (cap.baseIncome * cap.maxPct) / 100;
-    const freeCashFlow = cap.baseIncome - totalFixedExpenses - cap.committedMonthly;
-    
-    // El cupo real es el mínimo entre lo que el banco te presta (tope 30%) y lo que tu bolsillo aguanta (flujo libre)
-    const mathAvailableDebt = healthyDebtLimit - cap.committedMonthly;
-    const realSafeQuota = Math.max(0, Math.min(mathAvailableDebt, freeCashFlow));
-    const isDeficit = (freeCashFlow < 0 || mathAvailableDebt < 0);
-    
-    const visualQuota = isDeficit ? Math.min(mathAvailableDebt, freeCashFlow) : realSafeQuota;
+    const cap = computeDetailedBorrowingCapacity(monthId);
+    const { totalFixedExpenses, healthyDebtLimit, freeCashFlow, mathAvailableDebt, visualQuota } = cap;
 
     document.getElementById('cap-usage-badge').innerText = `${String(cap.usedPct).replace('.', ',')}% / ${cap.maxPct}%`;
     const ratio = cap.maxPct > 0 ? Math.min(100, (cap.usedPct / cap.maxPct) * 100) : 0;
@@ -8752,61 +9070,25 @@ const parseCleanCOP = (val) => {
     return round2(parseFloat(clean) || 0);
 };
 
-const getHalfMonthIndex = (monthStr, period) => {
-    if (!monthStr || !monthStr.includes('-')) return 0;
-    const [y, m] = monthStr.split('-').map(Number);
-    return y * 24 + (m - 1) * 2 + (period === '2Q' ? 1 : 0);
-};
-
 const computeRaiseSimulation = (newBasic) => {
     const prevConfig = JSON.parse(localStorage.getItem('myFinancesSalary') || '{}');
     const formBasic = parseCleanCOP(document.getElementById('profile-basic-salary')?.value);
     const currentBasic = (formBasic === newBasic && prevConfig.lastRaise?.oldBasic > 0)
         ? round2(prevConfig.lastRaise.oldBasic)
         : formBasic;
-    if (currentBasic <= 0 || newBasic <= 0 || newBasic === currentBasic) return null;
 
-    const diff = round2(newBasic - currentBasic);
-    const pct = round2((diff / currentBasic) * 100);
-
-    const baseCfg = JSON.parse(localStorage.getItem('myFinancesSalary') || '{}');
-    const currentMetrics = calculateLaborMetrics({ ...baseCfg, basicSalary: currentBasic }, currentDate);
-    const newMetrics = calculateLaborMetrics({ ...baseCfg, basicSalary: newBasic }, currentDate);
-    const netDiff = round2(newMetrics.net - currentMetrics.net);
-
-    const effMonth = document.getElementById('raise-effective-month')?.value || getMonthId(currentDate);
-    const effPeriod = document.getElementById('raise-effective-period')?.value || 'M';
-    const isRetro = !!document.getElementById('raise-is-retro')?.checked;
-    const retroFromMonth = document.getElementById('raise-retro-from-month')?.value || effMonth;
-    const retroFromPeriod = document.getElementById('raise-retro-from-period')?.value || 'M';
-    const retroPayMonth = document.getElementById('raise-retro-pay-month')?.value || effMonth;
-    const retroPayPeriod = document.getElementById('raise-retro-pay-period')?.value || 'M';
-
-    let retroHalfMonths = 0;
-    let retroNetAmount = 0;
-
-    if (isRetro) {
-        const effIdx = getHalfMonthIndex(effMonth, effPeriod);
-        const fromIdx = getHalfMonthIndex(retroFromMonth, retroFromPeriod);
-        if (effIdx > fromIdx) {
-            retroHalfMonths = effIdx - fromIdx;
-            for (let h = fromIdx; h < effIdx; h++) {
-                const qDiff = (h % 2 === 0)
-                    ? round2(newMetrics.net1Q - currentMetrics.net1Q)
-                    : round2(newMetrics.net2Q - currentMetrics.net2Q);
-                retroNetAmount = round2(retroNetAmount + qDiff);
-            }
-        }
-    }
-
-    return {
-        currentBasic, newBasic, diff, pct,
-        currentMetrics, newMetrics, netDiff,
-        effMonth, effPeriod,
-        isRetro, retroFromMonth, retroFromPeriod,
-        retroPayMonth, retroPayPeriod,
-        retroHalfMonths, retroNetAmount
-    };
+    return computeSalaryRaiseSimulation({
+        currentBasic,
+        newBasic,
+        baseSalaryConfig: prevConfig,
+        effMonth: document.getElementById('raise-effective-month')?.value,
+        effPeriod: document.getElementById('raise-effective-period')?.value || 'M',
+        isRetro: !!document.getElementById('raise-is-retro')?.checked,
+        retroFromMonth: document.getElementById('raise-retro-from-month')?.value,
+        retroFromPeriod: document.getElementById('raise-retro-from-period')?.value || 'M',
+        retroPayMonth: document.getElementById('raise-retro-pay-month')?.value,
+        retroPayPeriod: document.getElementById('raise-retro-pay-period')?.value || 'M'
+    });
 };
 
 const renderSalaryRaisePreview = (newBasic) => {
@@ -9081,30 +9363,6 @@ document.getElementById('btn-export-data')?.addEventListener('click', () => {
 
 document.getElementById('btn-import-trigger')?.addEventListener('click', () => document.getElementById('import-file-input')?.click());
 
-document.getElementById('btn-archive-year')?.addEventListener('click', () => {
-    const year = parseInt(document.getElementById('archive-year-input').value, 10);
-    if (!year || year >= currentDate.getFullYear()) {
-        alert('Debes ingresar un año estrictamente anterior al año en curso.');
-        return;
-    }
-    
-    const count = financeData.transactions.filter(t => t.monthId.startsWith(year.toString())).length;
-    if (count === 0) {
-        alert(`No hay transacciones cerradas registradas en el año ${year} para archivar.`);
-        return;
-    }
-
-    if (confirm(`⚠️ ATENCIÓN: Vas a archivar y consolidar los movimientos hasta el 31 de diciembre de ${year}.\n\nSe eliminarán del historial reemplazándose por un único saldo inicial. ¡Esta acción no se puede deshacer!\n\n¿Tienes tu archivo JSON de respaldo guardado?`)) {
-        const result = window.archiveYearData(year);
-        if (result.deleted > 0) {
-            alert(`🧹 Cierre exitoso.\nSe eliminaron ${result.deleted} movimientos antiguos y se crearon ${result.added} saldos consolidados.\n\nMemoria liberada en el dispositivo.`);
-            updateDashboard();
-        } else {
-            alert('No se encontraron movimientos elegibles para archivar en ese año.');
-        }
-    }
-});
-
 document.getElementById('import-file-input')?.addEventListener('change', (event) => {
     const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
     reader.onload = (e) => {
@@ -9297,17 +9555,6 @@ document.getElementById('custom-theme-color')?.addEventListener('input', (e) => 
     applyThemeUI(hex); 
 });
 
-document.getElementById('notifications-config-form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    financeData.notificationPrefs = {
-        daysBefore: parseInt(document.getElementById('notif-days-before').value, 10) || 5,
-        budgetPct: parseInt(document.getElementById('notif-budget-pct').value, 10) || 85,
-        pendingEnabled: document.getElementById('notif-pending-enabled').checked
-    };
-    localStorage.setItem('myFinances', JSON.stringify(financeData));
-    updateDashboard();
-    alert('✅ Preferencias de alertas guardadas.');
-});
 document.getElementById('btn-generate-monthly-ics')?.addEventListener('click', () => {
     const payD = parseInt(document.getElementById('profile-pay-day')?.value, 10) || 30;
     const evDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), payD, 18, 0, 0);
@@ -9387,21 +9634,6 @@ document.getElementById('profile-pin-form')?.addEventListener('submit', (e) => {
 });
 document.getElementById('home-version-btn')?.addEventListener('click', () => openUniversalInfoModal('about'));
 document.getElementById('profile-version-btn')?.addEventListener('click', () => openUniversalInfoModal('about'));
-
-document.querySelectorAll('.drawer-accordion-trigger').forEach(trigger => {
-    trigger.addEventListener('click', () => {
-        const group = trigger.closest('.drawer-accordion-group');
-        const targetId = trigger.getAttribute('data-target');
-        const content = document.getElementById(targetId);
-        const chevron = trigger.querySelector('.drawer-chevron');
-        if (group && content) {
-            group.classList.toggle('open');
-            const isOpen = group.classList.contains('open');
-            content.classList.toggle('hidden', !isOpen);
-            if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
-        }
-    });
-});
 
 // --- 15.6 DIVISIÓN DE TRANSACCIONES (SPLIT) ---
 let splitState = { baseAmount: 0, type: 'expense', items: [] };
@@ -9694,7 +9926,7 @@ document.getElementById('btn-generate-pdf-report')?.addEventListener('click', ()
                 <tbody>${txHtml.length > 0 ? txHtml : '<tr><td colspan="5" style="text-align:center;">Sin movimientos este mes</td></tr>'}</tbody>
             </table>
         </div>
-        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v2.0.1.</div>`;
+        <div class="print-footer">Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v2.1.0.</div>`;
     window.print();
 });
 
@@ -10205,25 +10437,6 @@ document.getElementById('close-subcat-months-btn')?.addEventListener('click', ()
     document.getElementById('subcat-months-modal')?.classList.add('hidden');
 });
 
-// Registro PWA Service Worker (solo en HTTP/HTTPS para compatibilidad local)
-if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then((reg) => {
-            reg.addEventListener('updatefound', () => {
-                const newWorker = reg.installing;
-                newWorker?.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        const toast = document.getElementById('sw-update-toast');
-                        if (toast) {
-                            toast.classList.remove('hidden');
-                            setTimeout(() => window.location.reload(), 2200);
-                        }
-                    }
-                });
-            });
-        }).catch(() => {});
-    });
-}
 document.getElementById('toggle-archived-cats')?.addEventListener('change', renderBudgetView);
 // ... llamadas finales de inicialización de app.js ...
 applyColorModeUI(localStorage.getItem('myFinancesColorMode') || 'auto');
@@ -10358,24 +10571,6 @@ const initGlobalNavigation = () => {
         document.getElementById('fab-btn')?.classList.toggle('active');
     });
 
-    // 2. Acordeones del Side Drawer
-    document.querySelectorAll('.drawer-accordion-trigger').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const targetId = btn.getAttribute('data-target');
-            const targetEl = document.getElementById(targetId);
-            const chevron = btn.querySelector('.drawer-chevron');
-            
-            if (targetEl && targetEl.classList.contains('hidden')) {
-                targetEl.classList.remove('hidden');
-                if (chevron) chevron.style.transform = 'rotate(0deg)';
-            } else if (targetEl) {
-                targetEl.classList.add('hidden');
-                if (chevron) chevron.style.transform = 'rotate(-90deg)';
-            }
-        });
-    });
-
     // 3. Side Drawer (Abrir/Cerrar)
     document.getElementById('open-drawer-btn')?.addEventListener('click', openSideDrawer);
     document.getElementById('close-drawer-btn')?.addEventListener('click', closeSideDrawer);
@@ -10508,3 +10703,2797 @@ document.getElementById('tab-budget-income')?.addEventListener('click', () => {
     }, 50);
 });
 document.getElementById('subcat-edit-rollover')?.addEventListener('change', () => updateRolloverHint('subcat-edit-rollover', 'subcat-edit-rollover-hint', 'subcat-edit-rollover-title', 'subcat-edit-rollover-desc'));
+
+// --- PREFERENCIAS DE RENDIMIENTO (ANIMACIONES) ---
+document.addEventListener('DOMContentLoaded', () => {
+    if (financeData.preferences?.disableAnimations) {
+        document.body.classList.add('no-animations');
+        const animSwitch = document.getElementById('profile-enable-animations');
+        if (animSwitch) animSwitch.checked = false;
+    }
+});
+
+document.getElementById('profile-enable-animations')?.addEventListener('change', (e) => {
+    const isEnabled = e.target.checked;
+    if (isEnabled) {
+        document.body.classList.remove('no-animations');
+    } else {
+        document.body.classList.add('no-animations');
+    }
+    
+    financeData.preferences = financeData.preferences || {};
+    financeData.preferences.disableAnimations = !isEnabled;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+});
+// --- PREFERENCIAS DE MONEDA (PARTE B) ---
+function syncCurrencyPrefs() {
+    const prefs = financeData.preferences || {};
+    const showSymbolEl = document.getElementById('pref-show-symbol');
+    const negFormatEl = document.getElementById('pref-negative-format');
+    const decEl = document.getElementById('pref-decimals');
+
+    if (showSymbolEl) showSymbolEl.checked = prefs.showCurrencySymbol !== false;
+    if (negFormatEl) negFormatEl.value = prefs.negativeFormat || 'minus';
+    if (decEl) decEl.value = prefs.decimals !== undefined ? prefs.decimals : 2;
+}
+
+['pref-show-symbol', 'pref-negative-format', 'pref-decimals'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', (e) => {
+        if (!financeData.preferences) financeData.preferences = {};
+        if (id === 'pref-show-symbol') financeData.preferences.showCurrencySymbol = e.target.checked;
+        if (id === 'pref-negative-format') financeData.preferences.negativeFormat = e.target.value;
+        if (id === 'pref-decimals') financeData.preferences.decimals = parseInt(e.target.value, 10);
+        
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        updateDashboard();
+    });
+});// --- LÓGICA DE USABILIDAD (FASE 2) ---
+document.getElementById('account-include-liquidity')?.addEventListener('change', (e) => {
+    const accountId = document.getElementById('reconcile-account-id')?.value;
+    const acc = financeData.customAccounts.find(a => a.id === accountId);
+    if (!acc) return;
+    acc.excludeFromLiquidity = !e.target.checked;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    hasUnsavedChanges = false; updateDashboard();
+});
+
+document.getElementById('notifications-config-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    financeData.notificationPrefs = {
+        daysBefore: parseInt(document.getElementById('notif-days-before').value, 10) || 5,
+        budgetPct: parseInt(document.getElementById('notif-budget-pct').value, 10) || 85,
+        pendingEnabled: !!document.getElementById('notif-pending-enabled')?.checked
+    };
+    if (!financeData.preferences) financeData.preferences = {};
+    financeData.preferences.showProjections = !!document.getElementById('pref-show-projections')?.checked;
+    financeData.preferences.rememberAccount = !!document.getElementById('pref-remember-account')?.checked;
+    financeData.preferences.rememberCategory = !!document.getElementById('pref-remember-category')?.checked;
+    
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    
+    // Le decimos a la app que ya no hay cambios pendientes para que no bloquee la salida
+    hasUnsavedChanges = false; 
+    
+    // Mostramos tu alerta personalizada de éxito
+    if (typeof showToast === 'function') {
+        showToast('✅ Preferencias de alertas guardadas.');
+    } else {
+        alert('Preferencias de alertas guardadas.');
+    }
+    
+    updateDashboard();
+});
+
+// Guardar Memoria al confirmar transacción
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form') {
+        if (financeData.preferences?.rememberAccount) {
+            financeData.preferences.lastAccount = document.getElementById('account').value;
+        }
+        if (financeData.preferences?.rememberCategory && document.getElementById('type').value === 'expense') {
+            financeData.preferences.lastCategory = document.getElementById('trans-category').value;
+        }
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+    }
+});
+
+// Cargar Memoria al abrir modal de nuevo registro
+document.addEventListener('click', (e) => {
+    const clickedFabOpt = e.target.closest('.fab-option');
+    if (clickedFabOpt) {
+        setTimeout(() => {
+            const prefs = financeData.preferences || {};
+            if (prefs.rememberAccount && prefs.lastAccount) {
+                const accSelect = document.getElementById('account');
+                if (accSelect && Array.from(accSelect.options).some(o => o.value === prefs.lastAccount)) {
+                    accSelect.value = prefs.lastAccount;
+                }
+            }
+            if (prefs.rememberCategory && prefs.lastCategory && clickedFabOpt.getAttribute('data-type') === 'expense') {
+                const catSelect = document.getElementById('trans-category');
+                if (catSelect && Array.from(catSelect.options).some(o => o.value === prefs.lastCategory)) {
+                    catSelect.value = prefs.lastCategory;
+                }
+            }
+        }, 60);
+    }
+}, true);
+// --- LÓGICA DE AYUDA VISUAL (Liquidez de Cuenta) ---
+const toggleLiquidityHint = (checkboxId, hintId) => {
+    const check = document.getElementById(checkboxId);
+    const hint = document.getElementById(hintId);
+    if (!check || !hint) return;
+    
+    check.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            hint.style.backgroundColor = '';
+            hint.style.borderColor = '';
+            hint.innerHTML = `
+                <span style="display:flex; align-items:flex-start; gap:6px;">
+                    <span style="color:var(--positive); display:inline-flex; flex-shrink:0;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    </span>
+                    <span><b>Cuenta Líquida (Activado):</b> El saldo sumará a tu Patrimonio y estará disponible para tu "Libre Seguro". Ideal para cuentas de nómina o efectivo de uso diario.</span>
+                </span>`;
+        } else {
+            hint.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+            hint.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+            hint.innerHTML = `
+                <span style="display:flex; align-items:flex-start; gap:6px;">
+                    <span style="color:#f59e0b; display:inline-flex; flex-shrink:0;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
+                    <span><b>Cuenta Aislada (Desactivado):</b> El saldo aparecerá en la Hoja de Balance, pero <b>NO sumará</b> a tu "Libre Seguro". Ideal para CDTs, ahorros intocables o fondos de emergencia.</span>
+                </span>`;
+        }
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleLiquidityHint('new-account-liquidity', 'new-account-liquidity-hint');
+    toggleLiquidityHint('account-include-liquidity', 'edit-account-liquidity-hint');
+});
+// --- SISTEMA DE PAPELERA DE RECICLAJE (FASE 3A) ---
+window.moveTxToTrash = (txId) => {
+    const tx = financeData.transactions.find(t => String(t.id) === String(txId));
+    if (!tx) return;
+    if (typeof revertTransferAllocation === 'function' && tx.type === 'transfer') {
+        revertTransferAllocation(tx);
+    }
+    tx.isDeleted = true;
+    tx.deletedAt = Date.now();
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    hasUnsavedChanges = false;
+    forceCloseAllModals();
+    updateDashboard();
+    updateTrashBadge();
+};
+
+window.restoreTxFromTrash = (txId) => {
+    const tx = financeData.transactions.find(t => String(t.id) === String(txId));
+    if (!tx) return;
+    delete tx.isDeleted;
+    delete tx.deletedAt;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    renderTrashModal();
+    updateDashboard();
+    updateTrashBadge();
+};
+
+window.permanentlyDeleteTx = (txId) => {
+    if (!confirm('¿Eliminar este movimiento definitivamente? Esta acción no se puede deshacer.')) return;
+    financeData.transactions = financeData.transactions.filter(t => String(t.id) !== String(txId));
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    renderTrashModal();
+    updateTrashBadge();
+};
+
+const updateTrashBadge = () => {
+    const count = financeData.transactions.filter(t => t.isDeleted).length;
+    const badge = document.getElementById('drawer-trash-badge');
+    if (badge) {
+        badge.innerText = count;
+        badge.classList.toggle('hidden', count === 0);
+    }
+};
+
+window.renderTrashModal = () => {
+    const container = document.getElementById('trash-list-container');
+    const countLabel = document.getElementById('trash-count-label');
+    const emptyBtn = document.getElementById('btn-empty-trash');
+    if (!container) return;
+
+    const deletedTxs = financeData.transactions
+        .filter(t => t.isDeleted)
+        .sort((a, b) => (b.deletedAt || b.id) - (a.deletedAt || a.id));
+
+    if (countLabel) countLabel.innerText = `${deletedTxs.length} elemento${deletedTxs.length !== 1 ? 's' : ''}`;
+    if (emptyBtn) emptyBtn.classList.toggle('hidden', deletedTxs.length === 0);
+
+    if (deletedTxs.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">La papelera está vacía.</div>`;
+        return;
+    }
+
+    container.innerHTML = deletedTxs.map(t => {
+        const sign = t.type === 'income' ? '+' : (t.type === 'expense' ? '-' : '');
+        const colorCls = t.type === 'income' ? 'positive' : (t.type === 'expense' ? 'negative' : 'accent');
+        const accName = stripLeadingEmoji(getAccountObj(t.account).name);
+        return `
+            <div class="acc-list-item" style="cursor:default; padding:12px; align-items:center; gap:8px;">
+                <div style="flex:1; min-width:0;">
+                    <strong style="display:block; font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${stripLeadingEmoji(t.description)}</strong>
+                    <small style="display:block; font-size:11px; color:var(--text-muted);">${accName} • ${t.date}</small>
+                    <strong class="${colorCls}" style="font-size:13px;">${sign}${formatMoney(t.amount)}</strong>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button type="button" onclick="restoreTxFromTrash('${t.id}')" class="mini-action-btn" style="color:var(--positive); border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.1); font-weight:700;">Restaurar</button>
+                    <button type="button" onclick="permanentlyDeleteTx('${t.id}')" class="mini-action-btn" style="color:var(--negative); border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);">✕</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+// Interceptar el botón Eliminar del formulario de edición para enviar a Papelera
+document.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('#delete-btn');
+    if (delBtn) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const editId = document.getElementById('edit-id')?.value;
+        if (!editId) return;
+        if (confirm('¿Mover este movimiento a la papelera de reciclaje?')) {
+            moveTxToTrash(editId);
+        }
+    }
+}, true);
+
+document.getElementById('btn-empty-trash')?.addEventListener('click', () => {
+    const count = financeData.transactions.filter(t => t.isDeleted).length;
+    if (count === 0) return;
+    if (confirm(`¿Vaciar la papelera y eliminar definitivamente ${count} movimiento(s)?`)) {
+        financeData.transactions = financeData.transactions.filter(t => !t.isDeleted);
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        renderTrashModal();
+        updateTrashBadge();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', updateTrashBadge);
+// --- SISTEMA DE ETIQUETAS #TAGS (FASE 3B) ---
+window.filterByTxTag = (tag, event) => {
+    if (event) event.stopPropagation();
+    const targetQuery = `#${String(tag).toLowerCase()}`;
+    const searchInput = document.getElementById('history-search-input');
+
+    if (historySearchQuery.toLowerCase() !== targetQuery) {
+        historySearchQuery = targetQuery;
+        if (searchInput) searchInput.value = targetQuery;
+    }
+    
+    // Forzamos la navegación al historial de movimientos
+    forceCloseAllModals();
+    
+    // Simulamos el clic en el botón inferior si existe
+    const navHistoryBtn = document.getElementById('nav-analytics'); 
+    
+    // ATENCIÓN: Como la pestaña de historial a veces comparte espacio 
+    // con otros elementos (o se abre desde el tablero), nos aseguramos de repintarlo todo.
+    updateDashboard();
+    
+    // Si la app tiene scroll, bajamos hasta la lista de movimientos
+    const listContainer = document.getElementById('transaction-list');
+    if (listContainer) {
+        listContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
+const renderHistoryTagsUI = (monthId, filteredTxs) => {
+    const stripEl = document.getElementById('history-tags-strip');
+    const summaryEl = document.getElementById('history-tag-summary');
+
+    if (stripEl) {
+        const monthTagCounts = {};
+        financeData.transactions.forEach(t => {
+            if (!t.isDeleted && t.monthId === monthId && Array.isArray(t.tags)) {
+                t.tags.forEach(tg => {
+                    monthTagCounts[tg] = (monthTagCounts[tg] || 0) + 1;
+                });
+            }
+        });
+        const monthTags = Object.keys(monthTagCounts).sort((a, b) => monthTagCounts[b] - monthTagCounts[a]);
+
+        if (monthTags.length === 0) {
+            stripEl.classList.add('hidden');
+            stripEl.innerHTML = '';
+        } else {
+            stripEl.classList.remove('hidden');
+            const activeClean = historySearchQuery.startsWith('#') ? historySearchQuery.slice(1).toLowerCase() : '';
+            stripEl.innerHTML = monthTags.map(tg => {
+                const isActive = activeClean === tg.toLowerCase();
+                return `<button type="button" class="pill-btn ${isActive ? 'active' : ''}" style="font-size:10.5px; padding:4px 9px;" onclick="filterByTxTag('${tg}', event)">#${tg} (${monthTagCounts[tg]})</button>`;
+            }).join('');
+        }
+    }
+
+    if (summaryEl) {
+        if (historySearchQuery.startsWith('#') && historySearchQuery.length > 1) {
+            const tagLabel = historySearchQuery;
+            let tagInc = 0, tagExp = 0;
+            filteredTxs.forEach(t => {
+                const amt = round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount);
+                if (t.type === 'income') tagInc = round2(tagInc + amt);
+                else if (t.type === 'expense') tagExp = round2(tagExp + amt);
+            });
+            const netTag = round2(tagInc - tagExp);
+            const displayTotal = tagInc > 0 && tagExp > 0
+                ? `<span class="positive">+${formatCompact(tagInc)}</span> / <span class="negative">-${formatCompact(tagExp)}</span>`
+                : (tagInc > 0
+                    ? `<strong class="positive">+${formatMoney(tagInc)}</strong>`
+                    : `<strong class="negative">-${formatMoney(tagExp)}</strong>`);
+
+            summaryEl.classList.remove('hidden');
+            summaryEl.innerHTML = `
+                <div style="min-width:0;">
+                    <strong style="color:var(--accent); display:block;">Resumen ${tagLabel} (${filteredTxs.length})</strong>
+                    <div style="margin-top:2px;">Total acumulado: ${displayTotal}</div>
+                </div>
+                <button type="button" class="mini-action-btn" onclick="filterByTxTag('${tagLabel.slice(1)}', event)">✕ Limpiar</button>
+            `;
+        } else {
+            summaryEl.classList.add('hidden');
+            summaryEl.innerHTML = '';
+        }
+    }
+};
+
+const renderTxModalTagSuggestions = () => {
+    const box = document.getElementById('trans-tags-suggestions');
+    const input = document.getElementById('trans-tags');
+    if (!box || !input) return;
+
+    const topTags = getAllUsedTags().slice(0, 8);
+    if (topTags.length === 0) {
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        return;
+    }
+
+    const currentSelected = new Set(extractTransactionTags(input.value, ''));
+    box.classList.remove('hidden');
+    box.innerHTML = topTags.map(({ tag }) => {
+        const isSel = currentSelected.has(tag);
+        return `<button type="button" class="tag-suggestion-chip ${isSel ? 'selected' : ''}" data-suggest-tag="${tag}">#${tag}</button>`;
+    }).join('');
+};
+
+document.getElementById('trans-tags')?.addEventListener('input', renderTxModalTagSuggestions);
+
+document.getElementById('trans-tags-suggestions')?.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-suggest-tag]');
+    const input = document.getElementById('trans-tags');
+    if (!chip || !input) return;
+
+    const clickedTag = chip.getAttribute('data-suggest-tag');
+    const current = new Set(extractTransactionTags(input.value, ''));
+    if (current.has(clickedTag)) current.delete(clickedTag);
+    else current.add(clickedTag);
+
+    input.value = Array.from(current).map(tg => `#${tg}`).join(' ');
+    renderTxModalTagSuggestions();
+});
+
+// Sincronizar etiquetas al abrir el modal (Nuevo o Editar)
+const txModalEl = document.getElementById('transaction-modal');
+if (txModalEl) {
+    const txModalObserver = new MutationObserver(() => {
+        if (!txModalEl.classList.contains('hidden')) {
+            const editId = document.getElementById('edit-id')?.value;
+            const tagsInput = document.getElementById('trans-tags');
+            if (tagsInput) {
+                if (editId) {
+                    const tx = financeData.transactions.find(t => String(t.id) === String(editId));
+                    tagsInput.value = (tx && Array.isArray(tx.tags) && tx.tags.length > 0)
+                        ? tx.tags.map(tg => `#${tg}`).join(' ')
+                        : '';
+                } else {
+                    tagsInput.value = '';
+                }
+                renderTxModalTagSuggestions();
+            }
+        }
+    });
+    txModalObserver.observe(txModalEl, { attributes: true, attributeFilter: ['class'] });
+}
+
+// Capturar y guardar etiquetas al enviar #transaction-form
+let pendingTxTagsPayload = null;
+
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form') {
+        const editId = document.getElementById('edit-id')?.value || '';
+        const rawTags = document.getElementById('trans-tags')?.value || '';
+        const desc = document.getElementById('description')?.value || '';
+        pendingTxTagsPayload = {
+            editId,
+            tags: extractTransactionTags(rawTags, desc),
+            beforeCount: financeData.transactions.length
+        };
+    }
+}, true);
+
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form' && pendingTxTagsPayload) {
+        const payload = pendingTxTagsPayload;
+        pendingTxTagsPayload = null;
+
+        // Solo aplicar si el modal se cerró exitosamente (no hubo error de validación)
+        if (!document.getElementById('transaction-modal')?.classList.contains('hidden')) return;
+
+        if (payload.editId) {
+            const tx = financeData.transactions.find(t => String(t.id) === String(payload.editId));
+            if (tx) {
+                if (payload.tags.length > 0) tx.tags = payload.tags;
+                else delete tx.tags;
+            }
+        } else if (financeData.transactions.length > payload.beforeCount) {
+            // Aplicar etiquetas a los movimientos recién creados (incluye recurrentes)
+            for (let i = payload.beforeCount; i < financeData.transactions.length; i++) {
+                const newTx = financeData.transactions[i];
+                if (newTx && !newTx.isAdjustment) {
+                    if (payload.tags.length > 0) newTx.tags = [...payload.tags];
+                }
+            }
+        }
+
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        updateDashboard();
+    }
+}, false);
+// --- FASE 4: ANALÍTICA GLOBAL DE #TAGS, CLONACIÓN Y REPORTE PDF ---
+let analyticsTagsScope = 'all'; // 'all' = Histórico Total, 'month' = Mes Actual
+
+window.renderAnalyticsTagsCard = () => {
+    const container = document.getElementById('analytics-tags-list');
+    const scopeBtn = document.getElementById('toggle-analytics-tags-scope');
+    if (!container) return;
+
+    if (scopeBtn) {
+        scopeBtn.innerText = analyticsTagsScope === 'all' ? 'Histórico Total' : 'Mes Actual';
+    }
+
+    const activeMonthId = getMonthId(viewDate);
+    const tagStats = {};
+    financeData.transactions.forEach(t => {
+        if (t.isDeleted || t.isAdjustment || !Array.isArray(t.tags) || t.tags.length === 0) return;
+        if (analyticsTagsScope === 'month' && t.monthId !== activeMonthId) return;
+
+        const amt = round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount);
+        t.tags.forEach(rawTag => {
+            const tg = String(rawTag).toLowerCase().trim();
+            if (!tg) return;
+            if (!tagStats[tg]) tagStats[tg] = { tag: tg, inc: 0, exp: 0, count: 0 };
+            tagStats[tg].count++;
+            if (t.type === 'income') tagStats[tg].inc = round2(tagStats[tg].inc + amt);
+            else if (t.type === 'expense') tagStats[tg].exp = round2(tagStats[tg].exp + amt);
+        });
+    });
+
+    const list = Object.values(tagStats).sort((a, b) => (b.exp + b.inc) - (a.exp + a.inc));
+    if (list.length === 0) {
+        const emptyMsg = analyticsTagsScope === 'month'
+            ? 'No hay movimientos etiquetados en este mes. Toca <b>Mes Actual</b> para ver el histórico.'
+            : 'Aún no tienes movimientos etiquetados. Escribe <b>#vacaciones</b> o <b>#proyecto</b> en el campo Etiquetas al guardar.';
+        container.innerHTML = `<span style="color:var(--text-muted); font-size:11.5px; line-height:1.4;">${emptyMsg}</span>`;
+        return;
+    }
+
+    container.innerHTML = list.map(item => {
+        let rightHtml = '';
+        if (item.inc > 0 && item.exp > 0) {
+            rightHtml = `<span class="positive" style="font-size:11.5px; font-weight:700;">+${formatCompact(item.inc)}</span> <span style="color:var(--text-muted);">/</span> <span class="negative" style="font-size:11.5px; font-weight:700;">-${formatCompact(item.exp)}</span>`;
+        } else if (item.inc > 0) {
+            rightHtml = `<strong class="positive" style="font-size:13px;">+${formatMoney(item.inc)}</strong>`;
+        } else {
+            rightHtml = `<strong class="negative" style="font-size:13px;">-${formatMoney(item.exp)}</strong>`;
+        }
+
+        return `
+            <div class="bs-row" style="padding:8px 6px;" onclick="forceCloseAllModals(); filterByTxTag('${item.tag}');">
+                <div style="min-width:0;">
+                    <span style="color:var(--accent); font-weight:800; font-size:13px;">#${item.tag}</span>
+                    <small style="display:block; font-size:10.5px; color:var(--text-muted);">${item.count} movimiento${item.count !== 1 ? 's' : ''}</small>
+                </div>
+                <div style="text-align:right; flex-shrink:0;">${rightHtml}</div>
+            </div>
+        `;
+    }).join('');
+};
+
+document.getElementById('toggle-analytics-tags-scope')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    analyticsTagsScope = analyticsTagsScope === 'all' ? 'month' : 'all';
+    renderAnalyticsTagsCard();
+});
+
+// Mostrar/Ocultar botón Duplicar según si estamos editando o creando
+const dupModalEl = document.getElementById('transaction-modal');
+if (dupModalEl) {
+    const dupObserver = new MutationObserver(() => {
+        if (!dupModalEl.classList.contains('hidden')) {
+            const editId = document.getElementById('edit-id')?.value;
+            const dupBtn = document.getElementById('duplicate-tx-btn');
+            if (dupBtn) dupBtn.classList.toggle('hidden', !editId);
+        }
+    });
+    dupObserver.observe(dupModalEl, { attributes: true, attributeFilter: ['class'] });
+}
+
+// Acción de Clonar / Duplicar Movimiento con fecha y hora de hoy
+document.getElementById('duplicate-tx-btn')?.addEventListener('click', () => {
+    const editInput = document.getElementById('edit-id');
+    if (!editInput || !editInput.value) return;
+
+    editInput.value = '';
+    document.getElementById('delete-btn')?.classList.add('hidden');
+    document.getElementById('duplicate-tx-btn')?.classList.add('hidden');
+
+    const titleEl = document.getElementById('modal-title');
+    if (titleEl) titleEl.innerText = 'Duplicar Movimiento';
+
+    const now = new Date();
+    const dateInput = document.getElementById('trans-date');
+    const timeInput = document.getElementById('trans-time');
+    if (dateInput) dateInput.value = now.toLocaleDateString('en-CA');
+    if (timeInput) timeInput.value = now.toTimeString().slice(0, 5);
+
+    const statusInput = document.getElementById('trans-status');
+    if (statusInput) statusInput.value = 'closed';
+
+    hasUnsavedChanges = true;
+    document.getElementById('amount')?.focus();
+});
+
+// Generador de Estado de Cuenta Ejecutivo PDF
+window.generateExecutivePdfReport = () => {
+    const printBox = document.getElementById('print-report-container');
+    if (!printBox) return;
+
+    const viewMonthId = getMonthId(viewDate);
+    const periodTitle = formatMonthName(viewDate);
+    const snap = computeBalancesUpTo(viewMonthId);
+    const flow = getMonthlyFlow(viewMonthId, false);
+    const userName = (authData && authData.name) ? authData.name : 'Usuario';
+    const todayStr = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const monthTxs = financeData.transactions
+        .filter(t => !t.isDeleted && t.monthId === viewMonthId && isTxClosed(t))
+        .sort((a, b) => b.id - a.id);
+
+    const accountsRows = financeData.customAccounts
+        .filter(a => !a.id.startsWith('CxC_') && Math.abs(round2(snap.bals[a.id] || 0)) > 0)
+        .map(a => {
+            const bal = round2(snap.bals[a.id] || 0);
+            const isLiab = isLiabilityCategory(a.category);
+            const catLabel = a.category === 'credit_card' ? 'Tarjeta de Crédito' : (a.category === 'debt' ? 'Préstamo / Deuda' : 'Liquidez');
+            return `<tr>
+                <td>${stripLeadingEmoji(a.name)}</td>
+                <td>${catLabel}</td>
+                <td class="print-text-right ${isLiab ? 'print-negative' : 'print-positive'}">${isLiab ? '-' : ''}${formatMoney(bal)}</td>
+            </tr>`;
+        }).join('');
+
+    const txRows = monthTxs.length === 0
+        ? `<tr><td colspan="5" class="print-text-center">Sin movimientos cerrados en este periodo.</td></tr>`
+        : monthTxs.map(t => {
+            const sign = t.type === 'income' ? '+' : (t.type === 'expense' ? '-' : '');
+            const cls = t.type === 'income' ? 'print-positive' : (t.type === 'expense' ? 'print-negative' : '');
+            const tagsStr = Array.isArray(t.tags) && t.tags.length > 0 ? ` [${t.tags.map(tg => '#' + tg).join(' ')}]` : '';
+            const catStr = t.type === 'transfer' ? 'Transferencia' : cleanCatName(t.category || 'General');
+            const accStr = t.type === 'transfer'
+                ? `${stripLeadingEmoji(getAccountObj(t.account).name)} → ${stripLeadingEmoji(getAccountObj(t.toAccount).name)}`
+                : stripLeadingEmoji(getAccountObj(t.account).name);
+            return `<tr>
+                <td>${t.date}</td>
+                <td>${stripLeadingEmoji(t.description)}${tagsStr}</td>
+                <td>${catStr}</td>
+                <td>${accStr}</td>
+                <td class="print-text-right ${cls}">${sign}${formatMoney(t.amount)}</td>
+            </tr>`;
+        }).join('');
+
+    printBox.innerHTML = `
+        <div class="print-header">
+            <div class="print-brand">
+                <div class="print-brand-icon">IF</div>
+                <div>
+                    <h1>Mis Finanzas</h1>
+                    <span>Estado de Cuenta Mensual • Local-First</span>
+                </div>
+            </div>
+            <div class="print-meta">
+                <p>Titular: <strong>${userName}</strong></p>
+                <p>Periodo: <strong style="text-transform:capitalize;">${periodTitle}</strong></p>
+                <p>Generado: <strong>${todayStr}</strong></p>
+            </div>
+        </div>
+
+        <div class="print-kpi-grid">
+            <div class="print-kpi-box">
+                <small>Ingresos del Mes</small>
+                <strong class="print-positive">+${formatMoney(flow.inc)}</strong>
+            </div>
+            <div class="print-kpi-box">
+                <small>Gastos del Mes</small>
+                <strong class="print-negative">-${formatMoney(flow.exp)}</strong>
+            </div>
+            <div class="print-kpi-box">
+                <small>Flujo Neto</small>
+                <strong class="${flow.net >= 0 ? 'print-positive' : 'print-negative'}">${flow.net >= 0 ? '+' : ''}${formatMoney(flow.net)}</strong>
+            </div>
+            <div class="print-kpi-box">
+                <small>Patrimonio Neto</small>
+                <strong>${formatMoney(snap.netWorth)}</strong>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">Resumen de Cuentas y Obligaciones</div>
+            <table class="print-table">
+                <thead><tr><th>Cuenta / Producto</th><th>Tipo</th><th class="print-text-right">Saldo al Corte</th></tr></thead>
+                <tbody>${accountsRows || '<tr><td colspan="3" class="print-text-center">Sin saldos registrados.</td></tr>'}</tbody>
+            </table>
+        </div>
+
+        <div class="print-section">
+            <div class="print-section-title">Detalle de Movimientos (${monthTxs.length})</div>
+            <table class="print-table">
+                <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Cuenta</th><th class="print-text-right">Monto</th></tr></thead>
+                <tbody>${txRows}</tbody>
+            </table>
+        </div>
+
+        <div class="print-footer">
+            Documento informativo generado localmente sin conexión a servidores. Mis Finanzas (Función IF) v2.1.0.
+        </div>
+    `;
+
+    setTimeout(() => window.print(), 120);
+};
+
+document.getElementById('btn-print-pdf-report')?.addEventListener('click', () => {
+    generateExecutivePdfReport();
+});
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof renderAnalyticsTagsCard === 'function') renderAnalyticsTagsCard();
+});
+// --- AUTO-SINCRONIZACIÓN DEL HISTORIAL DE MOVIMIENTOS ---
+const ensureHistoryRendered = () => {
+    const listEl = document.getElementById('transaction-list');
+    if (!listEl || typeof renderTransactionHistory !== 'function') return;
+
+    const viewMonthId = getMonthId(viewDate);
+    const currentMonthId = getMonthId(currentDate);
+    const snap = computeBalancesUpTo(viewMonthId);
+    let projData = null;
+
+    if (viewMonthId > currentMonthId && typeof simulateFutureLiquidity === 'function') {
+        const sim = simulateFutureLiquidity(currentMonthId, viewMonthId, snap.assetsTotal);
+        projData = {
+            mode: 'hybrid',
+            avgIncome: sim.avgInc,
+            avgExpense: sim.avgExp,
+            avgCashFlow: sim.avgNet,
+            monthsDiff: sim.monthsDiff,
+            currentLiquidity: snap.assetsTotal,
+            projectedLiquidity: sim.projectedLiquidity
+        };
+    }
+
+    try {
+        renderTransactionHistory(viewMonthId, snap, projData);
+    } catch (err) {
+        console.error('Error al renderizar historial:', err);
+        listEl.innerHTML = `<li style="text-align:center; padding:14px; color:var(--negative); font-size:12px;">Error en historial: ${err.message}</li>`;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(ensureHistoryRendered, 100);
+});
+
+['prev-month', 'next-month', 'today-month-btn', 'clear-day-filter-btn'].forEach(btnId => {
+    document.getElementById(btnId)?.addEventListener('click', () => setTimeout(ensureHistoryRendered, 30));
+});
+document.getElementById('quick-month-input')?.addEventListener('change', () => setTimeout(ensureHistoryRendered, 30));
+document.getElementById('history-search-input')?.addEventListener('input', () => setTimeout(ensureHistoryRendered, 30));
+document.querySelectorAll('.pill-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => setTimeout(ensureHistoryRendered, 30));
+});
+document.getElementById('transaction-form')?.addEventListener('submit', () => setTimeout(ensureHistoryRendered, 80));
+// --- CICLOS DE FECHA PERSONALIZADOS (FASE 5A) ---
+const syncCycleStartDayUI = () => {
+    const sel = document.getElementById('pref-month-start-day');
+    const hint = document.getElementById('pref-month-start-hint');
+    const currentDay = getMonthStartDay();
+    if (sel) sel.value = String(currentDay);
+    if (hint) {
+        hint.innerText = currentDay === 1
+            ? 'Tus presupuestos y gráficos van del día 1 al último día del mes.'
+            : `Ejemplo: Tu ciclo actual va del ${getCycleRangeText(getMonthId(viewDate))}.`;
+    }
+};
+
+const updateCycleRangeBadge = () => {
+    const pill = document.getElementById('cycle-range-pill');
+    if (!pill) return;
+    const rangeTxt = getCycleRangeText(getMonthId(viewDate));
+    if (rangeTxt) {
+        pill.innerText = rangeTxt;
+        pill.classList.remove('hidden');
+    } else {
+        pill.classList.add('hidden');
+    }
+};
+
+document.getElementById('menu-notifications-btn')?.addEventListener('click', syncCycleStartDayUI);
+
+document.getElementById('pref-month-start-day')?.addEventListener('change', (e) => {
+    if (!financeData.preferences) financeData.preferences = {};
+    financeData.preferences.monthStartDay = parseInt(e.target.value, 10) || 1;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    syncCycleStartDayUI();
+    updateCycleRangeBadge();
+    updateDashboard();
+    if (typeof ensureHistoryRendered === 'function') ensureHistoryRendered();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    syncCycleStartDayUI();
+    updateCycleRangeBadge();
+});
+
+['prev-month', 'next-month', 'today-month-btn'].forEach(btnId => {
+    document.getElementById(btnId)?.addEventListener('click', () => setTimeout(updateCycleRangeBadge, 20));
+});
+document.getElementById('quick-month-input')?.addEventListener('change', () => setTimeout(updateCycleRangeBadge, 20));
+
+// --- MODO VIAJE COMPLETO Y ONBOARDING ---
+
+window.renderTripModeBanner = () => {
+    const banner = document.getElementById('active-trip-banner');
+    const drawerBadge = document.getElementById('drawer-trip-badge');
+    const trip = financeData.tripMode || { active: false };
+    if (drawerBadge) drawerBadge.classList.toggle('hidden', !trip.active);
+    if (!banner) return;
+    if (!trip.active || !trip.name) { banner.classList.add('hidden'); banner.innerHTML = ''; return; }
+
+    const st = computeActiveTripStats();
+    const barColor = st.budget > 0 && st.spent > st.budget ? 'var(--negative)' : 'var(--accent)';
+    const budgetLine = st.budget > 0
+        ? `<div class="pace-bar-track" style="margin:8px 0 6px 0;"><div class="pace-bar-fill" style="width:${st.pct}%; background-color:${barColor};"></div></div>
+           <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); font-weight:600;">
+               <span>Tope viaje: <b style="color:var(--text-main);">${formatMoney(st.budget)}</b></span>
+               <span style="color:${st.remaining >= 0 ? 'var(--positive)' : 'var(--negative)'}; font-weight:700;">${st.remaining >= 0 ? `Quedan ${formatMoney(st.remaining)}` : `Excedido ${formatMoney(Math.abs(st.remaining))}`}</span>
+           </div>`
+        : `<small style="display:block; font-size:11px; color:var(--text-muted); margin-top:4px;">Sin tope definido • ${st.count} gasto${st.count !== 1 ? 's' : ''} registrado${st.count !== 1 ? 's' : ''}</small>`;
+
+    banner.classList.remove('hidden');
+    banner.style.background = 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--card-bg)), var(--card-bg))';
+    banner.style.borderColor = 'color-mix(in srgb, var(--accent) 35%, transparent)';
+    banner.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div>
+                <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--accent);">Modo Viaje Activo • #${st.slug}</span>
+                <h3 style="margin:2px 0 0 0; font-size:16px; font-weight:800;">${trip.name}</h3>
+            </div>
+            <div style="text-align:right;">
+                <strong class="negative" style="font-size:16px;">-${formatMoney(st.spent)}</strong>
+                <div style="display:flex; gap:5px; justify-content:flex-end; margin-top:4px;">
+                    <button type="button" class="mini-action-btn" style="font-size:10px; padding:3px 8px;" onclick="forceCloseAllModals(); filterByTxTag('${st.slug}', event)">Ver gastos</button>
+                    <button type="button" class="mini-action-btn" style="font-size:10px; padding:3px 8px; color:var(--text-muted);" onclick="document.getElementById('drawer-trip-mode')?.click()">Config.</button>
+                </div>
+            </div>
+        </div>
+        ${budgetLine}
+    `;
+};
+
+const setTripModalStep = (step) => {
+    const onboardView = document.getElementById('trip-onboarding-view');
+    const formView = document.getElementById('trip-mode-form');
+    const guideBtn = document.getElementById('btn-show-trip-guide');
+    if (!onboardView || !formView) return;
+    if (step === 'guide') {
+        onboardView.classList.remove('hidden'); formView.classList.add('hidden');
+        if (guideBtn) guideBtn.classList.add('hidden');
+    } else {
+        onboardView.classList.add('hidden'); formView.classList.remove('hidden');
+        if (guideBtn) guideBtn.classList.remove('hidden');
+    }
+};
+
+window.renderTripModeUI = () => {
+    const allTripModals = document.querySelectorAll('#trip-mode-modal');
+    if (allTripModals.length > 1) { for (let i = 1; i < allTripModals.length; i++) allTripModals[i].remove(); }
+    const trip = financeData.tripMode || { active: false, name: '', budget: 0, isolateBudget: true };
+    setTripModalStep(trip.active ? 'form' : 'guide');
+
+    const activeEl = document.getElementById('trip-active-check');
+    const nameEl = document.getElementById('trip-name-input');
+    const budgetEl = document.getElementById('trip-budget-input');
+    const isolateEl = document.getElementById('trip-isolate-check');
+    const statsBox = document.getElementById('trip-modal-stats-box');
+
+    if (activeEl) activeEl.checked = !!trip.active;
+    if (nameEl) nameEl.value = trip.active ? (trip.name || '') : '';
+    if (budgetEl) budgetEl.value = (trip.active && trip.budget > 0) ? formatNumberInput(trip.budget) : '';
+    if (isolateEl) isolateEl.checked = trip.isolateBudget !== false;
+
+    if (statsBox) {
+        if (trip.active && trip.name) {
+            const st = computeActiveTripStats();
+            statsBox.classList.remove('hidden');
+            statsBox.innerHTML = `<div style="display:flex; justify-content:space-between; font-size:12px;"><span>Acumulado en <b>#${st.slug}</b> (${st.count} mov.):</span><strong class="negative">-${formatMoney(st.spent)}</strong></div>`;
+        } else {
+            statsBox.classList.add('hidden');
+            statsBox.innerHTML = '';
+        }
+    }
+};
+
+// Delegación global de clic
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-continue-trip-setup')) {
+        setTripModalStep('form');
+        const activeCheck = document.getElementById('trip-active-check');
+        const nameEl = document.getElementById('trip-name-input');
+        const budgetEl = document.getElementById('trip-budget-input');
+        const isolateEl = document.getElementById('trip-isolate-check');
+        const statsBox = document.getElementById('trip-modal-stats-box');
+        if (activeCheck) activeCheck.checked = true;
+        if (nameEl) nameEl.value = '';
+        if (budgetEl) budgetEl.value = '';
+        if (isolateEl) isolateEl.checked = true;
+        if (statsBox) { statsBox.classList.add('hidden'); statsBox.innerHTML = ''; }
+        setTimeout(() => nameEl?.focus(), 80);
+    } else if (e.target.closest('#btn-show-trip-guide')) {
+        setTripModalStep('guide');
+    }
+});
+
+// Guardado infalible vía delegación (evita duplicados de listeners en modales)
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'trip-mode-form') {
+        e.preventDefault();
+        const isActive = !!document.getElementById('trip-active-check')?.checked;
+        const name = document.getElementById('trip-name-input')?.value.trim() || '';
+        const budget = parseMoneyInput(document.getElementById('trip-budget-input')?.value);
+        const isolateBudget = !!document.getElementById('trip-isolate-check')?.checked;
+
+        if (isActive && !name) {
+            alert('Debes escribir un destino o nombre para el viaje.');
+            return;
+        }
+
+        financeData.tripMode = isActive
+            ? { active: true, name, tag: getTripTagSlug(name), budget, isolateBudget }
+            : { active: false, name: '', tag: '', budget: 0, isolateBudget: true };
+        
+        localStorage.setItem('myFinances', JSON.stringify(financeData));
+        hasUnsavedChanges = false;
+        
+        document.getElementById('trip-mode-modal')?.classList.add('hidden');
+        if (typeof forceCloseAllModals === 'function') forceCloseAllModals();
+        
+        if (typeof applyThemeUI === 'function') applyThemeUI();
+        if (typeof renderTripModeBanner === 'function') renderTripModeBanner();
+        if (typeof updateDashboard === 'function') updateDashboard();
+
+        const scrollToTop = () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            document.querySelectorAll('.app-container, main').forEach(el => { el.scrollTop = 0; });
+        };
+        scrollToTop();
+        setTimeout(scrollToTop, 60);
+    }
+});
+
+document.getElementById('trip-theme-color')?.addEventListener('input', (e) => {
+    if (!financeData.preferences) financeData.preferences = {};
+    financeData.preferences.tripTheme = e.target.value;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    if (financeData.tripMode && financeData.tripMode.active) applyThemeUI();
+});
+
+const tripTxModal = document.getElementById('transaction-modal');
+if (tripTxModal) {
+    const tripObserver = new MutationObserver(() => {
+        if (!tripTxModal.classList.contains('hidden')) {
+            const editId = document.getElementById('edit-id')?.value;
+            const trip = financeData.tripMode;
+            if (!editId && trip && trip.active && trip.name) {
+                const tagsInput = document.getElementById('trans-tags');
+                const slug = trip.tag || getTripTagSlug(trip.name);
+                if (tagsInput && !tagsInput.value.includes(`#${slug}`)) {
+                    tagsInput.value = `${tagsInput.value} #${slug}`.trim();
+                    if (typeof renderTxModalTagSuggestions === 'function') renderTxModalTagSuggestions();
+                }
+            }
+        }
+    });
+    tripObserver.observe(tripTxModal, { attributes: true, attributeFilter: ['class'] });
+}
+
+let tripBeforeSubmitCount = 0;
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form') {
+        tripBeforeSubmitCount = financeData.transactions.length;
+    }
+}, true);
+
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form') {
+        const trip = financeData.tripMode;
+        if (trip && trip.active && trip.name && financeData.transactions.length > tripBeforeSubmitCount) {
+            const slug = trip.tag || getTripTagSlug(trip.name);
+            for (let i = tripBeforeSubmitCount; i < financeData.transactions.length; i++) {
+                const tx = financeData.transactions[i];
+                if (tx && tx.type === 'expense' && !tx.isAdjustment) {
+                    tx.tripName = trip.name;
+                    if (trip.isolateBudget !== false) tx.isTripIsolated = true;
+                    if (!Array.isArray(tx.tags)) tx.tags = [];
+                    if (!tx.tags.includes(slug)) tx.tags.push(slug);
+                }
+            }
+            localStorage.setItem('myFinances', JSON.stringify(financeData));
+            if (typeof renderTripModeBanner === 'function') renderTripModeBanner();
+            if (typeof updateDashboard === 'function') updateDashboard();
+        }
+    }
+}, false);
+
+// --- FASE 5C: SOPORTE MULTIMONEDA OFFLINE ---
+let activeTxCurrency = 'COP';
+
+document.getElementById('btn-save-rates')?.addEventListener('click', () => {
+    const usd = parseMoneyInput(document.getElementById('rate-usd-input').value) || 4150;
+    const eur = parseMoneyInput(document.getElementById('rate-eur-input').value) || 4420;
+    if (!financeData.exchangeRates) financeData.exchangeRates = {};
+    financeData.exchangeRates.USD = usd;
+    financeData.exchangeRates.EUR = eur;
+    localStorage.setItem('myFinances', JSON.stringify(financeData));
+    alert('Tasas de cambio actualizadas correctamente.');
+});
+
+document.getElementById('menu-currency-btn')?.addEventListener('click', () => {
+    const rates = financeData.exchangeRates || { USD: 4150, EUR: 4420 };
+    const usdInput = document.getElementById('rate-usd-input');
+    const eurInput = document.getElementById('rate-eur-input');
+    if (usdInput) usdInput.value = formatNumberInput(rates.USD);
+    if (eurInput) eurInput.value = formatNumberInput(rates.EUR);
+});
+
+const updateTxCurrencyPreview = () => {
+    const previewEl = document.getElementById('tx-currency-preview');
+    const inputEl = document.getElementById('amount');
+    if (!previewEl || !inputEl) return;
+
+    if (activeTxCurrency === 'COP') {
+        previewEl.classList.add('hidden');
+        return;
+    }
+
+    const rawForeign = parseMoneyInput(inputEl.value);
+    if (rawForeign <= 0) {
+        previewEl.classList.add('hidden');
+        return;
+    }
+
+    const rate = (financeData.exchangeRates && financeData.exchangeRates[activeTxCurrency]) || (activeTxCurrency === 'USD' ? 4150 : 4420);
+    const convertedCop = round2(rawForeign * rate);
+    
+    previewEl.classList.remove('hidden');
+    previewEl.innerHTML = `Conversión: <b style="color:var(--text-main);">${formatMoney(convertedCop)} COP</b> (Tasa: ${formatMoney(rate)})`;
+};
+
+document.getElementById('amount')?.addEventListener('input', updateTxCurrencyPreview);
+
+document.querySelectorAll('#tx-currency-pills .pill-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('#tx-currency-pills .pill-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        activeTxCurrency = e.target.getAttribute('data-curr');
+        
+        // Limpiar el campo para evitar que se guarde un número gigante por accidente al cambiar de moneda
+        const amtInput = document.getElementById('amount');
+        if (amtInput) {
+            amtInput.value = '';
+            updateTxCurrencyPreview();
+            amtInput.focus();
+        }
+    });
+});
+
+// Reseteamos el selector de moneda cada que abrimos el modal
+const currencyTxModal = document.getElementById('transaction-modal');
+if (currencyTxModal) {
+    const currObserver = new MutationObserver(() => {
+        if (!currencyTxModal.classList.contains('hidden')) {
+            document.querySelectorAll('#tx-currency-pills .pill-btn').forEach(b => {
+                const isCop = b.getAttribute('data-curr') === 'COP';
+                b.classList.toggle('active', isCop);
+                if (isCop) activeTxCurrency = 'COP';
+            });
+            const previewEl = document.getElementById('tx-currency-preview');
+            if (previewEl) previewEl.classList.add('hidden');
+        }
+    });
+    currObserver.observe(currencyTxModal, { attributes: true, attributeFilter: ['class'] });
+}
+
+// Interceptar y convertir la moneda justo antes de que se procese el submit global
+document.addEventListener('submit', (e) => {
+    if (e.target && e.target.id === 'transaction-form' && activeTxCurrency !== 'COP') {
+        const inputEl = document.getElementById('amount');
+        const descEl = document.getElementById('description');
+        const tagsInput = document.getElementById('trans-tags');
+        
+        if (inputEl && descEl && tagsInput) {
+            const rawForeign = parseMoneyInput(inputEl.value);
+            const rate = (financeData.exchangeRates && financeData.exchangeRates[activeTxCurrency]) || (activeTxCurrency === 'USD' ? 4150 : 4420);
+            const convertedCop = round2(rawForeign * rate);
+            
+            // 1. Sobreescribir el input visual con el valor real en pesos (COP) para que la lógica de guardado no se rompa
+            inputEl.value = formatNumberInput(convertedCop);
+            
+            // 2. Modificar la descripción para que quede constancia del valor original
+            descEl.value = `${descEl.value.trim()} [${formatNumberInput(rawForeign, 2)} ${activeTxCurrency}]`;
+            
+            // 3. Etiquetar automáticamente la moneda para que la puedas filtrar
+            const currencyTag = `#${activeTxCurrency.toLowerCase()}`;
+            if (!tagsInput.value.includes(currencyTag)) {
+                tagsInput.value = `${tagsInput.value} ${currencyTag}`.trim();
+            }
+        }
+    }
+}, true); // UseCapture en true asegura que esto se ejecuta ANTES de que el formulario principal guarde los datos
+// --- CONSULTA EN TIEMPO REAL API PÚBLICA (ER-API) ---
+document.getElementById('btn-sync-rates')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '↻ Consultando...';
+    btn.disabled = true;
+
+    try {
+        if (!navigator.onLine) {
+            throw new Error('No hay conexión a internet.');
+        }
+
+        // Consultar USD a COP
+        const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
+        if (!resUsd.ok) throw new Error('Error al conectar con el servidor (USD).');
+        const dataUsd = await resUsd.json();
+        const usdCop = dataUsd.rates.COP;
+
+        // Consultar EUR a COP
+        const resEur = await fetch('https://open.er-api.com/v6/latest/EUR');
+        if (!resEur.ok) throw new Error('Error al conectar con el servidor (EUR).');
+        const dataEur = await resEur.json();
+        const eurCop = dataEur.rates.COP;
+
+        if (usdCop && eurCop) {
+            // Actualizar inputs visuales
+            const usdInput = document.getElementById('rate-usd-input');
+            const eurInput = document.getElementById('rate-eur-input');
+            if (usdInput) usdInput.value = formatNumberInput(usdCop);
+            if (eurInput) eurInput.value = formatNumberInput(eurCop);
+
+            // Guardar en base de datos local
+            if (!financeData.exchangeRates) financeData.exchangeRates = {};
+            financeData.exchangeRates.USD = round2(usdCop);
+            financeData.exchangeRates.EUR = round2(eurCop);
+            localStorage.setItem('myFinances', JSON.stringify(financeData));
+
+            alert(`✅ Tasas actualizadas con éxito desde ExchangeRate-API (open.er-api.com):\n\n1 USD = ${formatMoney(usdCop)} COP\n1 EUR = ${formatMoney(eurCop)} COP`);
+        } else {
+            throw new Error('Datos incompletos de la API.');
+        }
+    } catch (err) {
+        alert(`⚠️ No se pudo consultar: ${err.message}\n\nRevisa tu conexión a internet o ingresa los valores manualmente.`);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+// --- PROYECCIÓN DE EFECTIVO DÍA POR DÍA ---
+let cashProjectionHorizon = 'eom'; // 'eom' | '15d' | '30d' | '60d'
+
+const ensureCashProjectionModal = () => {
+    let modalEl = document.getElementById('cash-projection-modal');
+    if (modalEl) return modalEl;
+
+    modalEl = document.createElement('div');
+    modalEl.id = 'cash-projection-modal';
+    modalEl.className = 'modal hidden';
+    modalEl.innerHTML = `
+        <div class="modal-content cash-proj-modal-box">
+            <div class="modal-header" style="align-items:flex-start; flex-shrink:0;">
+                <div>
+                    <h3 style="margin:0; font-size:19px; font-weight:800;">Proyección de Efectivo</h3>
+                    <small style="color:var(--text-muted); font-size:12px;">Anticipa cómo evolucionará tu liquidez</small>
+                </div>
+                <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+            </div>
+
+            <div style="margin-bottom:12px; flex-shrink:0;">
+                <select id="cash-proj-horizon-select" style="width:100%; font-weight:700; font-size:13px; padding:10px 12px;">
+                    <option value="eom">Hasta fin de este mes</option>
+                    <option value="15d">Próximos 15 días</option>
+                    <option value="30d">Próximos 30 días</option>
+                    <option value="60d">Próximos 60 días</option>
+                </select>
+            </div>
+
+            <div class="cash-proj-hero">
+                <div>
+                    <span style="display:block; font-size:11.5px; font-weight:700; color:var(--text-muted);">Efectivo proyectado</span>
+                    <small id="cash-proj-range-label" style="font-size:10.5px; color:var(--text-muted); font-weight:600;"></small>
+                </div>
+                <strong id="cash-proj-final-val" style="font-size:20px; font-weight:800; color:var(--positive);">$ 0,00</strong>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-shrink:0; padding:0 4px;">
+                <strong style="font-size:12.5px; color:var(--text-main);">Movimientos y saldo por fecha</strong>
+                <small style="font-size:10.5px; color:var(--text-muted);">Toca un día para ver detalle</small>
+            </div>
+
+            <div id="cash-proj-timeline-body" class="cash-proj-timeline-wrap"></div>
+
+            <div id="cash-proj-summary-box" class="cash-proj-summary"></div>
+        </div>
+    `;
+
+    document.body.appendChild(modalEl);
+
+    modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) modalEl.classList.add('hidden');
+    });
+    modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => {
+        modalEl.classList.add('hidden');
+    });
+    modalEl.querySelector('#cash-proj-horizon-select')?.addEventListener('change', (e) => {
+        cashProjectionHorizon = e.target.value;
+        renderCashProjectionView();
+    });
+
+    return modalEl;
+};
+
+const renderCashProjectionView = () => {
+    const modalEl = ensureCashProjectionModal();
+    const sel = modalEl.querySelector('#cash-proj-horizon-select');
+    if (sel) sel.value = cashProjectionHorizon;
+
+    const eomDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const eomOpt = sel?.querySelector('option[value="eom"]');
+    if (eomOpt) {
+        eomOpt.textContent = `Hasta ${eomDate.getDate()} ${getShortMonthLabel(eomDate).toLowerCase()}. (Fin de mes)`;
+    }
+
+    const data = computeCashProjectionData(cashProjectionHorizon);
+    const fmtValHtml = (v) => formatMoneyHtml(v);
+    const fmtDayShort = (d) => `${d.getDate()} ${getShortMonthLabel(d).toLowerCase()}.`;
+    const fmtWeekday = (d) => {
+        const w = d.toLocaleDateString('es-CO', { weekday: 'long' });
+        return w.charAt(0).toUpperCase() + w.slice(1);
+    };
+
+    const finalEl = modalEl.querySelector('#cash-proj-final-val');
+    if (finalEl) {
+        finalEl.innerHTML = fmtValHtml(data.endBalance);
+        finalEl.style.color = data.endBalance >= 0 ? 'var(--positive)' : 'var(--negative)';
+    }
+
+    const rangeEl = modalEl.querySelector('#cash-proj-range-label');
+    if (rangeEl) rangeEl.textContent = `${fmtDayShort(data.today)} – ${fmtDayShort(data.endDate)}`;
+
+    const bodyEl = modalEl.querySelector('#cash-proj-timeline-body');
+    if (bodyEl) {
+        let html = `
+            <div class="cash-proj-item" style="cursor:default;">
+                <div class="cash-proj-left">
+                    <div class="cash-proj-date-col">
+                        <strong style="display:block; font-size:13px; color:var(--text-main);">Hoy</strong>
+                        <small style="font-size:10.5px; color:var(--text-muted);">${fmtDayShort(data.today)}</small>
+                    </div>
+                    <div class="cash-proj-flows-col">
+                        <span style="color:var(--text-muted); font-weight:600;">Efectivo disponible</span>
+                    </div>
+                </div>
+                <div class="cash-proj-right">
+                    <strong style="font-size:14px; color:${data.startBalance < 0 ? 'var(--negative)' : 'var(--text-main)'};">${fmtValHtml(data.startBalance)}</strong>
+                    <small style="font-size:10px; color:var(--text-muted);">Saldo inicial</small>
+                </div>
+            </div>
+        `;
+
+        if (data.sortedDays.length === 0) {
+            html += `<div style="text-align:center; padding:32px 12px; color:var(--text-muted); font-size:12.5px;">No hay ingresos ni pagos programados en este rango de fechas.</div>`;
+        } else {
+            data.sortedDays.forEach((day, idx) => {
+                const incItems = day.items.filter(i => i.type === 'income');
+                const expItems = day.items.filter(i => i.type === 'expense');
+                const isLowest = day.dateStr === data.lowestDateStr && data.lowestBalance < data.startBalance;
+                const balColor = day.endBalance < 0 ? 'var(--negative)' : (isLowest ? 'var(--accent)' : 'var(--text-main)');
+
+                const flowsHtml = [
+                    ...incItems.map(i => `<span class="positive">+ ${fmtValHtml(i.amount)}</span>`),
+                    ...expItems.map(i => `<span class="negative">− ${fmtValHtml(i.amount)}</span>`)
+                ].join('');
+
+                const detailId = `cash-proj-det-${idx}`;
+                const detailsRows = day.items.map(i => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">• ${i.label}</span>
+                        <b class="${i.type === 'income' ? 'positive' : 'negative'}" style="flex-shrink:0;">${i.type === 'income' ? '+' : '−'}${fmtValHtml(i.amount)}</b>
+                    </div>
+                `).join('');
+
+                html += `
+                    <div style="border-bottom:1px solid var(--border-color);">
+                        <div class="cash-proj-item ${isLowest ? 'is-lowest' : ''}" style="border-bottom:none;" onclick="document.getElementById('${detailId}')?.classList.toggle('hidden')">
+                            <div class="cash-proj-left">
+                                <div class="cash-proj-date-col">
+                                    <strong style="display:block; font-size:13px; color:var(--text-main);">${fmtDayShort(day.dateObj)}</strong>
+                                    <small style="font-size:10.5px; color:var(--text-muted);">${fmtWeekday(day.dateObj)}</small>
+                                </div>
+                                <div class="cash-proj-flows-col">${flowsHtml}</div>
+                            </div>
+                            <div class="cash-proj-right">
+                                <strong style="font-size:14px; color:${balColor};">${fmtValHtml(day.endBalance)}</strong>
+                                ${isLowest
+                                    ? `<span class="widget-badge ${day.endBalance < 0 ? 'danger' : 'warn'}" style="font-size:9px; padding:1px 6px;">Punto bajo</span>`
+                                    : `<small style="font-size:10px; color:var(--text-muted);">Saldo</small>`}
+                            </div>
+                        </div>
+                        <div id="${detailId}" class="cash-proj-day-details hidden" style="margin:0 6px 10px 6px;">${detailsRows}</div>
+                    </div>
+                `;
+            });
+        }
+        bodyEl.innerHTML = html;
+    }
+
+    const summaryEl = modalEl.querySelector('#cash-proj-summary-box');
+    if (summaryEl) {
+        const isNegLow = data.lowestBalance < 0;
+        const lowColor = isNegLow ? 'var(--negative)' : 'var(--accent)';
+        const [ly, lm, ld] = data.lowestDateStr.split('-').map(Number);
+        const lowDateObj = new Date(ly, lm - 1, ld);
+        const lowDateLabel = fmtDayShort(lowDateObj);
+
+        summaryEl.innerHTML = `
+            <div class="cash-proj-kpi-pair">
+                <div class="cash-proj-kpi-card">
+                    <small style="font-size:10.5px; color:var(--text-muted); font-weight:700;">Por recibir</small>
+                    <strong class="positive" style="font-size:14px;">${fmtValHtml(data.totalIn)}</strong>
+                </div>
+                <div class="cash-proj-kpi-card">
+                    <small style="font-size:10.5px; color:var(--text-muted); font-weight:700;">Por pagar</small>
+                    <strong class="negative" style="font-size:14px;">${fmtValHtml(data.totalOut)}</strong>
+                </div>
+            </div>
+            <div class="cash-proj-lowest-bar ${isNegLow ? 'is-negative' : ''}">
+                <div>
+                    <strong style="display:block; color:var(--text-main); font-size:12px;">Punto más bajo</strong>
+                    <small style="font-size:10.5px; color:var(--text-muted);">El ${lowDateLabel}${isNegLow ? ' • Déficit de caja' : ''}</small>
+                </div>
+                <strong style="font-size:15px; color:${lowColor};">${fmtValHtml(data.lowestBalance)}</strong>
+            </div>
+        `;
+    }
+};
+
+window.openCashProjectionModal = () => {
+    const modalEl = ensureCashProjectionModal();
+    renderCashProjectionView();
+    modalEl.classList.remove('hidden');
+};
+// --- CALCULADORA DE AHORRO Y PROYECCIÓN (INTERÉS COMPUESTO) ---
+const setupSavingsDrawerAccordion = () => {
+    const pocketsBtn = document.getElementById('drawer-pockets');
+    if (!pocketsBtn) return;
+    pocketsBtn.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE && /metas de ahorro/i.test(node.textContent)) {
+            node.textContent = ' Bolsillos de Ahorro';
+        }
+    });
+    const spanLabel = pocketsBtn.querySelector('span:not(.drawer-icon-box):not(.widget-badge)');
+    if (spanLabel && /metas de ahorro/i.test(spanLabel.textContent)) {
+        spanLabel.textContent = 'Bolsillos de Ahorro';
+    }
+};
+
+document.addEventListener('DOMContentLoaded', setupSavingsDrawerAccordion);
+
+const switchPocketsModalTab = (tabName = 'pockets') => {
+    const modalContent = document.querySelector('#pockets-modal .modal-content');
+    const headerTitle = modalContent?.querySelector('.modal-header h3');
+    const tabsBar = document.getElementById('pockets-mode-tabs');
+    const listView = document.getElementById('pockets-tab-list-view');
+    const simView = document.getElementById('pockets-tab-sim-view');
+
+    if (tabsBar) tabsBar.classList.add('hidden');
+
+    if (tabName === 'simulator') {
+        if (headerTitle) headerTitle.textContent = 'Calculadora de Ahorro';
+        listView?.classList.add('hidden');
+        simView?.classList.remove('hidden');
+    } else {
+        if (headerTitle) headerTitle.textContent = 'Bolsillos de Ahorro';
+        simView?.classList.add('hidden');
+        listView?.classList.remove('hidden');
+    }
+};
+
+window.openSavingsSection = (section = 'pockets') => {
+    const modalEl = document.getElementById('pockets-modal');
+    if (!modalEl) return;
+    modalEl.classList.remove('hidden');
+    renderPocketsView();
+    switchPocketsModalTab(section);
+};
+
+const initPocketsAndSimulatorTabs = () => {
+    setupSavingsDrawerAccordion();
+    const modalContent = document.querySelector('#pockets-modal .modal-content');
+    if (!modalContent) return;
+
+    if (document.getElementById('pockets-mode-tabs')) return;
+
+    const headerEl = modalContent.querySelector('.modal-header');
+    const existingNodes = Array.from(modalContent.children).filter(el => el !== headerEl);
+
+    const listWrapper = document.createElement('div');
+    listWrapper.id = 'pockets-tab-list-view';
+    existingNodes.forEach(node => listWrapper.appendChild(node));
+
+    const tabsBar = document.createElement('div');
+    tabsBar.id = 'pockets-mode-tabs';
+    tabsBar.className = 'segmented-control';
+    tabsBar.style.marginBottom = '14px';
+    tabsBar.innerHTML = `
+        <button type="button" class="segmented-btn active" data-ptab="pockets">Mis Bolsillos</button>
+        <button type="button" class="segmented-btn" data-ptab="simulator">Calculadora</button>
+    `;
+
+    const savedSim = JSON.parse(localStorage.getItem('myFinancesSavingsSim') || 'null') || {
+        currentAge: 30,
+        targetAge: 60,
+        initial: 0,
+        frequency: '12',
+        contribution: 300000,
+        annualRate: 8
+    };
+
+    const simWrapper = document.createElement('div');
+    simWrapper.id = 'pockets-tab-sim-view';
+    simWrapper.className = 'hidden';
+    simWrapper.innerHTML = `
+        <details class="changelog-accordion" style="margin-bottom:12px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.28); padding:11px 13px; box-shadow:none;">
+            <summary style="font-size:12px; font-weight:800; color:#d97706;">
+                <span style="display:inline-flex; align-items:center; gap:6px;">
+                    ${renderIcon('help', 15)} ¿Cómo funciona esta calculadora?
+                </span>
+                <span>▾</span>
+            </summary>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245, 158, 11, 0.3); font-size:11.5px; color:var(--text-muted); line-height:1.45; display:flex; flex-direction:column; gap:9px;">
+                <div>
+                    <strong style="color:var(--text-main); display:block; margin-bottom:2px;">1. El efecto "bola de nieve" (Interés Compuesto)</strong>
+                    <span>Cada periodo (quincena, mes, trimestre o año) tus rendimientos se suman al saldo acumulado, de modo que el siguiente periodo ganas intereses sobre tu capital <b>más</b> los intereses anteriores.</span>
+                </div>
+
+                <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:10px; padding:9px 10px;">
+                    <strong style="color:var(--text-main); display:block; margin-bottom:4px;">2. Fórmulas financieras (Estándar Colombia E.A.)</strong>
+                    <div style="font-size:11px; display:flex; flex-direction:column; gap:3px;">
+                        <span>• <b>Tasa periódica:</b> (1 + Tasa E.A.)<sup>1/periodos</sup> − 1</span>
+                        <span>• <b>Nuevo saldo:</b> Saldo anterior × (1 + Tasa periódica) + Aporte</span>
+                    </div>
+                </div>
+
+                <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:10px; padding:9px 10px;">
+                    <strong style="color:var(--text-main); display:block; margin-bottom:4px;">3. Ejemplo paso a paso</strong>
+                    <span>Imagina que tienes <b>30 años</b>, empiezas con <b>$ 1.000.000</b>, aportas <b>$ 300.000 mensuales</b> hasta los <b>40 años</b> (10 años = 120 meses) al <b>8% E.A.</b> (0,6434% mensual):</span>
+                    <div style="margin-top:6px; padding-left:8px; border-left:2px solid var(--positive); font-size:11px; display:flex; flex-direction:column; gap:3px;">
+                        <span>• <b>Mes 1:</b> Ganas <b>$ 6.434</b> de interés + $ 300.000 aporte = <b>$ 1.306.434</b></span>
+                        <span>• <b>Mes 2:</b> Ganas <b>$ 8.406</b> de interés + $ 300.000 aporte = <b>$ 1.614.840</b></span>
+                        <span>• <b>Año 10:</b> Tú pusiste <b>$ 37.000.000</b>, ganaste <b class="positive">+$ 19.196.207</b> en rendimientos y terminas con <b class="positive">$ 56.196.207</b>.</span>
+                    </div>
+                    <button type="button" id="btn-sav-sim-load-example" class="mini-action-btn" style="margin-top:8px; width:100%; justify-content:center; font-size:11px; padding:6px;">
+                        Probar este ejemplo ahora
+                    </button>
+                </div>
+            </div>
+        </details>
+
+        <form id="savings-simulator-form" class="sav-sim-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <strong style="font-size:13.5px; color:var(--text-main);">Tu escenario</strong>
+                <span id="sav-sim-years-badge" class="sav-sim-horizon-pill">Horizonte: 30 años</span>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Edad actual</label>
+                    <input type="number" id="sav-sim-age-now" min="15" max="90" value="${savedSim.currentAge}" required>
+                </div>
+                <div class="form-group">
+                    <label>Edad objetivo</label>
+                    <input type="number" id="sav-sim-age-goal" min="16" max="100" value="${savedSim.targetAge}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="margin:0;">Ahorro actual ($)</label>
+                    <button type="button" id="btn-sav-sim-use-pockets" class="mini-action-btn" style="font-size:10px; padding:2px 8px;">Usar saldo bolsillos</button>
+                </div>
+                <input type="text" id="sav-sim-initial" class="money-input" inputmode="decimal" placeholder="0,00" value="${savedSim.initial > 0 ? formatNumberInput(savedSim.initial) : ''}">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Frecuencia aporte</label>
+                    <select id="sav-sim-freq">
+                        <option value="24" ${String(savedSim.frequency) === '24' ? 'selected' : ''}>Quincenal</option>
+                        <option value="12" ${String(savedSim.frequency) === '12' ? 'selected' : ''}>Mensual</option>
+                        <option value="4" ${String(savedSim.frequency) === '4' ? 'selected' : ''}>Trimestral</option>
+                        <option value="1" ${String(savedSim.frequency) === '1' ? 'selected' : ''}>Anual</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Aporte periódico ($)</label>
+                    <input type="text" id="sav-sim-contrib" class="money-input" inputmode="decimal" placeholder="0,00" value="${savedSim.contribution > 0 ? formatNumberInput(savedSim.contribution) : ''}">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Rendimiento anual estimado (% E.A.)</label>
+                <input type="text" id="sav-sim-rate" inputmode="decimal" placeholder="Ej. 8" value="${String(savedSim.annualRate).replace('.', ',')}">
+                <small style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:4px;">Puedes usar una tasa entre 0% y 30% anual.</small>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:6px;">
+                ${renderIcon('calculator', 15)} Calcular ahorro
+            </button>
+        </form>
+
+        <div id="sav-sim-results-box"></div>
+
+        <div class="sav-sim-note">
+            <span style="color:var(--accent); flex-shrink:0; margin-top:1px;">${renderIcon('info', 15)}</span>
+            <div>
+                <strong style="display:block; color:var(--text-main); margin-bottom:2px;">Estimación, no garantía</strong>
+                <span>El resultado no incluye inflación, retención en la fuente ni comisiones. El rendimiento real puede variar.</span>
+            </div>
+        </div>
+    `;
+
+    modalContent.appendChild(tabsBar);
+    modalContent.appendChild(listWrapper);
+    modalContent.appendChild(simWrapper);
+
+    tabsBar.querySelectorAll('.segmented-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchPocketsModalTab(btn.getAttribute('data-ptab')));
+    });
+
+    const syncHorizonLabel = () => {
+        const aNow = parseInt(document.getElementById('sav-sim-age-now')?.value, 10) || 0;
+        const aGoal = parseInt(document.getElementById('sav-sim-age-goal')?.value, 10) || 0;
+        const diff = aGoal - aNow;
+        const pill = document.getElementById('sav-sim-years-badge');
+        if (pill) {
+            pill.textContent = diff > 0 ? `Horizonte: ${diff} año${diff !== 1 ? 's' : ''}` : 'Revisa las edades';
+        }
+    };
+
+    ['sav-sim-age-now', 'sav-sim-age-goal'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', syncHorizonLabel);
+    });
+    syncHorizonLabel();
+
+    document.getElementById('btn-sav-sim-use-pockets')?.addEventListener('click', () => {
+        const totalPockets = getPocketsTotalSaved();
+        const initInput = document.getElementById('sav-sim-initial');
+        if (initInput) {
+            initInput.value = totalPockets > 0 ? formatNumberInput(totalPockets) : '';
+            runSavingsSimulation();
+        }
+    });
+
+    document.getElementById('btn-sav-sim-load-example')?.addEventListener('click', (e) => {
+        const ageNowEl = document.getElementById('sav-sim-age-now');
+        const ageGoalEl = document.getElementById('sav-sim-age-goal');
+        const initEl = document.getElementById('sav-sim-initial');
+        const freqEl = document.getElementById('sav-sim-freq');
+        const contribEl = document.getElementById('sav-sim-contrib');
+        const rateEl = document.getElementById('sav-sim-rate');
+
+        if (ageNowEl) ageNowEl.value = '30';
+        if (ageGoalEl) ageGoalEl.value = '40';
+        if (initEl) initEl.value = formatNumberInput(1000000);
+        if (freqEl) freqEl.value = '12';
+        if (contribEl) contribEl.value = formatNumberInput(300000);
+        if (rateEl) rateEl.value = '8';
+
+        syncHorizonLabel();
+        e.target.closest('details')?.removeAttribute('open');
+        runSavingsSimulation(true);
+    });
+
+    document.getElementById('savings-simulator-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        runSavingsSimulation(true);
+    });
+
+    renderEmptySavingsPlaceholder();
+};
+
+const renderEmptySavingsPlaceholder = () => {
+    const box = document.getElementById('sav-sim-results-box');
+    if (!box) return;
+    box.innerHTML = `
+        <div class="sav-sim-card" style="text-align:center; padding:24px 16px;">
+            <div style="width:42px; height:42px; border-radius:50%; background:var(--hover-bg); color:var(--text-muted); display:inline-flex; align-items:center; justify-content:center; margin-bottom:8px;">
+                ${renderIcon('piggy', 20)}
+            </div>
+            <strong style="display:block; font-size:13.5px; color:var(--text-main); margin-bottom:4px;">Tu proyección aparecerá acá</strong>
+            <small style="color:var(--text-muted); font-size:11.5px;">Completa el escenario y calcula para ver el crecimiento compuesto.</small>
+        </div>
+    `;
+};
+
+const runSavingsSimulation = (showAlertOnError = false) => {
+    const box = document.getElementById('sav-sim-results-box');
+    if (!box) return;
+
+    const currentAge = parseInt(document.getElementById('sav-sim-age-now')?.value, 10) || 30;
+    const targetAge = parseInt(document.getElementById('sav-sim-age-goal')?.value, 10) || 60;
+    const initial = parseMoneyInput(document.getElementById('sav-sim-initial')?.value);
+    const periodsPerYear = parseInt(document.getElementById('sav-sim-freq')?.value, 10) || 12;
+    const contribution = parseMoneyInput(document.getElementById('sav-sim-contrib')?.value);
+    const rawRateStr = (document.getElementById('sav-sim-rate')?.value || '0').replace(',', '.');
+    const annualRate = Math.max(0, Math.min(30, parseFloat(rawRateStr) || 0));
+
+    const simRes = calculateCompoundSavingsProjection({
+        currentAge, targetAge, initial, periodsPerYear, contribution, annualRate
+    });
+
+    if (!simRes.valid) {
+        if (showAlertOnError) alert('La edad objetivo debe ser mayor a la edad actual (máximo 70 años de proyección).');
+        return;
+    }
+
+    localStorage.setItem('myFinancesSavingsSim', JSON.stringify({
+        currentAge, targetAge, initial, frequency: String(periodsPerYear), contribution, annualRate
+    }));
+
+    const { years, totalAdded, finalSnap, principalPct, interestPct, timeline } = simRes;
+
+    // Gráfica SVG de crecimiento compuesto
+    const W = 320, H = 115, padL = 44, padR = 10, padT = 12, padB = 20;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxVal = Math.max(finalSnap.balance, 1000);
+    const getX = (idx) => padL + (idx / Math.max(1, timeline.length - 1)) * plotW;
+    const getY = (val) => padT + ((maxVal - val) / maxVal) * plotH;
+
+    const balPts = timeline.map((pt, idx) => `${getX(idx).toFixed(1)},${getY(pt.balance).toFixed(1)}`);
+    const capPts = timeline.map((pt, idx) => `${getX(idx).toFixed(1)},${getY(pt.contributed).toFixed(1)}`);
+    const baseY = (padT + plotH).toFixed(1);
+    const areaPath = `M ${padL},${baseY} L ${balPts.join(' L ')} L ${(padL + plotW).toFixed(1)},${baseY} Z`;
+
+    const svgChart = `
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; margin-top:8px;">
+            <defs>
+                <linearGradient id="savSimGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--positive)" stop-opacity="0.32"/>
+                    <stop offset="100%" stop-color="var(--positive)" stop-opacity="0.02"/>
+                </linearGradient>
+            </defs>
+            <line x1="${padL}" y1="${padT}" x2="${W - padR}" y2="${padT}" stroke="rgba(148,163,184,0.18)" stroke-dasharray="3,3"/>
+            <line x1="${padL}" y1="${baseY}" x2="${W - padR}" y2="${baseY}" stroke="rgba(148,163,184,0.4)"/>
+            <text x="${padL - 5}" y="${padT + 4}" text-anchor="end" font-size="8.5" fill="#94a3b8">${formatCompact(maxVal)}</text>
+            <text x="${padL - 5}" y="${baseY}" text-anchor="end" font-size="8.5" fill="#94a3b8">$0</text>
+            <path d="${areaPath}" fill="url(#savSimGrad)"/>
+            <polyline fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-dasharray="4,3" points="${capPts.join(' ')}"/>
+            <polyline fill="none" stroke="var(--positive)" stroke-width="2.4" stroke-linecap="round" points="${balPts.join(' ')}"/>
+            <text x="${padL}" y="${H - 4}" text-anchor="start" font-size="9" fill="#94a3b8">${currentAge} años</text>
+            <text x="${W - padR}" y="${H - 4}" text-anchor="end" font-size="9" font-weight="700" fill="var(--text-main)">${targetAge} años</text>
+        </svg>
+    `;
+
+    const rowsHtml = timeline.slice(1).map(r => `
+        <tr>
+            <td style="text-align:left;">Año ${r.year} (${r.age}a)</td>
+            <td>${formatCompact(r.contributed)}</td>
+            <td class="positive">+${formatCompact(r.interest)}</td>
+            <td><b>${formatCompact(r.balance)}</b></td>
+        </tr>
+    `).join('');
+
+    box.innerHTML = `
+        <div class="sav-sim-hero">
+            <span style="display:block; font-size:11px; font-weight:700; color:var(--text-muted);">Capital proyectado a los ${targetAge} años</span>
+            <div style="font-size:22px; font-weight:800; color:var(--positive); margin-top:2px;">${formatMoneyHtml(finalSnap.balance)}</div>
+            <div class="sav-sim-bar-track">
+                <div class="sav-sim-bar-principal" style="width:${principalPct}%;"></div>
+                <div class="sav-sim-bar-interest" style="width:${interestPct}%;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10.5px; font-weight:700;">
+                <span style="color:var(--accent);">● Capital aportado (${principalPct}%)</span>
+                <span class="positive">● Rendimientos (${interestPct}%)</span>
+            </div>
+            ${svgChart}
+        </div>
+
+        <div class="sav-sim-kpis">
+            <div class="sav-sim-kpi">
+                <small>Saldo inicial</small>
+                <strong>${formatMoneyHtml(initial)}</strong>
+            </div>
+            <div class="sav-sim-kpi">
+                <small>Aportes nuevos</small>
+                <strong style="color:var(--accent);">${formatMoneyHtml(totalAdded)}</strong>
+            </div>
+            <div class="sav-sim-kpi">
+                <small>Interés ganado</small>
+                <strong class="positive">+${formatMoneyHtml(finalSnap.interest)}</strong>
+            </div>
+        </div>
+
+        <details class="changelog-accordion" style="padding:10px 12px;">
+            <summary style="font-size:11.5px; font-weight:700; color:var(--text-main);">
+                <span>Ver evolución año por año (${years} años)</span>
+                <span>▾</span>
+            </summary>
+            <div class="table-responsive" style="margin-top:8px; max-height:190px; overflow-y:auto;">
+                <table class="amort-table" style="font-size:10.5px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Edad</th>
+                            <th>Aportado</th>
+                            <th>Intereses</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        </details>
+    `;
+};
+// --- 16. UI DE ASESORES INTELIGENTES, COMPRA CONSCIENTE, CIERRE DE MES Y GASTOS HORMIGA ---
+const setupSmartAdvisorsDrawer = () => {
+    if (document.getElementById('drawer-advisors-group')) return;
+    const anchorGroup = document.getElementById('drawer-savings-group') || document.getElementById('drawer-pockets');
+    if (!anchorGroup || !anchorGroup.parentNode) return;
+
+    const groupDiv = document.createElement('div');
+    groupDiv.id = 'drawer-advisors-group';
+    groupDiv.className = 'drawer-accordion-group';
+
+    const templateTrigger = document.querySelector('#side-drawer .drawer-accordion-trigger');
+    let triggerBtn;
+
+    if (templateTrigger) {
+        triggerBtn = templateTrigger.cloneNode(true);
+        triggerBtn.setAttribute('data-target', 'drawer-advisors-sublist');
+        const iconBox = triggerBtn.querySelector('.drawer-icon-box');
+        if (iconBox) {
+            iconBox.style.background = 'color-mix(in srgb, var(--accent) 15%, transparent)';
+            iconBox.style.color = 'var(--accent)';
+            iconBox.innerHTML = renderIcon('calculator', 17);
+        }
+        triggerBtn.querySelectorAll('span, div').forEach(el => {
+            if (!el.classList.contains('drawer-icon-box') && !el.classList.contains('drawer-chevron') && el.children.length === 0 && el.textContent.trim()) {
+                el.textContent = 'Asesores Inteligentes';
+            }
+        });
+        const chev = triggerBtn.querySelector('.drawer-chevron');
+        if (chev) chev.style.transform = 'rotate(-90deg)';
+    } else {
+        triggerBtn = document.createElement('button');
+        triggerBtn.type = 'button';
+        triggerBtn.className = 'drawer-item drawer-accordion-trigger';
+        triggerBtn.setAttribute('data-target', 'drawer-advisors-sublist');
+        triggerBtn.innerHTML = `
+            <span style="display:inline-flex; align-items:center; gap:12px;">
+                <span class="drawer-icon-box" style="background:color-mix(in srgb, var(--accent) 15%, transparent); color:var(--accent);">${renderIcon('calculator', 17)}</span>
+                <span>Asesores Inteligentes</span>
+            </span>
+            <span class="drawer-chevron" style="font-size:11px; color:var(--text-muted); transition:transform 0.2s; transform:rotate(-90deg);">▼</span>
+        `;
+    }
+
+    const subList = document.createElement('div');
+    subList.id = 'drawer-advisors-sublist';
+    subList.className = 'drawer-accordion-content hidden';
+    subList.innerHTML = `
+        <button type="button" id="drawer-card-advisor" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(59, 130, 246, 0.14); color:#3b82f6;">${renderIcon('card', 15)}</span>
+            <span>¿Con qué tarjeta pago?</span>
+        </button>
+        <button type="button" id="drawer-smart-purchase" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(16, 185, 129, 0.14); color:var(--positive);">${renderIcon('shield', 15)}</span>
+            <span>Compra Inteligente</span>
+        </button>
+        <button type="button" id="drawer-credit-sim" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(239, 68, 68, 0.14); color:var(--negative);">${renderIcon('scale', 15)}</span>
+            <span>Simulador de Crédito</span>
+        </button>
+        <button type="button" id="drawer-credit-compare" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(139, 92, 246, 0.14); color:#8b5cf6;">${renderIcon('arrow-up-right', 15)}</span>
+            <span>Banco A vs. Banco B</span>
+        </button>
+        <button type="button" id="drawer-savings-calc" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(16, 185, 129, 0.14); color:var(--positive);">${renderIcon('trending-up', 15)}</span>
+            <span>Calculadora de Ahorro</span>
+        </button>
+        <button type="button" id="drawer-month-recap" class="drawer-sub-item">
+            <span class="drawer-icon-box" style="background:rgba(245, 158, 11, 0.14); color:#d97706;">${renderIcon('award', 15)}</span>
+            <span>Resumen del Mes</span>
+        </button>
+    `;
+
+    groupDiv.appendChild(triggerBtn);
+    groupDiv.appendChild(subList);
+    anchorGroup.insertAdjacentElement('afterend', groupDiv);
+};
+
+document.addEventListener('DOMContentLoaded', setupSmartAdvisorsDrawer);
+
+// 1. MODAL: ¿CON QUÉ TARJETA PAGO HOY?
+window.openCardAdvisorModal = () => {
+    let modalEl = document.getElementById('card-advisor-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'card-advisor-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML = `
+            <div class="modal-content" style="max-width:460px;">
+                <div class="modal-header" style="align-items:flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:800;">¿Con qué tarjeta pago hoy?</h3>
+                        <small style="color:var(--text-muted); font-size:11.5px;">Compara días de gracia, cupo y exoneración de manejo</small>
+                    </div>
+                    <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+                </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Monto compra (opcional)</label>
+                        <input type="text" id="card-adv-amount" class="money-input" inputmode="decimal" placeholder="0,00">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label>Cuotas</label>
+                        <select id="card-adv-installments">
+                            <option value="1">1 cuota (Contado)</option>
+                            <option value="2">2 cuotas</option>
+                            <option value="3">3 cuotas</option>
+                            <option value="6">6 cuotas</option>
+                            <option value="12">12 cuotas</option>
+                            <option value="24">24 cuotas</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="card-adv-results-list" style="max-height:56vh; overflow-y:auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+        modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.classList.add('hidden'); });
+        modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => modalEl.classList.add('hidden'));
+        modalEl.querySelector('#card-adv-amount')?.addEventListener('input', renderCardAdvisorResults);
+        modalEl.querySelector('#card-adv-installments')?.addEventListener('change', renderCardAdvisorResults);
+    }
+    renderCardAdvisorResults();
+    modalEl.classList.remove('hidden');
+};
+
+const renderCardAdvisorResults = () => {
+    const listEl = document.getElementById('card-adv-results-list');
+    if (!listEl) return;
+
+    const amt = parseMoneyInput(document.getElementById('card-adv-amount')?.value);
+    const inst = parseInt(document.getElementById('card-adv-installments')?.value, 10) || 1;
+    const { cards } = evaluateBestCreditCardForPurchase(amt, inst, currentDate);
+
+    if (cards.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:24px 12px; color:var(--text-muted); font-size:12.5px;">No tienes tarjetas de crédito registradas todavía.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = cards.map((c, idx) => {
+        const isBest = idx === 0 && c.hasEnoughCredit;
+        const badgeHtml = !c.hasEnoughCredit
+            ? `<span class="widget-badge danger" style="font-size:9.5px;">Cupo insuficiente</span>`
+            : (isBest ? `<span class="widget-badge good" style="font-size:9.5px;">★ Mejor opción hoy</span>` : `<span class="widget-badge neutral" style="font-size:9.5px;">#${idx + 1}</span>`);
+
+        return `
+            <div class="advisor-card ${isBest ? 'is-best' : ''} ${!c.hasEnoughCredit ? 'is-disabled' : ''}">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+                    <strong style="font-size:14px; color:var(--text-main);">${c.name}</strong>
+                    ${badgeHtml}
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-bottom:6px;">
+                    <span>Plazo sin interés: <b style="color:var(--accent);">${c.daysToPayment} días</b> (${c.payDateStr})</span>
+                    <span>Disp: <b class="${c.hasEnoughCredit ? 'positive' : 'negative'}">${formatCompact(c.available)}</b></span>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); display:flex; flex-direction:column; gap:2px; margin-bottom:8px;">
+                    ${c.reasons.map(r => `<span>• ${r}</span>`).join('')}
+                </div>
+                ${c.hasEnoughCredit ? `
+                    <button type="button" class="mini-action-btn" style="width:100%; justify-content:center; font-size:11px; padding:6px;" onclick="document.getElementById('card-advisor-modal')?.classList.add('hidden'); openOmniModal({ type: 'expense', account: '${c.id}', amount: ${amt > 0 ? amt : "''"}, installments: ${inst} });">
+                        Registrar gasto con ${c.name}
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+};
+
+// 2. MODAL: SIMULADOR DE COMPRA INTELIGENTE
+window.openSmartPurchaseModal = () => {
+    let modalEl = document.getElementById('smart-purchase-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'smart-purchase-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML = `
+            <div class="modal-content" style="max-width:460px;">
+                <div class="modal-header" style="align-items:flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:800;">Simulador Compra Inteligente</h3>
+                        <small style="color:var(--text-muted); font-size:11.5px;">Evalúa horas de trabajo, flujo de caja e intereses antes de comprar</small>
+                    </div>
+                    <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+                </div>
+
+                <div class="form-group">
+                    <label>¿Cuánto cuesta lo que quieres comprar? ($)</label>
+                    <input type="text" id="sp-sim-amount" class="money-input" inputmode="decimal" placeholder="Ej. 450.000">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medio de pago</label>
+                        <select id="sp-sim-method"></select>
+                    </div>
+                    <div class="form-group" id="sp-sim-inst-group">
+                        <label>Cuotas</label>
+                        <select id="sp-sim-installments">
+                            <option value="1">1 cuota</option>
+                            <option value="2">2 cuotas</option>
+                            <option value="3">3 cuotas</option>
+                            <option value="6">6 cuotas</option>
+                            <option value="12">12 cuotas</option>
+                            <option value="24">24 cuotas</option>
+                            <option value="36">36 cuotas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="sp-sim-results-box"></div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+        modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.classList.add('hidden'); });
+        modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => modalEl.classList.add('hidden'));
+        modalEl.querySelector('#sp-sim-amount')?.addEventListener('input', renderSmartPurchaseResults);
+        modalEl.querySelector('#sp-sim-method')?.addEventListener('change', renderSmartPurchaseResults);
+        modalEl.querySelector('#sp-sim-installments')?.addEventListener('change', renderSmartPurchaseResults);
+    }
+
+    const methodSel = modalEl.querySelector('#sp-sim-method');
+    if (methodSel) {
+        const cards = sortAlphabeticallyWithDefault(financeData.customAccounts.filter(a => a.category === 'credit_card'));
+        methodSel.innerHTML = `<option value="cash">Efectivo / Cuenta Débito</option>` +
+            cards.map(c => `<option value="card::${c.id}">Tarjeta: ${stripLeadingEmoji(c.name)}</option>`).join('');
+    }
+
+    renderSmartPurchaseResults();
+    modalEl.classList.remove('hidden');
+};
+
+const renderSmartPurchaseResults = () => {
+    const box = document.getElementById('sp-sim-results-box');
+    if (!box) return;
+
+    const amt = parseMoneyInput(document.getElementById('sp-sim-amount')?.value);
+    const rawMethod = document.getElementById('sp-sim-method')?.value || 'cash';
+    const isCard = rawMethod.startsWith('card::');
+    const cardId = isCard ? rawMethod.replace('card::', '') : '';
+    const instGroup = document.getElementById('sp-sim-inst-group');
+    if (instGroup) instGroup.classList.toggle('hidden', !isCard);
+
+    const inst = isCard ? (parseInt(document.getElementById('sp-sim-installments')?.value, 10) || 1) : 1;
+    const res = simulateSmartPurchase({
+        amount: amt,
+        installments: inst,
+        paymentMethod: isCard ? 'credit_card' : 'cash',
+        cardId
+    });
+
+    if (res.amount <= 0) {
+        box.innerHTML = `<div class="smart-verdict-box" style="text-align:center; color:var(--text-muted); font-size:12px;">Escribe el precio arriba para calcular el impacto en tu vida y en tu caja.</div>`;
+        return;
+    }
+
+    const lifeHtml = res.hasSalary
+        ? `<strong style="font-size:16px; color:var(--accent);">${String(res.workHoursCost).replace('.', ',')} horas</strong> <small style="color:var(--text-muted);">(${String(res.workDaysCost).replace('.', ',')} días laborales)</small>`
+        : `<small style="color:var(--text-muted);">Configura tu nómina en Perfil para ver el costo en horas de trabajo.</small>`;
+
+    box.innerHTML = `
+        <div class="smart-verdict-box ${res.verdict}">
+            <strong style="display:block; font-size:13px; color:var(--text-main); margin-bottom:4px;">${res.verdictTitle}</strong>
+            <small style="color:var(--text-muted); font-size:11px;">Evaluado con ${res.methodLabel}${res.installments > 1 ? ` a ${res.installments} cuotas` : ''}</small>
+        </div>
+
+        <div class="sav-sim-card" style="display:flex; flex-direction:column; gap:9px; font-size:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; border-bottom:1px dashed var(--border-color);">
+                <span style="color:var(--text-muted); font-weight:600;">Costo en tiempo de vida:</span>
+                <div style="text-align:right;">${lifeHtml}</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:var(--text-muted); font-weight:600;">Libre Seguro tras compra:</span>
+                <strong class="${res.safeAfter >= 0 ? 'positive' : 'negative'}">${formatMoneyHtml(res.safeAfter)}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:var(--text-muted); font-weight:600;">Punto más bajo caja (30d):</span>
+                <strong class="${res.lowestAfter >= 0 ? 'positive' : 'negative'}">${formatMoneyHtml(res.lowestAfter)}</strong>
+            </div>
+            ${isCard && res.installments > 1 ? `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:1px dashed var(--border-color);">
+                    <span style="color:var(--text-muted); font-weight:600;">Cuota mensual / Total con int.:</span>
+                    <strong style="color:var(--text-main);">${formatCompact(res.monthlyQuota)}/m • <span class="${res.isZeroInterest ? 'positive' : 'negative'}">${formatMoney(res.totalCost)}</span></strong>
+                </div>
+            ` : ''}
+        </div>
+    `;
+};
+
+// 3. MODAL: RESUMEN Y CIERRE DEL MES (3 TARJETAS BENTO DESLIZABLES)
+let activeRecapSlide = 0;
+
+window.openMonthlyRecapModal = () => {
+    let modalEl = document.getElementById('monthly-recap-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'monthly-recap-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML = `
+            <div class="modal-content" style="max-width:450px;">
+                <div class="modal-header" style="align-items:flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:800;">Resumen del Mes</h3>
+                        <small id="recap-month-subtitle" style="color:var(--text-muted); font-size:11.5px;"></small>
+                    </div>
+                    <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+                </div>
+                <div id="recap-bento-container" class="recap-bento-stage"></div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+        modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.classList.add('hidden'); });
+        modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => modalEl.classList.add('hidden'));
+    }
+
+    activeRecapSlide = 0;
+    renderMonthlyRecapView();
+    modalEl.classList.remove('hidden');
+};
+
+const renderMonthlyRecapView = () => {
+    const container = document.getElementById('recap-bento-container');
+    const subEl = document.getElementById('recap-month-subtitle');
+    if (!container) return;
+
+    const mId = getMonthId(viewDate);
+    if (subEl) subEl.textContent = `Balance y cierre de ${formatMonthName(viewDate)}`;
+
+    const data = computeMonthlyRecapData(mId);
+    const slides = [
+        // Hoja 1: Flujo y Tasa de Ahorro
+        `
+            <div class="recap-slide-card onb-anim-enter">
+                <span class="onb-step-pill">1 / 3 • Balance General</span>
+                <h4 style="margin:10px 0 4px 0; font-size:16px; font-weight:800; color:var(--text-main);">
+                    ${data.surplus >= 0 ? '¡Cerraste con saldo a favor!' : 'Mes con déficit de flujo'}
+                </h4>
+                <div style="font-size:24px; font-weight:800; color:${data.surplus >= 0 ? 'var(--positive)' : 'var(--negative)'}; margin-bottom:12px;">
+                    ${data.surplus >= 0 ? '+' : ''}${formatMoneyHtml(data.surplus)}
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+                    <div style="background:var(--hover-bg); padding:9px 10px; border-radius:11px;">
+                        <small style="font-size:10px; color:var(--text-muted); display:block;">Ingresos</small>
+                        <strong class="positive" style="font-size:13px;">${formatMoney(data.inc)}</strong>
+                    </div>
+                    <div style="background:var(--hover-bg); padding:9px 10px; border-radius:11px;">
+                        <small style="font-size:10px; color:var(--text-muted); display:block;">Gastos</small>
+                        <strong class="negative" style="font-size:13px;">${formatMoney(data.exp)}</strong>
+                    </div>
+                </div>
+                <div style="font-size:11.5px; color:var(--text-muted);">
+                    Tasa de ahorro del mes: <b style="color:var(--text-main);">${String(data.savingsRate).replace('.', ',')}%</b>
+                    ${data.prevFlow.exp > 0 ? ` • Gasto vs mes ant.: <b class="${data.expChangePct <= 0 ? 'positive' : 'negative'}">${data.expChangePct > 0 ? '+' : ''}${String(data.expChangePct).replace('.', ',')}%</b>` : ''}
+                </div>
+            </div>
+        `,
+        // Hoja 2: Categorías y Presupuesto
+        `
+            <div class="recap-slide-card onb-anim-enter">
+                <span class="onb-step-pill">2 / 3 • Radiografía de Gasto</span>
+                <h4 style="margin:10px 0 10px 0; font-size:16px; font-weight:800; color:var(--text-main);">¿A dónde se fue tu dinero?</h4>
+                ${data.topCategory ? `
+                    <div style="background:var(--hover-bg); padding:10px 12px; border-radius:12px; margin-bottom:8px;">
+                        <small style="font-size:10px; color:var(--text-muted); display:block;">Categoría con mayor gasto</small>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                            <strong style="font-size:13.5px; color:var(--text-main);">${data.topCategory.name}</strong>
+                            <strong class="negative" style="font-size:13.5px;">${formatMoney(data.topCategory.spent)}</strong>
+                        </div>
+                    </div>
+                ` : `<p style="font-size:12px; color:var(--text-muted);">Sin gastos cerrados en este mes.</p>`}
+                ${data.mostOverBudget ? `
+                    <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); padding:10px 12px; border-radius:12px;">
+                        <small style="font-size:10px; color:var(--negative); font-weight:700; display:block;">Mayor desviación de presupuesto</small>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                            <strong style="font-size:13px; color:var(--text-main);">${data.mostOverBudget.name}</strong>
+                            <strong class="negative" style="font-size:13px;">+${formatMoney(data.mostOverBudget.diff)}</strong>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="background:color-mix(in srgb, var(--positive) 10%, transparent); padding:10px 12px; border-radius:12px; font-size:12px; color:var(--positive); font-weight:700;">
+                        ✓ Ninguna categoría excedió su presupuesto.
+                    </div>
+                `}
+            </div>
+        `,
+        // Hoja 3: Acción de Cierre (Trasladar Sobrante a Bolsillo)
+        `
+            <div class="recap-slide-card onb-anim-enter">
+                <span class="onb-step-pill">3 / 3 • Acción de Cierre</span>
+                <h4 style="margin:10px 0 6px 0; font-size:16px; font-weight:800; color:var(--text-main);">Asegura tu excedente</h4>
+                ${data.surplus > 0 && data.pockets.length > 0 ? `
+                    <p style="font-size:12px; color:var(--text-muted); margin:0 0 10px 0;">
+                        Tienes <b class="positive">${formatMoney(data.surplus)}</b> libres este mes. Envíalos directo a uno de tus bolsillos antes de gastarlos:
+                    </p>
+                    <select id="recap-target-pocket" style="width:100%; margin-bottom:10px; font-size:12.5px; font-weight:700;">
+                        ${data.pockets.map(p => `<option value="${p.id}">${p.name} (Saldo: ${formatCompact(p.balance)})</option>`).join('')}
+                    </select>
+                    <button type="button" id="btn-recap-save-surplus" class="btn btn-primary" style="width:100%; font-size:13px;">
+                        Transferir ${formatMoney(data.surplus)} al bolsillo
+                    </button>
+                ` : data.surplus > 0 ? `
+                    <p style="font-size:12px; color:var(--text-muted); margin:0 0 10px 0;">
+                        Tienes <b class="positive">${formatMoney(data.surplus)}</b> de excedente. Crea un bolsillo en <b>Ahorro y Proyección</b> para apartarlos.
+                    </p>
+                    <button type="button" class="btn btn-primary" style="width:100%;" onclick="document.getElementById('monthly-recap-modal')?.classList.add('hidden'); openSavingsSection('pockets');">
+                        Ir a Bolsillos de Ahorro
+                    </button>
+                ` : `
+                    <p style="font-size:12px; color:var(--text-muted); margin:0;">
+                        Este mes no dejó excedente neto para trasladar. Revisa la hoja anterior para ajustar tus topes el próximo mes.
+                    </p>
+                `}
+            </div>
+        `
+    ];
+
+    const isLast = activeRecapSlide === slides.length - 1;
+    container.innerHTML = `
+        <div>${slides[activeRecapSlide]}</div>
+        <div>
+            <div class="onb-dots-row">
+                ${slides.map((_, i) => `<button type="button" class="onb-dot ${i === activeRecapSlide ? 'active' : ''}" data-recap-idx="${i}"></button>`).join('')}
+            </div>
+            <div style="display:flex; gap:8px;">
+                ${activeRecapSlide > 0 ? `<button type="button" id="btn-recap-prev" class="btn btn-secondary" style="flex:1;">Anterior</button>` : ''}
+                <button type="button" id="btn-recap-next" class="btn btn-primary" style="flex:2;">${isLast ? 'Finalizar' : 'Siguiente'}</button>
+            </div>
+        </div>
+    `;
+
+    container.querySelectorAll('.onb-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+            activeRecapSlide = parseInt(dot.getAttribute('data-recap-idx'), 10);
+            renderMonthlyRecapView();
+        });
+    });
+    container.querySelector('#btn-recap-prev')?.addEventListener('click', () => {
+        activeRecapSlide = Math.max(0, activeRecapSlide - 1);
+        renderMonthlyRecapView();
+    });
+    container.querySelector('#btn-recap-next')?.addEventListener('click', () => {
+        if (!isLast) {
+            activeRecapSlide++;
+            renderMonthlyRecapView();
+        } else {
+            document.getElementById('monthly-recap-modal')?.classList.add('hidden');
+        }
+    });
+    container.querySelector('#btn-recap-save-surplus')?.addEventListener('click', () => {
+        const pocketId = document.getElementById('recap-target-pocket')?.value;
+        if (!pocketId) return;
+        document.getElementById('monthly-recap-modal')?.classList.add('hidden');
+        openOmniModal({
+            type: 'transfer',
+            toAccount: pocketId,
+            amount: data.surplus,
+            description: `Ahorro excedente (${formatMonthName(viewDate)})`,
+            lockType: true,
+            hideRecurrence: true
+        });
+    });
+};
+
+// 4. TARJETA EN ANÁLISIS: DETECTOR DE GASTOS HORMIGA Y ALZAS EN SUSCRIPCIONES
+let antExpenseThresholdPref = 35000;
+
+const renderAnalyticsAntExpensesCard = () => {
+    const analyticsContainer = document.getElementById('analytics-widgets-container');
+    if (!analyticsContainer) return;
+
+    let cardEl = document.getElementById('analytics-ant-card');
+    if (!cardEl) {
+        const siblingCard = analyticsContainer.querySelector('[data-analytics-id]');
+        const baseClasses = siblingCard
+            ? siblingCard.className.replace(/\bedit-mode\b/g, '').trim()
+            : 'chart-card';
+        cardEl = document.createElement('div');
+        cardEl.id = 'analytics-ant-card';
+        cardEl.className = baseClasses;
+        cardEl.setAttribute('data-analytics-id', 'analytics-ant');
+        analyticsContainer.appendChild(cardEl);
+        applyWidgetOrder();
+    }
+
+    const viewMonthId = getMonthId(viewDate);
+    const info = computeAntExpensesAndSubHikes(viewMonthId, antExpenseThresholdPref);
+
+    const hikesHtml = info.subHikes.length > 0 ? `
+        <div style="margin-top:10px; padding:9px 11px; border-radius:12px; background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.3);">
+            <strong style="display:block; font-size:11.5px; color:#d97706; margin-bottom:4px;">⚠ Alzas detectadas en suscripciones</strong>
+            ${info.subHikes.map(h => `
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-main); margin-top:2px;">
+                    <span>• ${h.name}</span>
+                    <b class="negative">+${formatMoney(h.delta)} (+${String(h.pctIncrease).replace('.', ',')}%)</b>
+                </div>
+            `).join('')}
+        </div>
+    ` : '';
+
+    const itemsHtml = info.topAntItems.length > 0 ? info.topAntItems.map(it => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border-color); font-size:11.5px;">
+            <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px;">
+                <b style="color:var(--text-main);">${it.label}</b> <small style="color:var(--text-muted);">(${it.count}x)</small>
+            </span>
+            <strong class="negative" style="flex-shrink:0;">${formatMoney(it.total)}</strong>
+        </div>
+    `).join('') : `<small style="color:var(--text-muted); font-size:11.5px;">No hay compras pequeñas variables bajo este tope en el mes.</small>`;
+
+    cardEl.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+            <div>
+                <h4 style="margin:0; font-size:15px; font-weight:800; color:var(--text-main);">Gastos Hormiga</h4>
+                <small style="font-size:10.5px; color:var(--text-muted); font-weight:600;">Compras variables ≤ ${formatCompact(info.threshold)}</small>
+            </div>
+            <select id="ant-threshold-select" style="width:auto; padding:4px 8px; font-size:11px; font-weight:700; min-height:28px;">
+                <option value="20000" ${antExpenseThresholdPref === 20000 ? 'selected' : ''}>≤ $ 20k</option>
+                <option value="35000" ${antExpenseThresholdPref === 35000 ? 'selected' : ''}>≤ $ 35k</option>
+                <option value="50000" ${antExpenseThresholdPref === 50000 ? 'selected' : ''}>≤ $ 50k</option>
+            </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;">
+            <div style="background:var(--hover-bg); padding:10px 12px; border-radius:12px;">
+                <small style="font-size:10px; color:var(--text-muted); font-weight:700; display:block;">Acumulado mes (${info.antCount})</small>
+                <strong class="negative" style="font-size:14.5px;">${formatMoneyHtml(info.totalAntSpend)}</strong>
+            </div>
+            <div style="background:var(--hover-bg); padding:10px 12px; border-radius:12px;">
+                <small style="font-size:10px; color:var(--text-muted); font-weight:700; display:block;">Impacto anual (×12)</small>
+                <strong style="font-size:14.5px; color:#d97706;">${formatMoneyHtml(info.annualizedAntSpend)}</strong>
+            </div>
+        </div>
+
+        <div>${itemsHtml}</div>
+        ${hikesHtml}
+    `;
+
+    cardEl.querySelector('#ant-threshold-select')?.addEventListener('change', (e) => {
+        antExpenseThresholdPref = parseInt(e.target.value, 10) || 35000;
+        renderAnalyticsAntExpensesCard();
+    });
+};
+// 5. MODALES: SIMULADOR DE CRÉDITO Y COMPARADOR BANCO A VS. B
+const openCreateDebtWithPreset = ({ name = '', principal = 0, periods = 12, rate = 0, rateType = 'annual', monthlyQuota = 0 }) => {
+    document.getElementById('credit-simulator-modal')?.classList.add('hidden');
+    document.getElementById('credit-compare-modal')?.classList.add('hidden');
+    if (attemptCloseModals()) {
+        const debtsModal = document.getElementById('debts-modal');
+        debtsModal?.classList.remove('hidden');
+        let totalLoansDebt = 0;
+        financeData.customAccounts.forEach(acc => {
+            if (acc.category === 'debt' && currentBalances[acc.id] > 0) totalLoansDebt = round2(totalLoansDebt + currentBalances[acc.id]);
+        });
+        renderDebtsBreakdown(currentBalances, totalLoansDebt);
+
+        const debtForm = document.getElementById('new-debt-form');
+        const detailsWrap = debtForm?.closest('details');
+        if (detailsWrap) detailsWrap.open = true;
+
+        if (name && document.getElementById('new-debt-name')) document.getElementById('new-debt-name').value = name;
+        if (document.getElementById('new-debt-original')) document.getElementById('new-debt-original').value = formatNumberInput(principal);
+        if (document.getElementById('new-debt-current')) document.getElementById('new-debt-current').value = formatNumberInput(principal);
+        if (document.getElementById('new-debt-total-quotes')) document.getElementById('new-debt-total-quotes').value = String(periods);
+        if (document.getElementById('new-debt-paid-quotes')) document.getElementById('new-debt-paid-quotes').value = '0';
+        if (document.getElementById('new-debt-rate')) document.getElementById('new-debt-rate').value = formatNumberInput(rate);
+        if (document.getElementById('new-debt-rate-type')) document.getElementById('new-debt-rate-type').value = rateType;
+        if (document.getElementById('new-debt-monthly-payment')) document.getElementById('new-debt-monthly-payment').value = formatNumberInput(monthlyQuota);
+        setTimeout(() => document.getElementById('new-debt-name')?.focus(), 100);
+    }
+};
+
+window.openCreditSimulatorModal = () => {
+    let modalEl = document.getElementById('credit-simulator-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'credit-simulator-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML = `
+            <div class="modal-content" style="max-width:480px;">
+                <div class="modal-header" style="align-items:flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:800;">Simulador de Crédito</h3>
+                        <small style="color:var(--text-muted); font-size:11.5px;">Proyecta cuotas, intereses y valida tu capacidad real</small>
+                    </div>
+                    <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+                </div>
+
+                <div id="csim-view-single">
+                    <details class="changelog-accordion" style="margin-bottom:12px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.28); padding:10px 12px; box-shadow:none;">
+                        <summary style="font-size:12px; font-weight:800; color:#d97706;">
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                ${renderIcon('help', 15)} ¿Cómo funciona este simulador?
+                            </span>
+                            <span>▾</span>
+                        </summary>
+                        <div style="margin-top:9px; padding-top:9px; border-top:1px dashed rgba(245, 158, 11, 0.3); font-size:11.5px; color:var(--text-muted); line-height:1.45; display:flex; flex-direction:column; gap:7px;">
+                            <span>• <b>Amortización Francesa (Cuota Fija):</b> Al inicio pagas mayor proporción de intereses y conforme avanza el plazo abonas más a capital.</span>
+                            <span>• <b>Conversión Colombia (% E.A. ↔ % M.V.):</b> Si ingresas tasa Efectiva Anual, se convierte automáticamente a tasa mensual con <code>(1 + E.A.)<sup>1/12</sup> − 1</code>.</span>
+                            <span>• <b>Validación con tus finanzas:</b> Cruza la cuota resultante contra tu <b>capacidad saludable de endeudamiento</b> y tu <b>flujo libre</b> tras gastos fijos.</span>
+                            <button type="button" id="btn-csim-load-example" class="mini-action-btn" style="margin-top:4px; width:100%; justify-content:center; font-size:11px; padding:6px;">
+                                Probar ejemplo ($ 10.000.000 a 24 meses)
+                            </button>
+                        </div>
+                    </details>
+
+                    <div class="sub-quick-chips" style="margin-bottom:10px; flex-wrap:wrap;">
+                        <button type="button" class="sub-quick-chip" data-csim-preset="libre">Libre Inversión</button>
+                        <button type="button" class="sub-quick-chip" data-csim-preset="vehiculo">Vehículo</button>
+                        <button type="button" class="sub-quick-chip" data-csim-preset="vivienda">Vivienda</button>
+                        <button type="button" class="sub-quick-chip" data-csim-preset="max" style="color:var(--positive); border-color:color-mix(in srgb, var(--positive) 35%, transparent);">★ Cupo máximo</button>
+                    </div>
+
+                    <div class="sav-sim-card">
+                        <div class="form-group">
+                            <label>Monto a solicitar ($)</label>
+                            <input type="text" id="csim-amount" class="money-input" inputmode="decimal" placeholder="Ej. 10.000.000">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Plazo (meses)</label>
+                                <input type="number" id="csim-months" min="1" max="360" placeholder="Ej. 24">
+                            </div>
+                            <div class="form-group">
+                                <label>Modalidad tasa</label>
+                                <select id="csim-rate-type">
+                                    <option value="annual" selected>% E.A. (Anual)</option>
+                                    <option value="monthly">% M.V. (Mensual)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tasa de interés (%)</label>
+                                <input type="text" id="csim-rate" inputmode="decimal" placeholder="Ej. 22">
+                            </div>
+                            <div class="form-group">
+                                <label>Seguro / Cargo mensual ($)</label>
+                                <input type="text" id="csim-insurance" class="money-input" inputmode="decimal" placeholder="0,00">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Abono extra mensual opcional ($)</label>
+                            <input type="text" id="csim-extra" class="money-input" inputmode="decimal" placeholder="Opcional: reduce el plazo">
+                        </div>
+                    </div>
+
+                    <div id="csim-results-box"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+
+        modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.classList.add('hidden'); });
+        modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => modalEl.classList.add('hidden'));
+
+        ['#csim-amount', '#csim-months', '#csim-rate-type', '#csim-rate', '#csim-insurance', '#csim-extra'].forEach(sel => {
+            const el = modalEl.querySelector(sel);
+            el?.addEventListener('input', renderCreditSimulatorResults);
+            el?.addEventListener('change', renderCreditSimulatorResults);
+        });
+
+        modalEl.querySelector('#btn-csim-load-example')?.addEventListener('click', (e) => {
+            modalEl.querySelector('#csim-amount').value = formatNumberInput(10000000);
+            modalEl.querySelector('#csim-months').value = '24';
+            modalEl.querySelector('#csim-rate-type').value = 'annual';
+            modalEl.querySelector('#csim-rate').value = '22';
+            modalEl.querySelector('#csim-insurance').value = formatNumberInput(15000);
+            modalEl.querySelector('#csim-extra').value = formatNumberInput(100000);
+            e.target.closest('details')?.removeAttribute('open');
+            renderCreditSimulatorResults();
+        });
+
+        modalEl.querySelectorAll('[data-csim-preset]').forEach(chip => {
+            chip.addEventListener('click', () => {
+                const preset = chip.getAttribute('data-csim-preset');
+                const amtEl = modalEl.querySelector('#csim-amount');
+                const monthsEl = modalEl.querySelector('#csim-months');
+                const typeEl = modalEl.querySelector('#csim-rate-type');
+                const rateEl = modalEl.querySelector('#csim-rate');
+
+                if (preset === 'libre') {
+                    monthsEl.value = '24';
+                    typeEl.value = 'annual';
+                    rateEl.value = '22';
+                } else if (preset === 'vehiculo') {
+                    monthsEl.value = '48';
+                    typeEl.value = 'annual';
+                    rateEl.value = '16,5';
+                } else if (preset === 'vivienda') {
+                    monthsEl.value = '120';
+                    typeEl.value = 'annual';
+                    rateEl.value = '11,5';
+                } else if (preset === 'max') {
+                    if (!monthsEl.value) monthsEl.value = '24';
+                    if (!rateEl.value) {
+                        typeEl.value = 'annual';
+                        rateEl.value = '22';
+                    }
+                    const probe = simulateCreditLoan({
+                        principal: 1000000,
+                        periods: parseInt(monthsEl.value, 10) || 24,
+                        rate: parseFloat((rateEl.value || '0').replace(',', '.')) || 0,
+                        rateType: typeEl.value,
+                        monthlyInsurance: parseMoneyInput(modalEl.querySelector('#csim-insurance')?.value)
+                    });
+                    if (probe.maxAffordablePrincipal > 0) {
+                        amtEl.value = formatNumberInput(probe.maxAffordablePrincipal);
+                    } else {
+                        alert('Tu capacidad de endeudamiento actual no tiene cupo libre disponible para un nuevo crédito.');
+                    }
+                }
+                renderCreditSimulatorResults();
+                if (preset !== 'max' && !amtEl.value) amtEl.focus();
+            });
+        });
+    }
+
+    modalEl.classList.remove('hidden');
+    try { renderCreditSimulatorResults(); } catch (err) { console.error('Error en Simulador de Crédito:', err); }
+};
+
+window.openCreditCompareModal = () => {
+    let modalEl = document.getElementById('credit-compare-modal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'credit-compare-modal';
+        modalEl.className = 'modal hidden';
+        modalEl.innerHTML = `
+            <div class="modal-content" style="max-width:480px;">
+                <div class="modal-header" style="align-items:flex-start;">
+                    <div>
+                        <h3 style="margin:0; font-size:18px; font-weight:800;">Banco A vs. Banco B</h3>
+                        <small style="color:var(--text-muted); font-size:11.5px;">Compara ofertas y descubre cuál es más barata</small>
+                    </div>
+                    <button type="button" class="btn-close-modal" aria-label="Cerrar">✕</button>
+                </div>
+
+                <div id="csim-view-compare">
+                    <details class="changelog-accordion" style="margin-bottom:12px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.28); padding:10px 12px; box-shadow:none;">
+                        <summary style="font-size:12px; font-weight:800; color:#d97706;">
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                ${renderIcon('help', 15)} ¿Qué compara esta herramienta?
+                            </span>
+                            <span>▾</span>
+                        </summary>
+                        <div style="margin-top:9px; padding-top:9px; border-top:1px dashed rgba(245, 158, 11, 0.3); font-size:11.5px; color:var(--text-muted); line-height:1.45; display:flex; flex-direction:column; gap:7px;">
+                            <span>• A veces un banco ofrece una tasa más baja pero te cobra un <b>seguro de vida costoso</b> o un <b>estudio de crédito inicial</b> que encarece el préstamo.</span>
+                            <span>• Aquí sumamos <b>capital + intereses + seguros + comisiones</b> para revelarte cuánto dinero sale realmente de tu bolsillo en cada entidad.</span>
+                            <button type="button" id="btn-ccmp-load-example" class="mini-action-btn" style="margin-top:4px; width:100%; justify-content:center; font-size:11px; padding:6px;">
+                                Probar ejemplo comparativo ($ 15.000.000)
+                            </button>
+                        </div>
+                    </details>
+
+                    <div class="sav-sim-card" style="margin-bottom:10px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Monto del crédito a cotizar ($)</label>
+                            <input type="text" id="ccmp-amount" class="money-input" inputmode="decimal" placeholder="Ej. 15.000.000">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;">
+                        <!-- COLUMNA BANCO A -->
+                        <div class="sav-sim-card" style="margin-bottom:0; padding:11px 10px;">
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label style="color:var(--accent);">Entidad A</label>
+                                <input type="text" id="ccmp-a-name" placeholder="Banco A" style="font-weight:700;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Plazo (meses)</label>
+                                <input type="number" id="ccmp-a-months" min="1" max="360" placeholder="Ej. 24">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Modalidad</label>
+                                <select id="ccmp-a-rate-type">
+                                    <option value="annual" selected>% E.A.</option>
+                                    <option value="monthly">% M.V.</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Tasa (%)</label>
+                                <input type="text" id="ccmp-a-rate" inputmode="decimal" placeholder="Ej. 19,5">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Seguro/mes ($)</label>
+                                <input type="text" id="ccmp-a-ins" class="money-input" inputmode="decimal" placeholder="0,00">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Estudio / Com. ($)</label>
+                                <input type="text" id="ccmp-a-fee" class="money-input" inputmode="decimal" placeholder="0,00">
+                            </div>
+                        </div>
+
+                        <!-- COLUMNA BANCO B -->
+                        <div class="sav-sim-card" style="margin-bottom:0; padding:11px 10px;">
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label style="color:var(--positive);">Entidad B</label>
+                                <input type="text" id="ccmp-b-name" placeholder="Banco B" style="font-weight:700;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Plazo (meses)</label>
+                                <input type="number" id="ccmp-b-months" min="1" max="360" placeholder="Ej. 36">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Modalidad</label>
+                                <select id="ccmp-b-rate-type">
+                                    <option value="annual" selected>% E.A.</option>
+                                    <option value="monthly">% M.V.</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Tasa (%)</label>
+                                <input type="text" id="ccmp-b-rate" inputmode="decimal" placeholder="Ej. 22,5">
+                            </div>
+                            <div class="form-group" style="margin-bottom:8px;">
+                                <label>Seguro/mes ($)</label>
+                                <input type="text" id="ccmp-b-ins" class="money-input" inputmode="decimal" placeholder="0,00">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Estudio / Com. ($)</label>
+                                <input type="text" id="ccmp-b-fee" class="money-input" inputmode="decimal" placeholder="0,00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="ccmp-results-box"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+
+        modalEl.addEventListener('click', (e) => { if (e.target === modalEl) modalEl.classList.add('hidden'); });
+        modalEl.querySelector('.btn-close-modal')?.addEventListener('click', () => modalEl.classList.add('hidden'));
+
+        ['#ccmp-amount', '#ccmp-a-name', '#ccmp-a-months', '#ccmp-a-rate-type', '#ccmp-a-rate', '#ccmp-a-ins', '#ccmp-a-fee', '#ccmp-b-name', '#ccmp-b-months', '#ccmp-b-rate-type', '#ccmp-b-rate', '#ccmp-b-ins', '#ccmp-b-fee'].forEach(sel => {
+            const el = modalEl.querySelector(sel);
+            el?.addEventListener('input', renderCreditCompareResults);
+            el?.addEventListener('change', renderCreditCompareResults);
+        });
+
+        modalEl.querySelector('#btn-ccmp-load-example')?.addEventListener('click', (e) => {
+            modalEl.querySelector('#ccmp-amount').value = formatNumberInput(15000000);
+            modalEl.querySelector('#ccmp-a-name').value = 'Banco A';
+            modalEl.querySelector('#ccmp-a-months').value = '24';
+            modalEl.querySelector('#ccmp-a-rate-type').value = 'annual';
+            modalEl.querySelector('#ccmp-a-rate').value = '19,5';
+            modalEl.querySelector('#ccmp-a-ins').value = formatNumberInput(28000);
+            modalEl.querySelector('#ccmp-a-fee').value = formatNumberInput(180000);
+
+            modalEl.querySelector('#ccmp-b-name').value = 'Banco B';
+            modalEl.querySelector('#ccmp-b-months').value = '24';
+            modalEl.querySelector('#ccmp-b-rate-type').value = 'annual';
+            modalEl.querySelector('#ccmp-b-rate').value = '21,2';
+            modalEl.querySelector('#ccmp-b-ins').value = '0';
+            modalEl.querySelector('#ccmp-b-fee').value = '0';
+
+            e.target.closest('details')?.removeAttribute('open');
+            renderCreditCompareResults();
+        });
+    }
+
+    const singleAmtEl = document.getElementById('csim-amount');
+    const cmpAmtEl = modalEl.querySelector('#ccmp-amount');
+    if (cmpAmtEl && !cmpAmtEl.value && singleAmtEl && singleAmtEl.value) {
+        cmpAmtEl.value = singleAmtEl.value;
+    }
+
+    modalEl.classList.remove('hidden');
+    try { renderCreditCompareResults(); } catch (err) { console.error('Error en Comparador de Crédito:', err); }
+};
+
+const renderCreditSimulatorResults = () => {
+    const box = document.getElementById('csim-results-box');
+    if (!box) return;
+
+    if (typeof simulateCreditLoan !== 'function') {
+        box.innerHTML = `<div class="smart-verdict-box warn" style="font-size:12px;">Falta actualizar <b>core.js</b> con <code>simulateCreditLoan</code>.</div>`;
+        return;
+    }
+
+    const principal = parseMoneyInput(document.getElementById('csim-amount')?.value);
+    const periods = parseInt(document.getElementById('csim-months')?.value, 10) || 12;
+    const rateType = document.getElementById('csim-rate-type')?.value || 'annual';
+    const rate = parseFloat((document.getElementById('csim-rate')?.value || '0').replace(',', '.')) || 0;
+    const monthlyInsurance = parseMoneyInput(document.getElementById('csim-insurance')?.value);
+    const extraMonthly = parseMoneyInput(document.getElementById('csim-extra')?.value);
+
+    const res = simulateCreditLoan({ principal, periods, rate, rateType, monthlyInsurance, extraMonthly });
+
+    if (res.principal <= 0) {
+        box.innerHTML = `
+            <div class="sav-sim-card" style="text-align:center; padding:22px 16px;">
+                <div style="width:42px; height:42px; border-radius:50%; background:var(--hover-bg); color:var(--text-muted); display:inline-flex; align-items:center; justify-content:center; margin-bottom:8px;">
+                    ${renderIcon('scale', 20)}
+                </div>
+                <strong style="display:block; font-size:13.5px; color:var(--text-main); margin-bottom:4px;">Tu simulación aparecerá acá</strong>
+                <small style="color:var(--text-muted); font-size:11.5px;">Ingresa el monto, plazo y tasa para calcular la cuota y validar tu capacidad.</small>
+            </div>
+        `;
+        return;
+    }
+
+    const extraBannerHtml = res.savedMonths > 0 ? `
+        <div style="margin-bottom:12px; padding:10px 12px; border-radius:12px; background:color-mix(in srgb, var(--positive) 10%, transparent); border:1px solid color-mix(in srgb, var(--positive) 30%, transparent); font-size:11.5px; color:var(--text-main);">
+            <strong class="positive" style="display:block; margin-bottom:2px;">⚡ Con abono extra de ${formatMoney(res.extraMonthly)}/mes:</strong>
+            <span>Terminas <b>${res.savedMonths} ${res.savedMonths === 1 ? 'mes' : 'meses'} antes</b> (en ${res.accelMonths}m) y te ahorras <b class="positive">${formatMoney(res.savedInterest)}</b> en intereses.</span>
+        </div>
+    ` : '';
+
+    const rowsHtml = res.schedule.map(r => `
+        <tr>
+            <td style="text-align:left;">Mes ${r.period}</td>
+            <td>${formatCompact(round2(r.payment + res.monthlyInsurance))}</td>
+            <td class="positive">${formatCompact(r.principal)}</td>
+            <td class="negative">${formatCompact(r.interest)}</td>
+            <td><b>${formatCompact(r.balance)}</b></td>
+        </tr>
+    `).join('');
+
+    box.innerHTML = `
+        <div class="sav-sim-hero" style="background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 11%, var(--card-inner-bg)), var(--card-inner-bg)); border-color:color-mix(in srgb, var(--accent) 30%, transparent);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:11px; font-weight:700; color:var(--text-muted);">Cuota mensual estimada</span>
+                <span class="widget-badge neutral" style="font-size:9.5px;">${String(res.effectiveMonthlyRatePct).replace('.', ',')}% M.V. • ${String(res.effectiveAnnualRatePct).replace('.', ',')}% E.A.</span>
+            </div>
+            <div style="font-size:22px; font-weight:800; color:var(--text-main); margin-top:3px;">${formatMoneyHtml(res.totalMonthlyQuota)}<span style="font-size:12px; font-weight:600; color:var(--text-muted);"> / mes</span></div>
+            <div class="sav-sim-bar-track">
+                <div class="sav-sim-bar-principal" style="width:${res.principalPct}%;"></div>
+                <div class="sav-sim-bar-interest" style="width:${res.extraCostPct}%; background:var(--negative);"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:10.5px; font-weight:700;">
+                <span style="color:var(--accent);">● Capital (${res.principalPct}%)</span>
+                <span class="negative">● Intereses + Seguros (${res.extraCostPct}%)</span>
+            </div>
+        </div>
+
+        <div class="smart-verdict-box ${res.viability}">
+            <strong style="display:block; font-size:12.5px; color:var(--text-main); margin-bottom:4px;">${res.viabilityTitle}</strong>
+            ${res.cap.baseIncome > 0 ? `
+                <div style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 10px; font-size:11px; color:var(--text-muted); margin-top:6px;">
+                    <span>Endeudamiento: <b>${String(res.cap.usedPct).replace('.', ',')}% → ${String(res.newDebtBurdenPct).replace('.', ',')}%</b></span>
+                    <span>Flujo libre: <b class="${res.remainingFreeCashFlow >= 0 ? 'positive' : 'negative'}">${formatMoney(res.remainingFreeCashFlow)}</b></span>
+                </div>
+            ` : ''}
+        </div>
+
+        ${extraBannerHtml}
+
+        <div class="sav-sim-kpis">
+            <div class="sav-sim-kpi">
+                <small>Monto pedido</small>
+                <strong>${formatMoneyHtml(res.principal)}</strong>
+            </div>
+            <div class="sav-sim-kpi">
+                <small>Intereses + Seg.</small>
+                <strong class="negative">${formatMoneyHtml(round2(res.totalInterest + res.totalInsurance))}</strong>
+            </div>
+            <div class="sav-sim-kpi">
+                <small>Total a pagar</small>
+                <strong>${formatMoneyHtml(res.totalCost)}</strong>
+            </div>
+        </div>
+
+        <button type="button" id="btn-csim-create-debt" class="btn btn-secondary" style="width:100%; margin-bottom:10px; font-size:12.5px; font-weight:700;">
+            + Crear este préstamo en mis Deudas
+        </button>
+
+        <details class="changelog-accordion" style="padding:10px 12px;">
+            <summary style="font-size:11.5px; font-weight:700; color:var(--text-main);">
+                <span>Ver tabla de amortización (${res.periods} cuotas)</span>
+                <span>▾</span>
+            </summary>
+            <div class="table-responsive" style="margin-top:8px; max-height:200px; overflow-y:auto;">
+                <table class="amort-table" style="font-size:10.5px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">Mes</th>
+                            <th>Cuota</th>
+                            <th>Capital</th>
+                            <th>Interés</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        </details>
+    `;
+
+    box.querySelector('#btn-csim-create-debt')?.addEventListener('click', () => {
+        openCreateDebtWithPreset({
+            principal: res.principal,
+            periods: res.periods,
+            rate: res.rate,
+            rateType: res.rateType,
+            monthlyQuota: res.totalMonthlyQuota
+        });
+    });
+};
+
+const renderCreditCompareResults = () => {
+    const box = document.getElementById('ccmp-results-box');
+    if (!box) return;
+
+    if (typeof compareCreditOffers !== 'function') {
+        box.innerHTML = `<div class="smart-verdict-box warn" style="font-size:12px;">Falta actualizar <b>core.js</b> con <code>compareCreditOffers</code>.</div>`;
+        return;
+    }
+
+    const principal = parseMoneyInput(document.getElementById('ccmp-amount')?.value);
+    const cmp = compareCreditOffers({
+        principal,
+        offerA: {
+            name: document.getElementById('ccmp-a-name')?.value,
+            periods: document.getElementById('ccmp-a-months')?.value,
+            rateType: document.getElementById('ccmp-a-rate-type')?.value,
+            rate: (document.getElementById('ccmp-a-rate')?.value || '0').replace(',', '.'),
+            monthlyInsurance: parseMoneyInput(document.getElementById('ccmp-a-ins')?.value),
+            upfrontFee: parseMoneyInput(document.getElementById('ccmp-a-fee')?.value)
+        },
+        offerB: {
+            name: document.getElementById('ccmp-b-name')?.value,
+            periods: document.getElementById('ccmp-b-months')?.value,
+            rateType: document.getElementById('ccmp-b-rate-type')?.value,
+            rate: (document.getElementById('ccmp-b-rate')?.value || '0').replace(',', '.'),
+            monthlyInsurance: parseMoneyInput(document.getElementById('ccmp-b-ins')?.value),
+            upfrontFee: parseMoneyInput(document.getElementById('ccmp-b-fee')?.value)
+        }
+    });
+
+    if (!cmp.valid) {
+        box.innerHTML = `
+            <div class="sav-sim-card" style="text-align:center; padding:20px 14px;">
+                <strong style="display:block; font-size:13px; color:var(--text-main); margin-bottom:4px;">Comparativa lista para calcular</strong>
+                <small style="color:var(--text-muted); font-size:11.5px;">Ingresa el monto del crédito y las condiciones de cada banco para descubrir cuál es más económico.</small>
+            </div>
+        `;
+        return;
+    }
+
+    const { resA, resB, winner, totalSavings, monthlyDiff, higherQuotaWarning } = cmp;
+    const winOffer = winner === 'B' ? resB : resA;
+
+    let bannerTitle = 'Ambas ofertas cuestan exactamente lo mismo';
+    let bannerSub = `Costo total: ${formatMoney(resA.totalCost)} en ambas opciones.`;
+    if (winner === 'A' || winner === 'B') {
+        bannerTitle = `★ Conviene más ${winOffer.name}`;
+        bannerSub = `Te ahorras ${formatMoney(totalSavings)} en el costo total real del crédito.`;
+    }
+
+    const quotaNoteHtml = higherQuotaWarning ? `
+        <div style="margin-top:6px; font-size:11px; color:#d97706; font-weight:600;">
+            Nota: ${winOffer.name} es más barato en total, pero su cuota mensual es ${formatMoney(monthlyDiff)} más alta por el plazo.
+        </div>
+    ` : '';
+
+    const extrasA = round2(resA.totalInsurance + resA.upfrontFee);
+    const extrasB = round2(resB.totalInsurance + resB.upfrontFee);
+
+    box.innerHTML = `
+        <div class="smart-verdict-box ${winner === 'tie' ? 'neutral' : 'good'}">
+            <strong style="display:block; font-size:13.5px; color:var(--text-main); margin-bottom:2px;">${bannerTitle}</strong>
+            <span style="font-size:11.5px; color:var(--text-muted);">${bannerSub}</span>
+            ${quotaNoteHtml}
+        </div>
+
+        <div class="sav-sim-card" style="padding:12px;">
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:11px; padding-bottom:8px; border-bottom:1px solid var(--border-color); font-weight:800;">
+                <span style="color:var(--text-muted);">Concepto</span>
+                <span style="text-align:right; color:var(--accent);">${resA.name}</span>
+                <span style="text-align:right; color:var(--positive);">${resB.name}</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:11.5px; padding:8px 0; border-bottom:1px dashed var(--border-color);">
+                <span style="color:var(--text-muted);">Cuota mensual</span>
+                <strong style="text-align:right; ${resA.monthlyQuota <= resB.monthlyQuota ? 'color:var(--positive);' : ''}">${formatCompact(resA.monthlyQuota)}</strong>
+                <strong style="text-align:right; ${resB.monthlyQuota <= resA.monthlyQuota ? 'color:var(--positive);' : ''}">${formatCompact(resB.monthlyQuota)}</strong>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:11.5px; padding:8px 0; border-bottom:1px dashed var(--border-color);">
+                <span style="color:var(--text-muted);">Tasa (% E.A.)</span>
+                <span style="text-align:right;">${String(resA.effectiveAnnualRatePct).replace('.', ',')}%</span>
+                <span style="text-align:right;">${String(resB.effectiveAnnualRatePct).replace('.', ',')}%</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:11.5px; padding:8px 0; border-bottom:1px dashed var(--border-color);">
+                <span style="color:var(--text-muted);">Total intereses</span>
+                <span style="text-align:right;" class="negative">${formatCompact(resA.totalInterest)}</span>
+                <span style="text-align:right;" class="negative">${formatCompact(resB.totalInterest)}</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:11.5px; padding:8px 0; border-bottom:1px dashed var(--border-color);">
+                <span style="color:var(--text-muted);">Seguros + Com.</span>
+                <span style="text-align:right;">${formatCompact(extrasA)}</span>
+                <span style="text-align:right;">${formatCompact(extrasB)}</span>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:6px; font-size:12px; padding-top:8px; font-weight:800;">
+                <span style="color:var(--text-main);">Total real</span>
+                <span style="text-align:right; ${winner === 'A' ? 'color:var(--positive);' : ''}">${formatCompact(resA.totalCost)}</span>
+                <span style="text-align:right; ${winner === 'B' ? 'color:var(--positive);' : ''}">${formatCompact(resB.totalCost)}</span>
+            </div>
+        </div>
+
+        <button type="button" id="btn-ccmp-adopt-winner" class="btn btn-secondary" style="width:100%; font-size:12.5px; font-weight:700;">
+            + Crear préstamo con ${winOffer.name}
+        </button>
+    `;
+
+    box.querySelector('#btn-ccmp-adopt-winner')?.addEventListener('click', () => {
+        openCreateDebtWithPreset({
+            name: winOffer.name,
+            principal: cmp.principal,
+            periods: winOffer.periods,
+            rate: winOffer.rate,
+            rateType: winOffer.rateType,
+            monthlyQuota: winOffer.monthlyQuota
+        });
+    });
+};

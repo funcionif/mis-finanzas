@@ -1,18 +1,18 @@
 // ==========================================
-// SW.JS - SERVICE WORKER INTELIGENTE (v2.0.1)
+// SW.JS - SERVICE WORKER INTELIGENTE (v2.1.0)
 // Optimizado para Safari iOS y PWA
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v2.0.5';
+const CACHE_NAME = 'mis-finanzas-v2.1.0';
 
 const CORE_ASSETS = [
     './',
     './index.html',
-    './styles.css?v=2.0.1',
-    './core.js?v=2.0.1',
-    './info.js?v=2.0.1',
-    './app.js?v=2.0.9',
-    './manifest.json?v=2.0.1',
+    './styles.css?v=2.1.0',
+    './core.js?v=2.1.0',
+    './info.js?v=2.1.0',
+    './app.js?v=2.1.0',
+    './manifest.json?v=2.1.0',
     './icon.png'
 ];
 

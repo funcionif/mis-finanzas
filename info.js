@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.0.1)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.1.0)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.1.0';
 
 function openUniversalInfoModal(sectionKey) {
     const uModal = document.getElementById('universal-info-modal');
@@ -146,7 +146,44 @@ function openUniversalInfoModal(sectionKey) {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>✨ Versión 2.0.1 (Actual)</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 2.1.0 (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Modo Viaje con Presupuesto Aislado:</b> Activa un tope exclusivo para vacaciones sin alterar tus categorías mensuales habituales, con guía interactiva, auto-etiquetado (<code>#destino</code>), filtro rápido de gastos y color de tema dedicado.</li>
+                        <li><b>Cálculo y Conversión de Dólar (USD) y Euro (EUR) a COP:</b> Selector de divisa directo en el registro de movimientos con <b>cálculo en vivo a pesos colombianos</b>, constancia del valor original en la descripción, auto-etiquetado (<code>#usd</code> / <code>#eur</code>), tasas configurables y consulta de TRM oficial en tiempo real con respaldo 100% offline.</li>
+                        <li><b>Asesor de Tarjetas (¿Con qué tarjeta pago hoy?):</b> Analiza días de gracia hasta la fecha de pago, cupo disponible, cuotas sin interés y metas de exoneración de cuota de manejo para recomendarte la mejor tarjeta en cada compra.</li>
+                        <li><b>Simulador de Compra Inteligente:</b> Convierte cualquier precio en horas y días de trabajo según tu nómina, evalúa el impacto en tu <i>Libre Seguro Hoy</i>, el punto más bajo de caja a 30 días y el costo financiero si difieres a cuotas.</li>
+                        <li><b>Simulador de Crédito y Comparador (Banco A vs. B):</b> Proyecta cuotas fijas con conversión automática <code>% E.A.</code> ↔ <code>% M.V.</code>, seguros, abonos extra a capital, cálculo de cupo máximo endeudable y comparativa real entre dos entidades financieras.</li>
+                        <li><b>Proyección de Efectivo Día por Día:</b> Línea de tiempo interactiva desde <i>Libre Seguro Hoy</i> (fin de mes, 15, 30 y 60 días) con detalle desplegable por fecha y detección del punto más bajo de liquidez.</li>
+                        <li><b>Calculadora de Ahorro (Interés Compuesto):</b> Proyecta el crecimiento de tu capital por edades, frecuencia de aporte y tasa E.A., con integración a tus bolsillos, gráfica SVG y tabla año por año.</li>
+                        <li><b>Resumen y Cierre del Mes:</b> Carrusel guiado de 3 tarjetas Bento para revisar tu tasa de ahorro, detectar desviaciones de presupuesto y transferir excedentes directos a un bolsillo.</li>
+                        <li><b>Detector de Gastos Hormiga y Alzas en Suscripciones:</b> Nueva tarjeta en Análisis con tope configurable, impacto anualizado (<code>×12</code>), ranking de compras pequeñas frecuentes y alertas de incrementos en servicios recurrentes.</li>
+                        <li><b>Hoja de Balance Comparativa en Análisis:</b> Nueva tarjeta que contrasta el cierre del mes anterior contra el corte actual cuenta por cuenta, con barra de solvencia, variación neta y filtros (<i>Todos</i>, <i>Con cambios</i>, <i>Activos</i>, <i>Pasivos</i>).</li>
+                        <li><b>Extractos y Proyección de Tarjetas de Crédito:</b> Selector de extractos mensuales (<code>-1</code> a <code>+4</code> meses), gráfica de barras interactiva, exoneración de cuota de manejo por compras o por ingresos en cuenta y botón para cargar cargos al saldo.</li>
+                        <li><b>Cuentas Líquidas vs. Aisladas:</b> Opción en cada cuenta para excluirla del cálculo de <i>Libre Seguro Hoy</i> (ideal para CDTs o fondos intocables) sin sacarla de tu Patrimonio Neto.</li>
+                        <li><b>Sistema de Etiquetas (#Tags) y Analítica de Proyectos:</b> Sugerencias rápidas de etiquetas al registrar, filtro instantáneo con total acumulado en historial y tarjeta de proyectos en Análisis.</li>
+                        <li><b>Papelera de Reciclaje y Duplicación Rápida:</b> Borrado seguro reversible para restaurar movimientos eliminados y botón <i>Duplicar</i> para clonar transacciones frecuentes con fecha de hoy.</li>
+                        <li><b>Ciclos de Fecha Personalizados:</b> Configura el día de corte de tu mes financiero (ej. día 5, 15 o 16) con indicador visible del rango activo en la cabecera.</li>
+                        <li><b>Pendientes Virtuales (To-Do List Financiero):</b> Inyección automática en el filtro <i>Pendientes</i> de suscripciones próximas, cuotas de préstamos, pagos mínimos de tarjetas y gastos fijos por ejecutar.</li>
+                        <li><b>Proyección de Declaración de Renta (Colombia):</b> Evaluación automática de topes DIAN en UVT (patrimonio, ingresos, consignaciones, tarjetas y compras) y simulación de Cédula General (Art. 241 E.T.).</li>
+                        <li><b>Mapa de Calor Diario en Calendario:</b> Visualiza la intensidad de gasto diario en modo <i>Solo variable</i> o <i>Gasto total</i>, conteo de días sin gasto y promedio por día activo.</li>
+                        <li><b>Cierre de Año en IndexedDB y Monitor de Memoria:</b> Escáner de almacenamiento local con alertas preventivas y archivo histórico por año sin perder el respaldo detallado.</li>
+                        <li><b>Reportes Ejecutivos PDF y Modo Demo:</b> Generación de extracto mensual, soporte de deudas a favor y liquidación laboral imprimibles, además de datos de prueba en un toque para explorar la app.</li>
+                        <li><b>Personalización Avanzada:</b> Formato de moneda configurable (símbolo, negativos y decimales), abreviación de cifras (<code>k</code>, <code>M</code>), modo pantalla Negro Puro (AMOLED) y modo rendimiento.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>🛠️ Versión 2.0.2</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Sistema de Etiquetas (#Tags):</b> Clasifica movimientos por proyecto o evento y consulta sus totales acumulados en Análisis.</li>
+                        <li><b>Papelera de Reciclaje y Duplicación:</b> Recupera movimientos eliminados por error y clona registros frecuentes con fecha de hoy.</li>
+                        <li><b>Ciclos de Fecha Personalizados:</b> Configura el día de corte de tu mes financiero (ej. día 15 o 16) para presupuestos y gráficos.</li>
+                        <li><b>Reporte Ejecutivo PDF y Cierre de Año:</b> Generación de extracto mensual imprimible y compresión histórica en <code>IndexedDB</code>.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>✨ Versión 2.0.1</span><span>▾</span></summary>
                     <ul>
                         <li><b>Control Anual Rediseñado:</b> Nueva vista de balance anual con diseño vertical Bento UI, reemplazando la tabla horizontal para una mejor experiencia móvil sin scroll.</li>
                         <li><b>Formateador Ultracompacto:</b> Eliminación de decimales en el reporte anual para optimizar el espacio y mejorar la legibilidad de la cuadrícula.</li>
@@ -229,7 +266,7 @@ window.openUniversalInfoModal = openUniversalInfoModal;
 const checkWhatsNewBanner = () => {
     if (typeof authData === 'undefined' || !authData) return;
     
-    // Para esta versión (2.0.1+), actualizamos el registro silenciosamente 
+    // Para esta versión (2.0.2+), actualizamos el registro silenciosamente 
     // sin mostrar el banner de alerta al usuario.
     localStorage.setItem('myFinancesLastSeenVersion', APP_VERSION);
 };

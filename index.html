@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <title>Mis Finanzas • Función IF</title>
-    <link rel="manifest" href="manifest.json?v=2.0.1">
+    <link rel="manifest" href="manifest.json?v=2.1.0">
     <link rel="apple-touch-icon" href="icon.png">
-    <link rel="stylesheet" href="styles.css?v=2.0.1">
+    <link rel="stylesheet" href="styles.css?v=2.1.0">
 </head>
 <body class="app-locked">
     <!-- TOAST DE ACTUALIZACIÓN PWA -->
@@ -19,7 +19,7 @@
         <span>Nueva versión instalada • Actualizando...</span>
     </div>
 
-    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v2.0.1) -->
+    <!-- PANTALLA DE BIENVENIDA / SEGURIDAD LOCAL-FIRST (v2.1.0) -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="auth-card" id="auth-card">
             <div id="welcome-view" class="hidden">
@@ -27,7 +27,7 @@
                 <div id="welcome-step-1">
                     <div class="auth-brand-bar">
                         <span class="auth-brand-name">Función IF</span>
-                        <span class="drawer-version-pill">v2.0.1</span>
+                        <span class="drawer-version-pill">v2.1.0</span>
                     </div>
 
                     <div class="welcome-isologo">
@@ -112,7 +112,7 @@
                                 <span class="privacy-point-icon" style="width:32px; height:32px; border-radius:10px; background: var(--accent-soft); color: var(--accent);">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                 </span>
-                                <div style="min-width:0;">
+                                <div style="min-width:0; text-align:left;">
                                     <strong>Proteger con PIN</strong>
                                     <small>Opcional • Puedes activarlo luego</small>
                                 </div>
@@ -152,7 +152,7 @@
             <div id="login-view" class="hidden">
                 <div class="auth-brand-bar">
                     <span class="auth-brand-name">Función IF</span>
-                    <span class="drawer-version-pill">v2.0.1</span>
+                    <span class="drawer-version-pill">v2.1.0</span>
                 </div>
                 <div class="lock-icon">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -190,7 +190,7 @@
         <div class="drawer-header">
             <div class="drawer-brand">
                 <h2>Mis Finanzas</h2>
-                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v2.0.1</button>
+                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v2.1.0</button>
             </div>
             <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
         </div>
@@ -290,6 +290,16 @@
                 </div>
             </button>
 
+            <button type="button" class="drawer-item" id="drawer-trip-mode">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(14, 165, 233, 0.16); color: #0ea5e9;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                    </span>
+                    <span>Modo Viaje</span>
+                </div>
+                <span id="drawer-trip-badge" class="widget-badge good hidden" style="font-size:9.5px; padding:1px 7px;">Activo</span>
+            </button>
+
             <button type="button" class="drawer-item" id="drawer-salary">
                 <div class="drawer-item-left">
                     <span class="drawer-icon-box" style="background: rgba(16, 185, 129, 0.16); color: #10b981;">
@@ -352,6 +362,16 @@
 
             <!-- 4. SISTEMA Y AYUDA (Compactado al final) -->
             <div class="drawer-group-label">Sistema y Ayuda</div>
+
+            <button type="button" class="drawer-item" id="drawer-trash">
+                <div class="drawer-item-left">
+                    <span class="drawer-icon-box" style="background: rgba(239, 68, 68, 0.16); color: var(--negative);">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </span>
+                    <span>Papelera</span>
+                </div>
+                <span id="drawer-trash-badge" class="widget-badge neutral hidden" style="font-size:10px; padding:1px 7px;">0</span>
+            </button>
 
             <div class="drawer-accordion-group">
                 <button type="button" class="drawer-item drawer-accordion-trigger" data-target="drawer-config-sub">
@@ -473,6 +493,7 @@
                     <span class="cal-caret">▾</span>
                 </button>
                 <span id="period-status-badge" class="period-badge">Actual</span>
+                <span id="cycle-range-pill" class="widget-badge neutral hidden" style="font-size:9.5px; padding:2px 7px;"></span>
             </div>
             <button type="button" id="today-month-btn" class="today-pill-btn hidden">Hoy</button>
             <button type="button" id="next-month" aria-label="Mes siguiente">›</button>
@@ -504,6 +525,9 @@
             </div>
         </div>
     </header>
+
+    <!-- BANNER MODO VIAJE ACTIVO -->
+    <div id="active-trip-banner" class="card hidden" style="background: linear-gradient(135deg, color-mix(in srgb, #0ea5e9 12%, var(--card-bg)), var(--card-bg)); border-color: rgba(14, 165, 233, 0.35); margin-bottom:14px; margin-top: 14px;"></div>
 
     <!-- ALERTAS INTELIGENTES -->
     <div id="ios-alerts-container" class="ios-alerts-container hidden"></div>
@@ -694,6 +718,9 @@
                 <button type="button" class="pill-btn" data-filter="expense">Gastos</button>
                 <button type="button" class="pill-btn" data-filter="transfer">Transferencias</button>
             </div>
+
+            <div id="history-tags-strip" class="filter-pills-row hidden" style="margin-top:-2px; margin-bottom:8px;"></div>
+            <div id="history-tag-summary" class="tag-summary-banner hidden"></div>
             
             <div id="clear-mode-banner" class="hidden" style="background:var(--positive-bg); color:var(--positive); padding:8px 12px; border-radius:10px; font-size:11px; font-weight:700; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                 <span>Modo Conciliación Activo (Tap to Clear)</span>
@@ -706,7 +733,7 @@
 <!-- PIE DE PÁGINA CLICABLE EN INICIO + BOTÓN ORDENAR -->
     <footer class="main-app-footer">
         <button type="button" id="home-version-btn" class="version-footer-btn" title="Ver notas de versión y novedades">
-            &copy; 2026 Función IF • v2.0.1
+            &copy; 2026 Función IF • v2.1.0
         </button>
         <button type="button" id="toggle-edit-widgets-btn" class="mini-action-btn" style="padding: 5px 10px; font-size: 11px;">
             Ordenar
@@ -794,19 +821,33 @@
                     <input type="text" id="description" placeholder="Ej. Mercado semanal" required>
                 </div>
 
+                <div class="form-group" id="group-tags">
+                    <label>Etiquetas (Opcional)</label>
+                    <input type="text" id="trans-tags" placeholder="Ej. #vacaciones #proyecto" autocomplete="off">
+                    <div id="trans-tags-suggestions" class="tag-suggestions-wrap hidden"></div>
+                </div>
+
                 <div class="form-group" id="group-budgeted-amount">
                     <input type="hidden" id="trans-budgeted-amount">
                     <div id="tx-budget-info-banner" class="glass-sub-box" style="padding:10px 12px; margin-bottom:0;"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>Monto Real ($)</label>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px;">
+                        <label style="margin-bottom:0;">Monto Real</label>
+                        <div class="filter-pills-row" style="margin-bottom:0; gap:4px;" id="tx-currency-pills">
+                            <button type="button" class="pill-btn active" data-curr="COP" style="padding:2px 8px; font-size:10px;">COP</button>
+                            <button type="button" class="pill-btn" data-curr="USD" style="padding:2px 8px; font-size:10px;">USD</button>
+                            <button type="button" class="pill-btn" data-curr="EUR" style="padding:2px 8px; font-size:10px;">EUR</button>
+                        </div>
+                    </div>
                     <div class="amount-input-wrap">
                         <input type="text" id="amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
                         <button type="button" id="toggle-tx-calc-btn" class="btn-calc-toggle" title="Calculadora" style="color:var(--accent);">
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
                         </button>
                     </div>
+                    <small id="tx-currency-preview" class="hidden" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:6px; font-weight:700;"></small>
                 </div>
 
                 <div id="tx-calculator-panel" class="tx-calculator-panel hidden">
@@ -991,6 +1032,7 @@
 
                 <div class="modal-actions-row">
                     <button type="button" id="delete-btn" class="btn btn-danger hidden">Eliminar</button>
+                    <button type="button" id="duplicate-tx-btn" class="btn btn-secondary hidden" title="Clonar movimiento con fecha de hoy">Duplicar</button>
                     <button type="submit" class="btn btn-primary">Guardar</button>
                 </div>
             </form>
@@ -1565,6 +1607,22 @@
                                     <input type="text" id="new-account-initial" class="money-input" inputmode="decimal" value="0,00">
                                 </div>
                             </div>
+                            <div class="switch-row" style="margin-bottom:8px;">
+                                <div>
+                                    <strong>Incluir en Liquidez Total</strong>
+                                    <small>Suma al flujo de caja y libre seguro del mes</small>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="new-account-liquidity" checked><span class="slider"></span></label>
+                            </div>
+                            <!-- Banner de ayuda dinámico -->
+                            <div id="new-account-liquidity-hint" class="info-banner" style="margin-bottom:12px; font-size:11px; color:var(--text-muted);">
+                                <span style="display:flex; align-items:flex-start; gap:6px;">
+                                    <span style="color:var(--positive); display:inline-flex; flex-shrink:0;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                    </span>
+                                    <span><b>Cuenta Líquida (Activado):</b> El saldo de esta cuenta se sumará a tu Patrimonio y estará disponible para el cálculo de tu "Libre Seguro Hoy". Ideal para cuentas de nómina o efectivo.</span>
+                                </span>
+                            </div>
                             <div class="switch-row">
                                 <div style="display:flex; align-items:center; gap:8px;">
                                     <span style="color:var(--accent); display:flex; flex-shrink:0;">
@@ -1917,12 +1975,28 @@
                             <button type="submit" class="btn btn-primary" style="padding:10px 14px; flex-shrink:0;">Ajustar</button>
                         </div>
                     </form>
-                    <div class="switch-row" style="margin-top:10px; margin-bottom:0;">
+                    <div class="switch-row" style="margin-top:10px; margin-bottom:8px;">
                         <div>
                             <strong>Mostrar en Inicio aunque esté en $0</strong>
                             <small>Mantener visible en Patrimonio y Cuentas</small>
                         </div>
                         <label class="switch"><input type="checkbox" id="account-show-when-zero"><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row" style="margin-bottom:8px;">
+                        <div>
+                            <strong>Incluir en Liquidez Total</strong>
+                            <small>Suma al flujo de caja y libre seguro del mes</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="account-include-liquidity"><span class="slider"></span></label>
+                    </div>
+                    <!-- Banner de ayuda dinámico (Detalle de cuenta) -->
+                    <div id="edit-account-liquidity-hint" class="info-banner" style="margin-bottom:0; font-size:11px; color:var(--text-muted);">
+                        <span style="display:flex; align-items:flex-start; gap:6px;">
+                            <span style="color:var(--positive); display:inline-flex; flex-shrink:0;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                            </span>
+                            <span><b>Cuenta Líquida (Activado):</b> El saldo de esta cuenta se sumará a tu Patrimonio y estará disponible para el cálculo de tu "Libre Seguro Hoy".</span>
+                        </span>
                     </div>
                 </div>
 
@@ -2443,6 +2517,7 @@
                     <small id="analytics-month-label" style="color:var(--text-muted); font-size:11.5px; text-transform:capitalize;">Mes actual</small>
                 </div>
                 <div style="display:flex; gap:6px;">
+                    <button type="button" id="btn-print-pdf-report" class="mini-action-btn" style="color:var(--accent);">PDF</button>
                     <button type="button" id="open-annual-from-analytics-btn" class="mini-action-btn" style="color:var(--positive);">12M</button>
                     <button type="button" class="btn-close-modal">Cerrar</button>
                 </div>
@@ -2498,6 +2573,14 @@
                         <div id="budget-donut-container" class="donut-box"></div>
                         <div id="budget-legend-list" class="donut-legend"></div>
                     </div>
+                </div>
+
+                <div class="sub-widget dashboard-widget-card" data-analytics-id="analytics-tags" style="margin-bottom:0;">
+                    <div class="widget-header">
+                        <h3>Proyectos y Etiquetas (#Tags)</h3>
+                        <button type="button" id="toggle-analytics-tags-scope" class="mini-action-btn" style="font-size:10.5px; padding:3px 9px;">Histórico Total</button>
+                    </div>
+                    <div id="analytics-tags-list" style="display:flex; flex-direction:column; gap:8px;"></div>
                 </div>
             </div>
         </div>
@@ -2669,6 +2752,15 @@
                     </div>
                     <span class="profile-menu-arrow">›</span>
                 </button>
+                <button type="button" class="profile-menu-btn" id="menu-currency-btn">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="profile-menu-icon" style="background:rgba(236,72,153,0.15); color:#ec4899;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                        </span>
+                        <div class="profile-menu-text"><strong>Formato de Moneda</strong><small>Decimales, símbolo y números negativos</small></div>
+                    </div>
+                    <span class="profile-menu-arrow">›</span>
+                </button>
                 <button type="button" class="profile-menu-btn" id="menu-notifications-btn">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <span class="profile-menu-icon" style="background:rgba(56,189,248,0.15); color:#0284c7;">
@@ -2701,7 +2793,7 @@
                     <span>Bloquear Aplicación</span>
                 </button>
                 <button type="button" id="profile-version-btn" class="version-footer-btn" style="margin-top:12px;" title="Ver notas de versión y novedades">
-                    &copy; 2026 Función IF • v2.0.1
+                    &copy; 2026 Función IF • v2.1.0
                 </button>
             </div>
 
@@ -3166,20 +3258,32 @@
 
                 <div class="form-group">
                     <label>Modo de Pantalla</label>
-                    <div class="segmented-control" id="theme-mode-segmented">
-                        <button type="button" class="segmented-btn active" data-mode="auto">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20Z" fill="currentColor" fill-opacity="0.25"/></svg>
+                    <div class="segmented-control" id="theme-mode-segmented" style="grid-template-columns: repeat(4, 1fr);">
+                        <button type="button" class="segmented-btn active" data-mode="auto" style="font-size:11px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20Z" fill="currentColor" fill-opacity="0.25"/></svg>
                             <span>Auto</span>
                         </button>
-                        <button type="button" class="segmented-btn" data-mode="light">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                        <button type="button" class="segmented-btn" data-mode="light" style="font-size:11px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                             <span>Claro</span>
                         </button>
-                        <button type="button" class="segmented-btn" data-mode="dark">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                        <button type="button" class="segmented-btn" data-mode="dark" style="font-size:11px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                             <span>Oscuro</span>
                         </button>
+                        <button type="button" class="segmented-btn" data-mode="black" style="font-size:11px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <span>AMOLED</span>
+                        </button>
                     </div>
+                </div>
+
+                <div class="switch-row" style="margin-bottom:14px;">
+                    <div>
+                        <strong>Animaciones y Efectos Visuales</strong>
+                        <small>Desactívalos para mejorar el rendimiento y batería</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="profile-enable-animations" checked><span class="slider"></span></label>
                 </div>
 
                 <div class="switch-row" style="margin-bottom:14px;">
@@ -3190,13 +3294,16 @@
                     <label class="switch"><input type="checkbox" id="profile-use-compact-numbers"><span class="slider"></span></label>
                 </div>
 
-                <div class="theme-colors-grid">
+                <div class="theme-colors-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <button type="button" class="theme-color-btn" data-theme="blue" aria-label="Azul" style="background: linear-gradient(135deg, #007aff, #005bb5);"></button>
                     <button type="button" class="theme-color-btn active" data-theme="purple" aria-label="Morado" style="background: linear-gradient(135deg, #8b5cf6, #6366f1);"></button>
                     <button type="button" class="theme-color-btn" data-theme="green" aria-label="Esmeralda" style="background: linear-gradient(135deg, #10b981, #059669);"></button>
                     <button type="button" class="theme-color-btn" data-theme="orange" aria-label="Ámbar" style="background: linear-gradient(135deg, #f59e0b, #d97706);"></button>
                     <button type="button" class="theme-color-btn" data-theme="pink" aria-label="Fucsia" style="background: linear-gradient(135deg, #ec4899, #db2777);"></button>
                     <button type="button" class="theme-color-btn" data-theme="dark" aria-label="Grafito" style="background: linear-gradient(135deg, #334155, #1e293b);"></button>
+                    <!-- NUEVOS TEMAS INSPIRADOS EN LAS CAPTURAS -->
+                    <button type="button" class="theme-color-btn" data-theme="forest" aria-label="Forest Green" style="background: linear-gradient(135deg, #22c55e, #14532d);"></button>
+                    <button type="button" class="theme-color-btn" data-theme="rose" aria-label="Mistry Rose" style="background: linear-gradient(135deg, #fda4af, #e11d48);"></button>
                 </div>
 
                 <div class="drawer-divider" style="margin:16px 0;"></div>
@@ -3210,6 +3317,92 @@
                         <span>Toca para abrir la paleta →</span>
                     </label>
                 </div>
+
+                <div class="drawer-divider" style="margin:16px 0;"></div>
+
+                <div style="text-align:center; padding-bottom:10px;">
+                    <span style="display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; font-weight:800; color:var(--text-main); margin-bottom:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                        Color del Modo Viaje
+                    </span>
+                    <small style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:12px;">Cuando actives un viaje, toda la app cambiará a este color para recordártelo visualmente.</small>
+                    <label for="trip-theme-color" class="custom-color-trigger-row">
+                        <input type="color" id="trip-theme-color" value="#0ea5e9">
+                        <span>Elegir color de viaje →</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SUBVISTA FORMATO DE MONEDA -->
+            <div id="profile-currency-view" class="profile-body hidden" style="overflow-y:auto;">
+                <div style="margin-bottom:14px;">
+                    <button type="button" id="back-from-currency-btn" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">← Volver al Menú</button>
+                </div>
+
+                <h3 style="font-size:18px; font-weight:800; letter-spacing:-0.3px; margin-bottom:4px;">Configuración de Moneda</h3>
+                <p style="font-size:11.5px; color:var(--text-muted); line-height:1.35; margin-bottom:14px;">
+                    Ajusta cómo se muestran los valores monetarios en toda la aplicación.
+                </p>
+
+                <div class="switch-row" style="margin-bottom:14px;">
+                    <div>
+                        <strong>Mostrar símbolo de moneda ($)</strong>
+                        <small>Desactiva para ver solo los números</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="pref-show-symbol"><span class="slider"></span></label>
+                </div>
+
+                <div class="form-group">
+                    <label>Formato de número negativo</label>
+                    <select id="pref-negative-format" class="modal-input" style="padding:10px 12px; font-weight:600;">
+                        <option value="minus">-100</option>
+                        <option value="parentheses">(100)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Dígitos decimales</label>
+                    <select id="pref-decimals" class="modal-input" style="padding:10px 12px; font-weight:600;">
+                        <option value="2">2 (Ej: 100,00)</option>
+                        <option value="1">1 (Ej: 100,0)</option>
+                        <option value="0">0 (Ej: 100)</option>
+                    </select>
+                </div>
+                
+                <div class="drawer-divider" style="margin:20px 0 16px 0;"></div>
+                
+                <h3 style="font-size:16px; font-weight:800; letter-spacing:-0.3px; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    Divisas Extranjeras (Offline)
+                </h3>
+                <p style="font-size:11.5px; color:var(--text-muted); line-height:1.35; margin-bottom:8px;">
+                    Define tu tasa de cambio base. Al registrar un gasto en otra moneda, se multiplicará por esta tasa y se guardará en pesos (COP) para mantener tu patrimonio exacto.
+                </p>
+                
+                <!-- AVISO EXPLICATIVO -->
+                <div style="background:rgba(14, 165, 233, 0.08); border-left:3px solid #0ea5e9; padding:8px 10px; border-radius:6px; font-size:10.5px; color:var(--text-muted); line-height:1.4; display:flex; gap:6px; align-items:flex-start; margin-bottom:12px;">
+                    <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <div><b>Nota:</b> Usa "Consultar" cuando tengas internet para descargar la TRM oficial del día. La app guardará estos valores y los usará de forma 100% offline cuando estés de viaje sin conexión.</div>
+                </div>
+
+                <form id="currency-rates-form" class="data-form">
+                    <div class="form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Tasa USD ($)</label>
+                            <input type="text" id="rate-usd-input" class="money-input" inputmode="decimal" placeholder="Ej. 4.150">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Tasa EUR (€)</label>
+                            <input type="text" id="rate-eur-input" class="money-input" inputmode="decimal" placeholder="Ej. 4.420">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:12px;">
+                        <button type="button" id="btn-sync-rates" class="btn btn-secondary" style="flex:1; font-size:12px; color:var(--accent); padding:10px 8px;">
+                            <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Consultar
+                        </button>
+                        <button type="button" id="btn-save-rates" class="btn btn-primary" style="flex:1.5; font-size:12px; padding:10px 8px;">Guardar Tasas</button>
+                    </div>
+                </form>
             </div>
 
             <!-- SUBVISTA ALERTAS Y CALENDARIO iOS -->
@@ -3220,13 +3413,38 @@
                     <span></span>
                 </div>
                 <form id="notifications-config-form" class="data-form">
+                    <div class="form-group">
+                        <label>Día de Inicio del Mes Financiero</label>
+                        <select id="pref-month-start-day" class="modal-input" style="padding:10px 12px; font-weight:600;">
+                            <option value="1">Día 1 (Mes calendario estándar)</option>
+                            <option value="5">Día 5 de cada mes</option>
+                            <option value="10">Día 10 de cada mes</option>
+                            <option value="15">Día 15 (Quincena)</option>
+                            <option value="16">Día 16 de cada mes</option>
+                            <option value="20">Día 20 de cada mes</option>
+                            <option value="25">Día 25 de cada mes</option>
+                        </select>
+                        <small id="pref-month-start-hint" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:4px;"></small>
+                    </div>
                     <div class="form-row">
                         <div class="form-group"><label>Días aviso tarjetas</label><input type="number" id="notif-days-before" min="1" max="15" value="5"></div>
                         <div class="form-group"><label>Alerta Presupuesto (%)</label><input type="number" id="notif-budget-pct" min="50" max="100" value="85"></div>
                     </div>
-                    <div class="switch-row">
+                    <div class="switch-row" style="margin-bottom:8px;">
                         <div><strong>Avisar pagos programados</strong><small>Muestra alertas de movimientos pendientes</small></div>
                         <label class="switch"><input type="checkbox" id="notif-pending-enabled" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row" style="margin-bottom:8px;">
+                        <div><strong>Mostrar proyecciones futuras</strong><small>Ver gastos y cuotas virtuales en el mes</small></div>
+                        <label class="switch"><input type="checkbox" id="pref-show-projections" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row" style="margin-bottom:8px;">
+                        <div><strong>Recordar última cuenta</strong><small>Autoselecciona la cuenta al crear registro</small></div>
+                        <label class="switch"><input type="checkbox" id="pref-remember-account" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-row">
+                        <div><strong>Recordar última categoría</strong><small>Autoselecciona la categoría en gastos</small></div>
+                        <label class="switch"><input type="checkbox" id="pref-remember-category" checked><span class="slider"></span></label>
                     </div>
                     <button type="submit" class="btn btn-primary">Guardar Preferencias</button>
                 </form>
@@ -3488,6 +3706,31 @@
         </div>
     </div>
 
+    <!-- MODAL DE PAPELERA DE RECICLAJE -->
+    <div id="trash-modal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 1380;">
+        <div class="modal-content" style="max-height: 85vh; display:flex; flex-direction:column;">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="drawer-icon-box negative-box" style="width:32px; height:32px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </span>
+                    <div>
+                        <h3 style="margin:0; font-size:17px;">Papelera de Reciclaje</h3>
+                        <small style="font-size:11px; color:var(--text-muted);">Restaura movimientos o elimínalos para siempre</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal">Cerrar</button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:8px 12px; background:var(--hover-bg); border-radius:10px;">
+                <span id="trash-count-label" style="font-size:12px; font-weight:700; color:var(--text-muted);">0 elementos</span>
+                <button type="button" id="btn-empty-trash" class="mini-action-btn" style="color:var(--negative); border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08); font-weight:700;">Vaciar Papelera</button>
+            </div>
+
+            <div id="trash-list-container" style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; padding-right:2px;"></div>
+        </div>
+    </div>
+
     <!-- MODAL UNIVERSAL DE AYUDA, LEGAL Y NOVEDADES (info.js) -->
     <div id="universal-info-modal" class="modal hidden" style="z-index: 2200;">
         <div class="modal-content" style="max-height: 80dvh;">
@@ -3499,9 +3742,112 @@
         </div>
     </div>
 
+<!-- MODAL MODO VIAJE (Con Onboarding) -->
+    <div id="trip-mode-modal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 1380;">
+        <div class="modal-content" style="max-height: 90vh; display:flex; flex-direction:column;">
+            <div class="modal-header" style="flex-shrink:0; margin-bottom:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
+                    <span class="drawer-icon-box" style="width:36px; height:36px; border-radius:10px; background:rgba(14,165,233,0.14); color:#0ea5e9; flex-shrink:0;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                    </span>
+                    <div>
+                        <h3 style="margin:0; font-size:17px; font-weight:800; line-height:1.2;">Modo Viaje</h3>
+                        <small style="color:var(--text-muted); font-size:11.5px; display:block;">Control de vacaciones aislado</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close-modal">Cerrar</button>
+            </div>
+
+            <button type="button" id="btn-show-trip-guide" class="mini-action-btn" style="align-self:flex-start; font-size:11px; color:var(--accent); margin-bottom:12px; flex-shrink:0;">
+                ¿Cómo funciona?
+            </button>
+
+            <div style="overflow-y:auto; flex:1; padding-bottom:10px;">
+                <!-- PANTALLA 1: EXPLICACIÓN / ONBOARDING -->
+                <div id="trip-onboarding-view">
+                    <div style="text-align:center; padding:10px 8px 18px 8px;">
+                        <h2 style="font-size:21px; font-weight:800; color:var(--text-main); margin-bottom:8px; line-height:1.2;">Estás por activar el Modo Viaje</h2>
+                        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.45; margin-bottom:18px;">
+                            Evita que los gastos de tus vacaciones distorsionen tus presupuestos mensuales habituales. Este modo incluye 3 funciones automáticas:
+                        </p>
+                        
+                        <div class="privacy-points-list" style="margin-bottom:20px;">
+                            <div class="privacy-point-item" style="align-items:flex-start;">
+                                <span class="privacy-point-icon" style="background: rgba(16, 185, 129, 0.14); color: var(--positive); margin-top:2px;">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                </span>
+                                <div class="privacy-point-text">
+                                    <strong>Sub-Presupuesto Aislado</strong>
+                                    <small>Los gastos en comida, vuelos o transporte durante el viaje <b>no suman</b> a tus topes mensuales ordinarios; se miden contra el presupuesto propio de tu viaje.</small>
+                                </div>
+                            </div>
+                            <div class="privacy-point-item" style="align-items:flex-start;">
+                                <span class="privacy-point-icon" style="background: var(--accent-soft); color: var(--accent); margin-top:2px;">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                </span>
+                                <div class="privacy-point-text">
+                                    <strong>Impacto Real en tus Saldos</strong>
+                                    <small>El dinero gastado sí se descuenta de tus Cuentas y Tarjetas reales para que tu Patrimonio Neto siga exacto al centavo.</small>
+                                </div>
+                            </div>
+                            <div class="privacy-point-item" style="align-items:flex-start;">
+                                <span class="privacy-point-icon" style="background: rgba(245, 158, 11, 0.14); color: #f59e0b; margin-top:2px;">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                </span>
+                                <div class="privacy-point-text">
+                                    <strong>Auto-Etiquetado Inteligente</strong>
+                                    <small>Cada gasto que registres mientras esté activo se etiquetará solo (ej. <i>#cartagena</i>) para ver el resumen total del viaje con un toque.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="btn-continue-trip-setup" class="btn btn-primary" style="width:100%; padding:14px; font-size:14px;">Entendido, configurar viaje →</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 2: FORMULARIO -->
+                <form id="trip-mode-form" class="data-form hidden">
+                    <div class="switch-row" style="margin-bottom:12px;">
+                        <div>
+                            <strong>Activar Modo Viaje</strong>
+                            <small>Etiqueta y aísla los nuevos gastos automáticamente</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="trip-active-check"><span class="slider"></span></label>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Destino / Nombre del Viaje</label>
+                            <input type="text" id="trip-name-input" placeholder="Ej. Cartagena">
+                        </div>
+                        <div class="form-group">
+                            <label>Presupuesto Viaje ($)</label>
+                            <input type="text" id="trip-budget-input" class="money-input" inputmode="decimal" placeholder="Ej. 2.500.000">
+                        </div>
+                    </div>
+
+                    <div class="switch-row" style="margin-bottom:14px;">
+                        <div>
+                            <strong>Aislar del Presupuesto Mensual</strong>
+                            <small>No suma a tus topes habituales de Comida/Transporte</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="trip-isolate-check" checked><span class="slider"></span></label>
+                    </div>
+
+                    <div id="trip-modal-stats-box" class="glass-sub-box hidden" style="margin-bottom:12px;"></div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Guardar Configuración de Viaje</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR DE IMPRESIÓN EJECUTIVA PDF -->
+    <div id="print-report-container"></div>
+
 <!-- SCRIPTS EN ORDEN CORRECTO -->
-    <script src="core.js?v=2.0.2"></script>
-    <script src="info.js?v=2.0.2"></script>
-    <script src="app.js?v=2.0.9"></script>
+    <script src="core.js?v=2.1.0"></script>
+    <script src="info.js?v=2.1.0"></script>
+    <script src="app.js?v=2.1.0"></script>
 </body>
 </html>

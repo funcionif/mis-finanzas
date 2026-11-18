@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v2.0.1)
+// INICIO DE ARCHIVO: core.js (v2.1.0)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -170,8 +170,21 @@ let financeData = JSON.parse(localStorage.getItem('myFinances')) || {
     fixedAssets: [],
     pockets: [],
     subscriptions: [],
-    hideZeroAccounts: false
+    hideZeroAccounts: false,
+    preferences: { disableAnimations: false }
 };
+
+if (!financeData.preferences) financeData.preferences = {};
+if (financeData.preferences.disableAnimations === undefined) financeData.preferences.disableAnimations = false;
+if (financeData.preferences.decimals === undefined) financeData.preferences.decimals = 2;
+if (financeData.preferences.showCurrencySymbol === undefined) financeData.preferences.showCurrencySymbol = true;
+if (financeData.preferences.negativeFormat === undefined) financeData.preferences.negativeFormat = 'minus';
+if (financeData.preferences.rememberAccount === undefined) financeData.preferences.rememberAccount = true;
+if (financeData.preferences.rememberCategory === undefined) financeData.preferences.rememberCategory = true;
+if (financeData.preferences.showProjections === undefined) financeData.preferences.showProjections = true;
+if (financeData.preferences.monthStartDay === undefined) financeData.preferences.monthStartDay = 1;
+if (!financeData.tripMode) financeData.tripMode = { active: false, name: '', tag: '', budget: 0, isolateBudget: true };
+if (!financeData.exchangeRates) financeData.exchangeRates = { USD: 4150, EUR: 4420 };
 
 if (!financeData.fixedAssets) financeData.fixedAssets = [];
 if (!financeData.pockets) financeData.pockets = [];
@@ -371,23 +384,42 @@ const formatNumberInput = (val, maxDecimals = 2) => {
 const formatMoney = (amount) => {
     if (localStorage.getItem('myFinancesPrivacyMode') === 'true') return amount < 0 ? '-****' : '****';
     const clean = round2(amount);
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(clean);
+    const prefs = financeData.preferences || {};
+    const decimals = prefs.decimals !== undefined ? prefs.decimals : 2;
+    const showSymbol = prefs.showCurrencySymbol !== false;
+    const isParentheses = prefs.negativeFormat === 'parentheses';
+
+    let formatted = new Intl.NumberFormat('es-CO', {
+        style: 'decimal',
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    }).format(Math.abs(clean));
+
+    if (showSymbol) formatted = `$ ${formatted}`;
+    
+    if (clean < 0) return isParentheses ? `(${formatted})` : `-${formatted}`;
+    return formatted;
 };
 
 const formatCompact = (amount) => {
     if (localStorage.getItem('myFinancesPrivacyMode') === 'true') return amount < 0 ? '-****' : '****';
     if (!financeData.useCompactNumbers) return formatMoney(amount);
     
+    const prefs = financeData.preferences || {};
+    const decimals = prefs.decimals !== undefined ? prefs.decimals : 2;
+    const showSymbol = prefs.showCurrencySymbol !== false ? '$ ' : '';
+    const isParentheses = prefs.negativeFormat === 'parentheses';
+    
     const abs = Math.abs(amount);
-    const sign = amount < 0 ? '-' : '';
-    if (abs >= 1000000) return `${sign}${(abs / 1000000).toFixed(2)}M`;
-    if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(1)}k`;
-    return `${sign}${abs.toFixed(2)}`;
+    let valStr = '';
+    
+    if (abs >= 1000000) valStr = `${(abs / 1000000).toFixed(decimals).replace('.', ',')}M`;
+    else if (abs >= 1000) valStr = `${(abs / 1000).toFixed(decimals > 0 ? 1 : 0).replace('.', ',')}k`;
+    else valStr = abs.toFixed(decimals).replace('.', ',');
+    
+    const formatted = `${showSymbol}${valStr}`;
+    if (amount < 0) return isParentheses ? `(${formatted})` : `-${formatted}`;
+    return formatted;
 };
 
 // Evaluador aritmético seguro sin eval()
@@ -478,6 +510,48 @@ const evaluateCalculatorExpression = (rawExpr) => {
 
     if (!isFinite(acc) || isNaN(acc)) return { valid: false, value: 0 };
     return { valid: true, value: round2(acc) };
+};
+
+// --- MOTOR DE ETIQUETAS (#TAGS) ---
+const extractTransactionTags = (rawTagInput = '', descriptionText = '') => {
+    const found = new Set();
+    const sanitize = (token) => String(token || '')
+        .replace(/^#+/, '')
+        .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]/g, '')
+        .toLowerCase()
+        .trim();
+
+    // 1. Procesar el campo dedicado de etiquetas (separadas por espacio o coma)
+    String(rawTagInput || '').split(/[\s,]+/).forEach(part => {
+        const clean = sanitize(part);
+        if (clean.length >= 2) found.add(clean);
+    });
+
+    // 2. Detectar también #hashtags escritos directamente en la descripción
+    const inlineMatches = String(descriptionText || '').match(/#([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]{2,})/g);
+    if (inlineMatches) {
+        inlineMatches.forEach(m => {
+            const clean = sanitize(m);
+            if (clean.length >= 2) found.add(clean);
+        });
+    }
+
+    return Array.from(found);
+};
+
+const getAllUsedTags = () => {
+    const counts = {};
+    financeData.transactions.forEach(t => {
+        if (!t.isDeleted && Array.isArray(t.tags)) {
+            t.tags.forEach(tag => {
+                const clean = String(tag).toLowerCase().trim();
+                if (clean) counts[clean] = (counts[clean] || 0) + 1;
+            });
+        }
+    });
+    return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'))
+        .map(([tag, count]) => ({ tag, count }));
 };
 
 // --- 5. LÓGICA FINANCIERA, CUENTAS, BOLSILLOS Y PRESUPUESTOS ---
@@ -727,7 +801,7 @@ const getRemainingBudgetForSelection = (type, categoryName, subcategoryName, mon
 
     let spent = 0;
     financeData.transactions.forEach(t => {
-        if (t.monthId === monthId && t.type === type && !t.isAdjustment && t.category === categoryName) {
+        if (!t.isDeleted && !t.isTripIsolated && getTxMonthId(t) === monthId && t.type === type && !t.isAdjustment && t.category === categoryName) {
             if (excludeTxId && String(t.id) === String(excludeTxId)) return;
             let matchesSub = true;
             if (subObj) {
@@ -797,7 +871,7 @@ const computeBalancesUpTo = (targetMonthId) => {
     }
 
     financeData.transactions.forEach(t => {
-        if (t.monthId <= targetMonthId && isTxClosed(t)) {
+        if (!t.isDeleted && getTxMonthId(t) <= targetMonthId && isTxClosed(t)) {
             const accObj = getAccountObj(t.account);
             const toAccObj = t.toAccount ? getAccountObj(t.toAccount) : null;
             const amt = round2(t.amount);
@@ -989,7 +1063,7 @@ const getMonthlyFlow = (targetMonthId, includePending = false) => {
     let inc = 0, exp = 0;
 
     financeData.transactions.forEach(t => {
-        if (t.monthId === targetMonthId && t.type !== 'transfer' && !t.isAdjustment) {
+        if (!t.isDeleted && !t.isTripIsolated && getTxMonthId(t) === targetMonthId && t.type !== 'transfer' && !t.isAdjustment) {
             if (includePending || isTxClosed(t)) {
                 const val = t.status === 'pending' ? round2(t.budgetedAmount || t.amount) : round2(t.amount);
                 if (t.type === 'income') {
@@ -1055,7 +1129,7 @@ const calculateAmortization = (principal, periods, rate, rateType) => {
 
 const getPendingCardPurchases = (cardId) => {
     return financeData.transactions
-        .filter(t => t.account === cardId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t))
+        .filter(t => !t.isDeleted && t.account === cardId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t))
         .map(t => {
             const inst = Math.max(1, parseInt(t.installments, 10) || 1);
             const paid = Math.max(0, parseInt(t.paidInstallments, 10) || 0);
@@ -2411,7 +2485,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v2.0.1//ES',
+        'PRODID:-//Mis Finanzas//v2.1.0//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,
@@ -2431,10 +2505,51 @@ const generateICSBlob = (title, description, dateObj) => {
     return new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
 };
 
-// --- 9. UTILIDADES DE FECHAS Y PALETAS DE TEMAS ---
-const getMonthId = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+// --- 9. UTILIDADES DE FECHAS, CICLOS PERSONALIZADOS Y PALETAS ---
+const getMonthStartDay = () => {
+    const d = parseInt(financeData?.preferences?.monthStartDay, 10);
+    return (d >= 1 && d <= 28) ? d : 1;
+};
+
+const getMonthId = (date) => {
+    const startDay = getMonthStartDay();
+    let y = date.getFullYear();
+    let m = date.getMonth();
+    // Si el ciclo empieza después del día 1 y la fecha es >= día de corte, pertenece al ciclo del mes siguiente
+    if (startDay > 1 && date.getDate() >= startDay) {
+        m += 1;
+        if (m > 11) { m = 0; y += 1; }
+    }
+    return `${y}-${String(m + 1).padStart(2, '0')}`;
+};
+
+const getTxMonthId = (t) => {
+    if (t && t.id && !isNaN(Number(t.id))) {
+        return getMonthId(new Date(Number(t.id)));
+    }
+    return t?.monthId || getMonthId(new Date());
+};
+
+const getCycleRangeText = (monthId) => {
+    const startDay = getMonthStartDay();
+    if (startDay === 1) return '';
+    const [y, m] = monthId.split('-').map(Number);
+    const startObj = new Date(y, m - 2, startDay);
+    const endObj = new Date(y, m - 1, startDay - 1);
+    const fmt = (d) => `${d.getDate()} ${d.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '')}`;
+    return `${fmt(startObj)} – ${fmt(endObj)}`;
+};
+
 const getShortMonthLabel = (date) => date.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '');
-const formatMonthName = (date) => date.toLocaleDateString('es-CO', { month: 'short', year: 'numeric' }).replace('.', '');
+const formatMonthName = (date) => {
+    const startDay = getMonthStartDay();
+    if (startDay === 1) {
+        return date.toLocaleDateString('es-CO', { month: 'short', year: 'numeric' }).replace('.', '');
+    }
+    const [y, m] = getMonthId(date).split('-').map(Number);
+    const target = new Date(y, m - 1, 1);
+    return target.toLocaleDateString('es-CO', { month: 'short', year: 'numeric' }).replace('.', '');
+};
 const getAssetEmoji = (cat) => ({ 'Inmueble': '🏠', 'Vehículo': '🚗', 'Inversión': '📈', 'Tecnología': '💻', 'Coleccionable': '💎', 'Otro': '📦' }[cat] || '📦');
 
 const calcCommercialDays = (sD, eD) => {
@@ -2480,7 +2595,9 @@ const getThemeColors = (themeValue) => {
         green: { accent: '#10b981', gradient: 'linear-gradient(135deg, #10b981, #059669)', shadow: 'rgba(16, 185, 129, 0.35)' },
         orange: { accent: '#f59e0b', gradient: 'linear-gradient(135deg, #f59e0b, #d97706)', shadow: 'rgba(245, 158, 11, 0.35)' },
         pink: { accent: '#ec4899', gradient: 'linear-gradient(135deg, #ec4899, #db2777)', shadow: 'rgba(236, 72, 153, 0.35)' },
-        dark: { accent: '#475569', gradient: 'linear-gradient(135deg, #475569, #1e293b)', shadow: 'rgba(71, 85, 105, 0.35)' }
+        dark: { accent: '#475569', gradient: 'linear-gradient(135deg, #475569, #1e293b)', shadow: 'rgba(71, 85, 105, 0.35)' },
+        forest: { accent: '#22c55e', gradient: 'linear-gradient(135deg, #22c55e, #14532d)', shadow: 'rgba(34, 197, 94, 0.35)' },
+        rose: { accent: '#f43f5e', gradient: 'linear-gradient(135deg, #f43f5e, #9f1239)', shadow: 'rgba(244, 63, 94, 0.35)' }
     };
     if (themes[themeValue]) return themes[themeValue];
     if (themeValue && themeValue.startsWith('#')) {
@@ -2610,6 +2727,1270 @@ window.archiveYearData = async (targetYear) => {
         console.error("Error archivando en IndexedDB:", error);
         return { deleted: 0, added: 0, success: false };
     }
+};
+
+// --- 10. MOTORES DE PROYECCIÓN, AHORRO, CALENDARIO Y SIMULADORES (DEPURADOS DE APP.JS) ---
+
+// A. Libre Seguro Hoy
+const computeSafeToSpendToday = (monthId, currSnap) => {
+    let pendingExp = 0;
+    financeData.transactions.forEach(t => {
+        if (!t.isDeleted && t.monthId === monthId && t.type === 'expense' && t.status === 'pending') {
+            pendingExp = round2(pendingExp + round2(t.budgetedAmount || t.amount));
+        }
+    });
+
+    const mIdx = parseInt(monthId.split('-')[1], 10) - 1;
+    let totalLimit = 0, totalSpentExp = 0;
+    (financeData.categories.expense || []).forEach(c => {
+        totalLimit = round2(totalLimit + getCategoryLimitForMonth(c, mIdx));
+    });
+    financeData.transactions.forEach(t => {
+        if (!t.isDeleted && !t.isTripIsolated && t.monthId === monthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
+            totalSpentExp = round2(totalSpentExp + round2(t.amount));
+        }
+    });
+    const budgetRemaining = Math.max(0, round2(totalLimit - totalSpentExp));
+    const monthlyDebtPayments = getCommittedMonthlyDebtQuotas(currSnap);
+
+    let liquidAssets = 0;
+    financeData.customAccounts.forEach(a => {
+        if (a.category === 'asset' && !a.id.startsWith('CxC_') && a.excludeFromLiquidity !== true) {
+            liquidAssets = round2(liquidAssets + round2(currSnap.bals[a.id] || 0));
+        }
+    });
+
+    const obligations = round2(pendingExp + budgetRemaining + monthlyDebtPayments);
+    const safeToSpend = Math.max(0, round2(liquidAssets - obligations));
+    return { liquidAssets, pendingExp, budgetRemaining, monthlyDebtPayments, obligations, safeToSpend };
+};
+
+// B. Mapa de Calor del Calendario
+const isTxFixedExpense = (t) => {
+    const expCats = financeData.categories?.expense || [];
+    const catObj = expCats.find(c => c.name === t.category);
+    if (catObj?.isFixed) return true;
+    if (catObj && t.subcategory && Array.isArray(catObj.subcategories)) {
+        const subObj = catObj.subcategories.find(s => s.name === t.subcategory);
+        if (subObj?.isFixed) return true;
+    }
+    return false;
+};
+
+const computeCalendarHeatmapData = (baseDate, mode = 'variable') => {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const firstDayOfWeek = new Date(year, month, 1).getDay();
+    const offset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = currentDate.toLocaleDateString('en-CA');
+    const viewMonthId = getMonthId(baseDate);
+    const currMonthId = getMonthId(currentDate);
+    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+
+    const dayActivity = {};
+    financeData.transactions.forEach(t => {
+        if (t.isDeleted) return;
+        const dStr = new Date(t.id).toLocaleDateString('en-CA');
+        if (!dStr.startsWith(monthPrefix)) return;
+
+        if (!dayActivity[dStr]) {
+            dayActivity[dStr] = { inc: false, exp: false, trf: false, pend: false, heatSpend: 0 };
+        }
+        if (t.status === 'pending') {
+            dayActivity[dStr].pend = true;
+        } else if (t.type === 'income') {
+            dayActivity[dStr].inc = true;
+        } else if (t.type === 'expense') {
+            dayActivity[dStr].exp = true;
+            if (!t.isAdjustment) {
+                const excludeFixed = mode === 'variable' && (isTxFixedExpense(t) || t.isTripIsolated);
+                if (!excludeFixed) {
+                    dayActivity[dStr].heatSpend = round2(dayActivity[dStr].heatSpend + round2(t.amount));
+                }
+            }
+        } else if (t.type === 'transfer') {
+            dayActivity[dStr].trf = true;
+        }
+    });
+
+    const spendValues = Object.values(dayActivity).map(a => a.heatSpend).filter(v => v > 0);
+    const avgDailySpend = spendValues.length > 0
+        ? round2(spendValues.reduce((s, v) => s + v, 0) / spendValues.length)
+        : 0;
+
+    const maxElapsedDay = viewMonthId < currMonthId
+        ? daysInMonth
+        : (viewMonthId === currMonthId ? currentDate.getDate() : 0);
+
+    let zeroSpendDays = 0;
+    const days = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dStr = new Date(year, month, day).toLocaleDateString('en-CA');
+        const act = dayActivity[dStr] || null;
+        const daySpend = act ? act.heatSpend : 0;
+
+        let heatClass = '';
+        if (daySpend > 0 && avgDailySpend > 0) {
+            const ratio = daySpend / avgDailySpend;
+            if (ratio > 1.4) heatClass = 'heat-high';
+            else if (ratio >= 0.75) heatClass = 'heat-med';
+            else heatClass = 'heat-low';
+        } else if (day <= maxElapsedDay && daySpend === 0) {
+            zeroSpendDays++;
+            heatClass = 'heat-zero';
+        }
+
+        days.push({
+            day,
+            dStr,
+            act,
+            daySpend,
+            heatClass,
+            isToday: dStr === todayStr
+        });
+    }
+
+    return { offset, days, avgDailySpend, zeroSpendDays, maxElapsedDay };
+};
+
+// C. Bolsillos de Ahorro y Metas
+const calcMonthsBetweenDates = (startStr, endStr) => {
+    if (!endStr) return 0;
+    const todayStr = currentDate.toLocaleDateString('en-CA');
+    const [sy, sm, sd] = (startStr || todayStr).split('-').map(Number);
+    const [ey, em, ed] = endStr.split('-').map(Number);
+    return Math.max(1, (ey - sy) * 12 + (em - sm) + (ed > sd ? 1 : 0));
+};
+
+const getEffectiveStartStr = (startDateStr) => {
+    const todayStr = currentDate.toLocaleDateString('en-CA');
+    return (startDateStr && startDateStr > todayStr) ? startDateStr : todayStr;
+};
+
+const computePocketMetrics = (p) => {
+    const principal = round2(p.principal || 0);
+    const yields = round2(p.yields || 0);
+    const balance = round2(principal + yields);
+    const goal = round2(p.goal || 0);
+    const remaining = Math.max(0, round2(goal - balance));
+    const customQuota = round2(p.customQuota || 0);
+
+    let suggestedQuota = 0;
+    let monthsLeft = 0;
+    let totalMonths = 0;
+
+    if (p.targetDate) {
+        const effStart = getEffectiveStartStr(p.startDate);
+        monthsLeft = calcMonthsBetweenDates(effStart, p.targetDate);
+        totalMonths = calcMonthsBetweenDates(p.startDate || effStart, p.targetDate);
+        if (remaining > 0) {
+            suggestedQuota = round2(remaining / monthsLeft);
+        }
+    }
+
+    const activeQuota = customQuota > 0 ? customQuota : suggestedQuota;
+
+    let paceStatus = null;
+    if (goal > 0 && p.startDate && p.targetDate && remaining > 0) {
+        const todayStr = currentDate.toLocaleDateString('en-CA');
+        if (todayStr > p.startDate && totalMonths > 1) {
+            const elapsedMonths = Math.max(0, totalMonths - monthsLeft);
+            const expectedBalance = round2((goal / totalMonths) * elapsedMonths);
+            if (balance >= expectedBalance * 0.95) paceStatus = { label: 'Al día', cls: 'good' };
+            else paceStatus = { label: 'Atrasado', cls: 'warn' };
+        }
+    }
+
+    return { principal, yields, balance, goal, remaining, monthsLeft, totalMonths, suggestedQuota, customQuota, activeQuota, paceStatus };
+};
+
+const getPocketsTotalSaved = () => {
+    return round2((financeData.pockets || []).reduce((sum, p) => sum + round2((p.principal || 0) + (p.yields || 0)), 0));
+};
+
+const computeAllPocketsSummary = (currSnap = null) => {
+    let totalSaved = 0, totalYields = 0, totalMonthlySuggested = 0;
+    let totalPocketsGoal = 0, sumGoalCappedBal = 0;
+
+    (financeData.pockets || []).forEach(p => {
+        const m = computePocketMetrics(p);
+        totalSaved = round2(totalSaved + m.balance);
+        totalYields = round2(totalYields + m.yields);
+        if (m.remaining > 0 || m.customQuota > 0) {
+            totalMonthlySuggested = round2(totalMonthlySuggested + m.activeQuota);
+        }
+        if (m.goal > 0) {
+            totalPocketsGoal = round2(totalPocketsGoal + m.goal);
+            sumGoalCappedBal = round2(sumGoalCappedBal + Math.min(m.goal, m.balance));
+        }
+    });
+
+    let pocketsPct = 0;
+    if (totalPocketsGoal > 0) pocketsPct = Math.min(100, Math.round((sumGoalCappedBal / totalPocketsGoal) * 100));
+    else if (currSnap && currSnap.pocketsTotal > 0) pocketsPct = 100;
+
+    return { totalSaved, totalYields, totalMonthlySuggested, totalPocketsGoal, pocketsPct };
+};
+
+// D. Modo Viaje
+const getTripTagSlug = (name) => {
+    const clean = String(name || 'viaje').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+    return clean.length >= 2 ? clean : 'viaje';
+};
+
+const computeActiveTripStats = () => {
+    const trip = financeData.tripMode || { active: false };
+    if (!trip.name) return { spent: 0, count: 0, budget: 0, remaining: 0, pct: 0, slug: 'viaje' };
+    const slug = trip.tag || getTripTagSlug(trip.name);
+    let spent = 0, count = 0;
+    financeData.transactions.forEach(t => {
+        if (t.isDeleted || t.type !== 'expense' || t.isAdjustment) return;
+        if ((Array.isArray(t.tags) && t.tags.includes(slug)) || t.tripName === trip.name) {
+            spent = round2(spent + round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount));
+            count++;
+        }
+    });
+    const budget = round2(trip.budget || 0);
+    const remaining = budget > 0 ? round2(budget - spent) : 0;
+    const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+    return { spent, count, budget, remaining, pct, slug };
+};
+
+// E. Proyección de Efectivo Día por Día
+const computeCashProjectionData = (horizon = 'eom') => {
+    const today = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    const todayStr = today.toLocaleDateString('en-CA');
+    let endDate;
+
+    if (horizon === '15d') endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 15);
+    else if (horizon === '30d') endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30);
+    else if (horizon === '60d') endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60);
+    else endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const currMonthId = getMonthId(today);
+    const currSnap = computeBalancesUpTo(currMonthId);
+
+    let startBalance = 0;
+    financeData.customAccounts.forEach(a => {
+        if (a.category === 'asset' && !a.id.startsWith('CxC_') && a.excludeFromLiquidity !== true) {
+            startBalance = round2(startBalance + round2(currSnap.bals[a.id] || 0));
+        }
+    });
+
+    const events = [];
+    const pushEvent = (dateObj, type, amount, label) => {
+        if (!amount || amount <= 0) return;
+        const cleanDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+        if (cleanDate < today || cleanDate > endDate) return;
+        events.push({
+            dateStr: cleanDate.toLocaleDateString('en-CA'),
+            dateObj: cleanDate,
+            type,
+            amount: round2(amount),
+            label: stripLeadingEmoji(label)
+        });
+    };
+
+    // 1. Movimientos pendientes programados
+    financeData.transactions.forEach(t => {
+        if (t.isDeleted || t.status !== 'pending') return;
+        const txDate = new Date(t.id);
+        const amt = round2(t.budgetedAmount || t.amount);
+        if (t.type === 'income') {
+            pushEvent(txDate, 'income', amt, t.description || 'Ingreso pendiente');
+        } else if (t.type === 'expense') {
+            const acc = getAccountObj(t.account);
+            if (acc.category !== 'credit_card') {
+                pushEvent(txDate, 'expense', amt, t.description || 'Gasto pendiente');
+            }
+        } else if (t.type === 'transfer') {
+            const fromAcc = getAccountObj(t.account);
+            const toAcc = getAccountObj(t.toAccount);
+            const fromLiquid = fromAcc.category === 'asset' && !fromAcc.id.startsWith('CxC_') && fromAcc.excludeFromLiquidity !== true;
+            const toLiquid = toAcc.category === 'asset' && !toAcc.id.startsWith('CxC_') && toAcc.excludeFromLiquidity !== true;
+            if (fromLiquid && !toLiquid) pushEvent(txDate, 'expense', amt, t.description || 'Transferencia');
+            else if (!fromLiquid && toLiquid) pushEvent(txDate, 'income', amt, t.description || 'Ingreso por transferencia');
+        }
+    });
+
+    // 2. Nómina, tarjetas y préstamos mes a mes
+    const salStr = localStorage.getItem('myFinancesSalary');
+    const salCfg = salStr ? JSON.parse(salStr) : null;
+
+    let iter = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endMonthStart = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+
+    while (iter <= endMonthStart) {
+        const y = iter.getFullYear();
+        const m = iter.getMonth();
+        const mId = getMonthId(iter);
+        const daysInM = new Date(y, m + 1, 0).getDate();
+
+        if (salCfg && salCfg.basicSalary > 0) {
+            const metrics = calculateLaborMetrics(salCfg, new Date(y, m, 15));
+            const paySlots = salCfg.frequency === 'biweekly'
+                ? [
+                    { day: 15, amount: metrics.net1Q, label: 'Nómina (1Q)', isFirstHalf: true },
+                    { day: Math.min(30, daysInM), amount: metrics.net2Q, label: 'Nómina (2Q)', isFirstHalf: false }
+                ]
+                : [
+                    { day: Math.min(parseInt(salCfg.payDay, 10) || 30, daysInM), amount: metrics.net, label: 'Pago Nómina', isFirstHalf: null }
+                ];
+
+            paySlots.forEach(slot => {
+                const alreadyRecorded = financeData.transactions.some(t => {
+                    if (t.isDeleted || t.monthId !== mId || t.type !== 'income') return false;
+                    const isSal = /salario|n[oó]mina/i.test(`${t.category || ''} ${t.description || ''}`);
+                    if (!isSal) return false;
+                    if (slot.isFirstHalf === null) return true;
+                    const txDay = new Date(t.id).getDate();
+                    return slot.isFirstHalf ? txDay <= 16 : txDay > 16;
+                });
+                if (!alreadyRecorded) {
+                    pushEvent(new Date(y, m, slot.day), 'income', slot.amount, slot.label);
+                }
+            });
+        }
+
+        financeData.customAccounts.filter(a => a.category === 'credit_card').forEach(c => {
+            const bal = round2(currSnap.bals[c.id] || 0);
+            if (bal <= 0 || !c.paymentDay) return;
+            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && t.monthId === mId && t.toAccount === c.id && t.type === 'transfer');
+            if (!alreadyPaid) {
+                const minPay = calculateCardMinPaymentEstimate(c, bal).totalMinPayment;
+                pushEvent(new Date(y, m, Math.min(c.paymentDay, daysInM)), 'expense', minPay, `Tarjeta ${c.name}`);
+            }
+        });
+
+        financeData.customAccounts.filter(a => a.category === 'debt' && !a.payrollDeduction).forEach(d => {
+            const bal = round2(currSnap.bals[d.id] || 0);
+            if (bal <= 0) return;
+            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && t.monthId === mId && t.toAccount === d.id && t.type === 'transfer');
+            if (!alreadyPaid) {
+                const qAmt = getDebtMonthlyQuotaBreakdown(d, bal).totalQuota;
+                pushEvent(new Date(y, m, Math.min(d.paymentDay || 30, daysInM)), 'expense', qAmt, `Cuota ${d.name}`);
+            }
+        });
+
+        iter.setMonth(iter.getMonth() + 1);
+    }
+
+    // 3. Suscripciones activas con cargo a liquidez
+    (financeData.subscriptions || []).filter(s => s.status === 'active' && s.nextBillingDate).forEach(sub => {
+        const acc = getAccountObj(sub.accountId);
+        if (acc.category === 'credit_card') return;
+        const [sy, sm, sd] = sub.nextBillingDate.split('-').map(Number);
+        let nextD = new Date(sy, sm - 1, sd);
+        let guard = 0;
+        while (nextD <= endDate && guard < 24) {
+            guard++;
+            if (nextD >= today) {
+                pushEvent(nextD, 'expense', sub.amount, `Suscripción: ${sub.name}`);
+            }
+            if (sub.cycle === 'monthly') nextD.setMonth(nextD.getMonth() + 1);
+            else if (sub.cycle === 'bimonthly') nextD.setMonth(nextD.getMonth() + 2);
+            else if (sub.cycle === 'quarterly') nextD.setMonth(nextD.getMonth() + 3);
+            else if (sub.cycle === 'semiannual') nextD.setMonth(nextD.getMonth() + 6);
+            else if (sub.cycle === 'annual') nextD.setFullYear(nextD.getFullYear() + 1);
+            else if (sub.cycle === 'weekly') nextD.setDate(nextD.getDate() + 7);
+            else break;
+        }
+    });
+
+    const grouped = {};
+    events.forEach(ev => {
+        if (!grouped[ev.dateStr]) grouped[ev.dateStr] = { dateStr: ev.dateStr, dateObj: ev.dateObj, items: [] };
+        grouped[ev.dateStr].items.push(ev);
+    });
+
+    const sortedDays = Object.values(grouped).sort((a, b) => a.dateObj - b.dateObj);
+    let running = startBalance;
+    let lowestBalance = startBalance;
+    let lowestDateStr = todayStr;
+    let totalIn = 0;
+    let totalOut = 0;
+
+    sortedDays.forEach(dayGroup => {
+        let dayIn = 0, dayOut = 0;
+        dayGroup.items.forEach(it => {
+            if (it.type === 'income') dayIn = round2(dayIn + it.amount);
+            else dayOut = round2(dayOut + it.amount);
+        });
+        totalIn = round2(totalIn + dayIn);
+        totalOut = round2(totalOut + dayOut);
+        running = round2(running + dayIn - dayOut);
+        dayGroup.endBalance = running;
+
+        if (running < lowestBalance) {
+            lowestBalance = running;
+            lowestDateStr = dayGroup.dateStr;
+        }
+    });
+
+    return { today, todayStr, endDate, startBalance, endBalance: running, totalIn, totalOut, lowestBalance, lowestDateStr, sortedDays };
+};
+
+// F. Calculadora de Ahorro e Interés Compuesto
+const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, periodsPerYear, contribution, annualRate }) => {
+    const years = targetAge - currentAge;
+    if (years <= 0 || years > 70) return { valid: false, years };
+
+    const safeInitial = round2(initial || 0);
+    const safeContrib = round2(contribution || 0);
+    const safeRate = Math.max(0, Math.min(30, annualRate || 0));
+    const periodicRate = safeRate > 0 ? Math.pow(1 + safeRate / 100, 1 / periodsPerYear) - 1 : 0;
+
+    let balance = safeInitial;
+    let totalContributed = safeInitial;
+    const timeline = [{ year: 0, age: currentAge, contributed: totalContributed, interest: 0, balance }];
+
+    for (let y = 1; y <= years; y++) {
+        for (let p = 0; p < periodsPerYear; p++) {
+            const interest = balance * periodicRate;
+            balance = balance + interest + safeContrib;
+            totalContributed += safeContrib;
+        }
+        const cleanBal = round2(balance);
+        const cleanContrib = round2(totalContributed);
+        timeline.push({
+            year: y,
+            age: currentAge + y,
+            contributed: cleanContrib,
+            interest: Math.max(0, round2(cleanBal - cleanContrib)),
+            balance: cleanBal
+        });
+    }
+
+    const finalSnap = timeline[timeline.length - 1];
+    const totalAdded = round2(finalSnap.contributed - safeInitial);
+    const principalPct = finalSnap.balance > 0 ? Math.round((finalSnap.contributed / finalSnap.balance) * 100) : 100;
+    const interestPct = Math.max(0, 100 - principalPct);
+
+    return {
+        valid: true,
+        years,
+        currentAge,
+        targetAge,
+        initial: safeInitial,
+        totalAdded,
+        finalSnap,
+        principalPct,
+        interestPct,
+        timeline
+    };
+};
+
+// G. Simulador de Planificador de Deudas (Avalancha / Bola de Nieve)
+const computeDebtPlannerSimulation = ({ monthId, strategy = 'avalanche', extraMonthly = 0, primaMode = 'both' }) => {
+    const snap = computeBalancesUpTo(monthId);
+    const allPositiveDebts = financeData.customAccounts
+        .filter(a => (a.category === 'debt' || a.category === 'credit_card') && snap.bals[a.id] > 0)
+        .map(a => {
+            const bal = round2(snap.bals[a.id]);
+            let rate = 0, minPay = 0;
+            if (a.category === 'debt') {
+                rate = a.debtRateType === 'annual' ? (Math.pow(1 + (a.debtRate || 0) / 100, 1 / 12) - 1) * 100 : (a.debtRate || 0);
+                minPay = a.debtMonthlyPayment || 0;
+                if (minPay === 0 && a.debtType !== 'revolving') {
+                    minPay = calculateAmortization(a.debtOriginal || bal, a.debtTotalQuotes || 1, rate, 'monthly').payment;
+                } else if (a.debtType === 'revolving') {
+                    const revPurchases = getPendingRevolvingPurchases(a.id);
+                    minPay = round2(minPay + revPurchases.reduce((s, p) => s + p.nextQuota, 0));
+                    if (rate <= 0 && revPurchases.length > 0) {
+                        const maxPurchRate = Math.max(...revPurchases.map(p => p.rateType === 'annual' ? (Math.pow(1 + (p.rate || 0) / 100, 1 / 12) - 1) * 100 : (p.rate || 0)));
+                        if (maxPurchRate > 0) rate = maxPurchRate;
+                    }
+                }
+            } else {
+                rate = a.rateType === 'annual' ? (Math.pow(1 + (a.rate || 0) / 100, 1 / 12) - 1) * 100 : (a.rate || 0);
+                const est = calculateCardMinPaymentEstimate(a, bal);
+                const baseCardQuota = round2(a.initialDebtQuota || 0) > 0 ? round2(a.initialDebtQuota) : round2(bal * 0.05);
+                minPay = round2(baseCardQuota + est.mgmtFeeAmt + est.insuranceAmt);
+            }
+            return { id: a.id, name: stripLeadingEmoji(a.name), bal, rate, minPay };
+        });
+
+    const activeDebts = allPositiveDebts.filter(d => d.rate > 0);
+    const excludedZeroRateDebts = allPositiveDebts.filter(d => d.rate <= 0);
+
+    if (activeDebts.length === 0) {
+        return { activeDebts, excludedZeroRateDebts, baseRes: null, optRes: null, interestSaved: 0 };
+    }
+
+    let halfPrima = 0;
+    const salaryStr = localStorage.getItem('myFinancesSalary');
+    if (salaryStr) halfPrima = calculateLaborMetrics(JSON.parse(salaryStr), currentDate).halfPrimaNeta;
+
+    const [startY, startM] = monthId.split('-').map(Number);
+
+    const simAmort = (debts, addExtra) => {
+        let simDebts = debts.map(d => ({ ...d }));
+        const baseMonthlyPool = round2(simDebts.reduce((s, d) => s + d.minPay, 0));
+        let monthIter = new Date(startY, startM - 1, 1);
+        let totalInterest = 0, monthsCount = 0;
+        const schedule = [];
+        let isUnpayable = false;
+
+        while (simDebts.length > 0 && monthsCount < 360) {
+            monthsCount++;
+            let currentMonthExtra = addExtra ? extraMonthly : 0;
+            if (addExtra) {
+                const mStr = `${monthIter.getFullYear()}-${String(monthIter.getMonth() + 1).padStart(2, '0')}`;
+                const mExtraObj = financeData.plannerExtras.find(e => e.month === mStr);
+                if (mExtraObj) currentMonthExtra += mExtraObj.amount;
+                if (monthIter.getMonth() === 5 && (primaMode === 'both' || primaMode === 'june')) currentMonthExtra += halfPrima;
+                if (monthIter.getMonth() === 11 && (primaMode === 'both' || primaMode === 'december')) currentMonthExtra += halfPrima;
+            }
+
+            let monthInterest = 0, monthTotalPay = 0;
+            simDebts.forEach(d => {
+                const int = round2(d.bal * (d.rate / 100));
+                monthInterest = round2(monthInterest + int);
+                totalInterest = round2(totalInterest + int);
+                d.bal = round2(d.bal + int);
+            });
+
+            if (addExtra) simDebts.sort((a, b) => strategy === 'avalanche' ? b.rate - a.rate : a.bal - b.bal);
+            const focusDebtObj = simDebts.length > 0 ? simDebts[0] : null;
+            const focusDebtName = focusDebtObj ? focusDebtObj.name : 'Liberado';
+
+            simDebts.forEach(d => {
+                const pay = Math.min(d.bal, d.minPay);
+                d.bal = round2(d.bal - pay);
+                monthTotalPay = round2(monthTotalPay + pay);
+            });
+
+            const freedPool = addExtra ? Math.max(0, round2(baseMonthlyPool - monthTotalPay)) : 0;
+            let leftover = round2(freedPool + currentMonthExtra);
+            if (addExtra && leftover > 0) {
+                for (const target of simDebts) {
+                    if (target.bal > 0) {
+                        const extraPay = Math.min(target.bal, leftover);
+                        target.bal = round2(target.bal - extraPay);
+                        monthTotalPay = round2(monthTotalPay + extraPay);
+                        leftover = round2(leftover - extraPay);
+                        if (leftover <= 0) break;
+                    }
+                }
+            }
+
+            const focusRemainingBalance = focusDebtObj ? round2(focusDebtObj.bal) : 0;
+            simDebts = simDebts.filter(d => d.bal > 0);
+            const currentTotalBalance = round2(simDebts.reduce((s, d) => s + d.bal, 0));
+
+            if (!addExtra && monthsCount === 12 && monthTotalPay <= monthInterest) {
+                isUnpayable = true;
+                break;
+            }
+
+            if (addExtra && monthsCount <= 36) {
+                schedule.push({
+                    monthStr: `${getShortMonthLabel(monthIter)} ${String(monthIter.getFullYear()).slice(-2)}`,
+                    targetName: focusDebtName,
+                    pay: monthTotalPay,
+                    int: monthInterest,
+                    focusRem: focusRemainingBalance,
+                    rem: currentTotalBalance
+                });
+            }
+            monthIter.setMonth(monthIter.getMonth() + 1);
+        }
+
+        if (!addExtra && monthsCount >= 360) isUnpayable = true;
+        return { months: monthsCount, interest: totalInterest, schedule, freedomDate: monthIter, isUnpayable };
+    };
+
+    const baseRes = simAmort(activeDebts, false);
+    const optRes = simAmort(activeDebts, true);
+    const interestSaved = Math.max(0, round2(baseRes.interest - optRes.interest));
+
+    return { activeDebts, excludedZeroRateDebts, baseRes, optRes, interestSaved };
+};
+
+// H. Simulador de Aumento Salarial y Retroactivo
+const getHalfMonthIndex = (monthStr, period) => {
+    if (!monthStr || !monthStr.includes('-')) return 0;
+    const [y, m] = monthStr.split('-').map(Number);
+    return y * 24 + (m - 1) * 2 + (period === '2Q' ? 1 : 0);
+};
+
+const computeSalaryRaiseSimulation = ({
+    currentBasic, newBasic, baseSalaryConfig = {},
+    effMonth, effPeriod = 'M', isRetro = false,
+    retroFromMonth, retroFromPeriod = 'M', retroPayMonth, retroPayPeriod = 'M'
+}) => {
+    const curB = round2(currentBasic || 0);
+    const newB = round2(newBasic || 0);
+    if (curB <= 0 || newB <= 0 || newB === curB) return null;
+
+    const diff = round2(newB - curB);
+    const pct = round2((diff / curB) * 100);
+
+    const currentMetrics = calculateLaborMetrics({ ...baseSalaryConfig, basicSalary: curB }, currentDate);
+    const newMetrics = calculateLaborMetrics({ ...baseSalaryConfig, basicSalary: newB }, currentDate);
+    const netDiff = round2(newMetrics.net - currentMetrics.net);
+
+    const activeEffMonth = effMonth || getMonthId(currentDate);
+    const activeFromMonth = retroFromMonth || activeEffMonth;
+    const activePayMonth = retroPayMonth || activeEffMonth;
+
+    let retroHalfMonths = 0;
+    let retroNetAmount = 0;
+
+    if (isRetro) {
+        const effIdx = getHalfMonthIndex(activeEffMonth, effPeriod);
+        const fromIdx = getHalfMonthIndex(activeFromMonth, retroFromPeriod);
+        if (effIdx > fromIdx) {
+            retroHalfMonths = effIdx - fromIdx;
+            for (let h = fromIdx; h < effIdx; h++) {
+                const qDiff = (h % 2 === 0)
+                    ? round2(newMetrics.net1Q - currentMetrics.net1Q)
+                    : round2(newMetrics.net2Q - currentMetrics.net2Q);
+                retroNetAmount = round2(retroNetAmount + qDiff);
+            }
+        }
+    }
+
+    return {
+        currentBasic: curB, newBasic: newB, diff, pct,
+        currentMetrics, newMetrics, netDiff,
+        effMonth: activeEffMonth, effPeriod,
+        isRetro, retroFromMonth: activeFromMonth, retroFromPeriod,
+        retroPayMonth: activePayMonth, retroPayPeriod,
+        retroHalfMonths, retroNetAmount
+    };
+};
+
+// I. Capacidad de Endeudamiento Detallada con Gastos Fijos y Flujo Libre
+const computeDetailedBorrowingCapacity = (monthId) => {
+    const cap = calculateBorrowingCapacity(monthId);
+    const mIdx = parseInt(monthId.split('-')[1], 10) - 1;
+
+    let totalFixedExpenses = 0;
+    (financeData.categories.expense || []).forEach(c => {
+        if (c.isFixed) {
+            totalFixedExpenses = round2(totalFixedExpenses + (getCategoryLimitForMonth(c, mIdx) || 0));
+        } else if (c.subcategories) {
+            c.subcategories.forEach(sub => {
+                if (sub.isFixed) totalFixedExpenses = round2(totalFixedExpenses + (sub.limit || 0));
+            });
+        }
+    });
+
+    const healthyDebtLimit = round2((cap.baseIncome * cap.maxPct) / 100);
+    const freeCashFlow = round2(cap.baseIncome - totalFixedExpenses - cap.committedMonthly);
+    const mathAvailableDebt = round2(healthyDebtLimit - cap.committedMonthly);
+    const realSafeQuota = Math.max(0, Math.min(mathAvailableDebt, freeCashFlow));
+    const isDeficit = freeCashFlow < 0 || mathAvailableDebt < 0;
+    const visualQuota = isDeficit ? Math.min(mathAvailableDebt, freeCashFlow) : realSafeQuota;
+
+    return {
+        ...cap,
+        totalFixedExpenses,
+        healthyDebtLimit,
+        freeCashFlow,
+        mathAvailableDebt,
+        realSafeQuota,
+        isDeficit,
+        visualQuota,
+        loan24: round2(visualQuota * 24 * 0.75),
+        loan36: round2(visualQuota * 36 * 0.70)
+    };
+};
+
+// J. Matriz Consolidada de Control Anual
+const computeAnnualControlMatrix = (year) => {
+    const incPtto = Array(12).fill(0), incReal = Array(12).fill(0);
+    const expPtto = Array(12).fill(0), expReal = Array(12).fill(0);
+
+    const buildRows = (type) => {
+        const sortedCats = [...(financeData.categories[type] || [])].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+        return sortedCats.map(catObj => {
+            const pttoArr = Array(12).fill(0), realArr = Array(12).fill(0);
+            for (let m = 0; m < 12; m++) {
+                const mId = `${year}-${String(m + 1).padStart(2, '0')}`;
+                const lim = getCategoryLimitForMonth(catObj, m, year);
+                pttoArr[m] = lim;
+
+                realArr[m] = round2(financeData.transactions
+                    .filter(t => !t.isDeleted && getTxMonthId(t) === mId && t.type === type && t.category === catObj.name && !t.isAdjustment && isTxClosed(t))
+                    .reduce((s, t) => s + round2(t.amount), 0));
+
+                if (type === 'income') {
+                    incPtto[m] = round2(incPtto[m] + lim);
+                    incReal[m] = round2(incReal[m] + realArr[m]);
+                } else {
+                    expPtto[m] = round2(expPtto[m] + lim);
+                    expReal[m] = round2(expReal[m] + realArr[m]);
+                }
+            }
+            return { name: catObj.name, pttoArr, realArr };
+        });
+    };
+
+    const incRows = buildRows('income');
+    const expRows = buildRows('expense');
+
+    let totIncP = 0, totIncR = 0, totExpP = 0, totExpR = 0;
+    for (let i = 0; i < 12; i++) {
+        totIncP = round2(totIncP + incPtto[i]);
+        totIncR = round2(totIncR + incReal[i]);
+        totExpP = round2(totExpP + expPtto[i]);
+        totExpR = round2(totExpR + expReal[i]);
+    }
+
+    return {
+        incPtto, incReal, expPtto, expReal,
+        incRows, expRows,
+        totIncP, totIncR, totExpP, totExpR,
+        totNetP: round2(totIncP - totExpP),
+        totNetR: round2(totIncR - totExpR)
+    };
+};
+
+// --- 11. ASESORES INTELIGENTES, COMPRA CONSCIENTE, CIERRE DE MES Y GASTOS HORMIGA ---
+
+// K. Asesor: ¿Con qué tarjeta pago hoy?
+const evaluateBestCreditCardForPurchase = (purchaseAmount = 0, installments = 1, refDate = currentDate) => {
+    const amt = Math.max(0, round2(purchaseAmount));
+    const inst = Math.max(1, parseInt(installments, 10) || 1);
+    const cards = financeData.customAccounts.filter(a => a.category === 'credit_card');
+    if (cards.length === 0) return { cards: [], bestCard: null };
+
+    const currSnap = computeBalancesUpTo(getMonthId(refDate));
+    const cleanRef = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate());
+    const y = cleanRef.getFullYear();
+    const m = cleanRef.getMonth();
+
+    const evaluated = cards.map(card => {
+        const debt = Math.max(0, round2(currSnap.bals[card.id] || 0));
+        const limit = round2(card.creditLimit || 0);
+        const available = round2(limit - debt);
+        const hasEnoughCredit = limit <= 0 || amt <= 0 || available >= amt;
+
+        const cDay = Math.max(1, Math.min(31, parseInt(card.cutoffDay, 10) || 15));
+        const pDay = Math.max(1, Math.min(31, parseInt(card.paymentDay, 10) || 30));
+
+        const daysInCurr = new Date(y, m + 1, 0).getDate();
+        let nextCut;
+        if (cleanRef.getDate() <= cDay) {
+            nextCut = new Date(y, m, Math.min(cDay, daysInCurr));
+        } else {
+            const daysInNext = new Date(y, m + 2, 0).getDate();
+            nextCut = new Date(y, m + 1, Math.min(cDay, daysInNext));
+        }
+
+        const cutY = nextCut.getFullYear();
+        const cutM = nextCut.getMonth();
+        const payMonthOffset = pDay > cDay ? 0 : 1;
+        const daysInPayM = new Date(cutY, cutM + payMonthOffset + 1, 0).getDate();
+        const payDate = new Date(cutY, cutM + payMonthOffset, Math.min(pDay, daysInPayM));
+
+        const daysToCutoff = Math.max(0, Math.round((nextCut - cleanRef) / 86400000));
+        const daysToPayment = Math.max(1, Math.round((payDate - cleanRef) / 86400000));
+
+        const est = calculateCardMinPaymentEstimate(card, debt, refDate);
+        const waiverType = card.mgmtFeeWaiverType || 'spend';
+        const waiverSpend = round2(card.mgmtFeeWaiverSpend || 0);
+
+        let missingForWaiver = 0;
+        let wouldUnlockWaiver = false;
+        let waiverSavedAmt = 0;
+
+        if (est.hasMgmtFee && est.mgmtFeeStatus === 'charged' && (waiverType === 'spend' || waiverType === 'either') && waiverSpend > 0) {
+            missingForWaiver = Math.max(0, round2(waiverSpend - est.cycleSpend));
+            if (amt > 0 && amt >= missingForWaiver) {
+                wouldUnlockWaiver = true;
+                waiverSavedAmt = round2(card.mgmtFee || 0);
+            }
+        }
+
+        const zeroIntMax = parseInt(card.zeroInterestMax, 10) || 0;
+        const isZeroInterest = inst <= 1 || (zeroIntMax > 0 && inst <= zeroIntMax) || (card.rate || 0) <= 0;
+        let interestCost = 0;
+        let monthlyQuota = amt > 0 ? round2(amt / inst) : 0;
+
+        if (!isZeroInterest && amt > 0) {
+            const amort = calculateAmortization(amt, inst, card.rate || 0, card.rateType || 'monthly');
+            interestCost = amort.totalInterest;
+            monthlyQuota = amort.payment;
+        }
+
+        const newUtilPct = limit > 0 ? round2(((debt + amt) / limit) * 100) : 0;
+
+        let score = daysToPayment;
+        if (!hasEnoughCredit) score -= 1000;
+        if (wouldUnlockWaiver) score += 45;
+        if (!est.hasMgmtFee || est.mgmtFeeStatus === 'waived') score += 12;
+        if (inst > 1 && isZeroInterest) score += 25;
+        if (interestCost > 0) score -= Math.min(35, interestCost / 2000);
+        if (newUtilPct > 75) score -= 12;
+
+        const reasons = [];
+        reasons.push(`${daysToPayment} días hasta el pago (corte en ${daysToCutoff}d)`);
+        if (wouldUnlockWaiver) reasons.push(`Ahorras ${formatMoney(waiverSavedAmt)} de cuota de manejo`);
+        else if (missingForWaiver > 0) reasons.push(`Faltan ${formatMoney(missingForWaiver)} en compras para exonerar manejo`);
+        else if (est.mgmtFeeStatus === 'waived') reasons.push('Cuota de manejo ya exonerada');
+        if (inst > 1) {
+            reasons.push(isZeroInterest ? `0% interés hasta ${zeroIntMax || inst} cuotas` : `Interés estimado: ${formatMoney(interestCost)}`);
+        }
+
+        return {
+            id: card.id,
+            name: stripLeadingEmoji(card.name),
+            isDefault: !!card.isDefault,
+            debt,
+            limit,
+            available,
+            hasEnoughCredit,
+            newUtilPct,
+            daysToCutoff,
+            daysToPayment,
+            payDateStr: `${payDate.getDate()} ${getShortMonthLabel(payDate).toLowerCase()}.`,
+            wouldUnlockWaiver,
+            waiverSavedAmt,
+            missingForWaiver,
+            mgmtFeeStatus: est.mgmtFeeStatus,
+            isZeroInterest,
+            interestCost,
+            monthlyQuota,
+            score: round2(score),
+            reasons
+        };
+    });
+
+    evaluated.sort((a, b) => b.score - a.score);
+    return { cards: evaluated, bestCard: evaluated[0] || null };
+};
+
+// L. Simulador de Compra Inteligente (Horas de vida + Impacto en caja)
+const simulateSmartPurchase = ({ amount = 0, installments = 1, paymentMethod = 'cash', cardId = '' }) => {
+    const amt = Math.max(0, round2(amount));
+    const inst = Math.max(1, parseInt(installments, 10) || 1);
+
+    // 1. Equivalencia en horas de trabajo neto
+    const salStr = localStorage.getItem('myFinancesSalary');
+    const salCfg = salStr ? JSON.parse(salStr) : null;
+    let hasSalary = false;
+    let hourlyNetRate = 0;
+    let workHoursCost = 0;
+    let workDaysCost = 0;
+
+    if (salCfg && salCfg.basicSalary > 0) {
+        const labor = calculateLaborMetrics(salCfg, currentDate);
+        const weeklyHours = parseFloat(salCfg.weeklyHours) || 42;
+        const dailyHours = weeklyHours / 6;
+        const monthlyHours = round2(dailyHours * 30);
+        if (labor.net > 0 && monthlyHours > 0) {
+            hasSalary = true;
+            hourlyNetRate = round2(labor.net / monthlyHours);
+            workHoursCost = round2(amt / hourlyNetRate);
+            workDaysCost = dailyHours > 0 ? round2(workHoursCost / dailyHours) : 0;
+        }
+    }
+
+    // 2. Costo financiero y cuota
+    let totalCost = amt;
+    let totalInterest = 0;
+    let monthlyQuota = amt;
+    let isZeroInterest = true;
+    let methodLabel = 'Efectivo / Débito';
+
+    if (paymentMethod === 'credit_card' && cardId) {
+        const card = getAccountObj(cardId);
+        methodLabel = stripLeadingEmoji(card.name || 'Tarjeta');
+        const zeroIntMax = parseInt(card.zeroInterestMax, 10) || 0;
+        const effRate = (inst === 1 || (zeroIntMax > 0 && inst <= zeroIntMax)) ? 0 : (card.rate || 0);
+        const amort = calculateAmortization(amt, inst, effRate, card.rateType || 'monthly');
+        totalCost = amort.totalWithInterest;
+        totalInterest = amort.totalInterest;
+        monthlyQuota = amort.payment;
+        isZeroInterest = totalInterest <= 0;
+    }
+
+    // 3. Impacto real en liquidez y proyección a 30 días
+    const currMonthId = getMonthId(currentDate);
+    const currSnap = computeBalancesUpTo(currMonthId);
+    const safeData = computeSafeToSpendToday(currMonthId, currSnap);
+    const proj30 = computeCashProjectionData('30d');
+
+    const immediateCashOut = paymentMethod === 'cash' ? amt : 0;
+    const budgetImpactToday = paymentMethod === 'cash' ? amt : monthlyQuota;
+    const safeAfter = round2(safeData.safeToSpend - budgetImpactToday);
+    const lowestAfter = round2(proj30.lowestBalance - immediateCashOut);
+
+    const causesDeficit = amt > 0 && lowestAfter < 0;
+    const exceedsSafe = amt > 0 && safeAfter < 0;
+
+    let verdict = 'good';
+    let verdictTitle = 'Compra viable sin comprometer tu caja';
+    if (amt <= 0) {
+        verdict = 'neutral';
+        verdictTitle = 'Ingresa el valor de la compra para evaluarla';
+    } else if (causesDeficit) {
+        verdict = 'danger';
+        verdictTitle = 'Alerta: esta compra te deja en déficit de caja en los próximos 30 días';
+    } else if (exceedsSafe) {
+        verdict = 'warn';
+        verdictTitle = 'Cuidado: supera tu Libre Seguro Hoy y apretará tu presupuesto';
+    } else if (totalInterest > amt * 0.15) {
+        verdict = 'warn';
+        verdictTitle = 'Viable en caja, pero pagarás bastante en intereses';
+    }
+
+    return {
+        amount: amt,
+        installments: inst,
+        paymentMethod,
+        cardId,
+        methodLabel,
+        hasSalary,
+        hourlyNetRate,
+        workHoursCost,
+        workDaysCost,
+        totalCost,
+        totalInterest,
+        monthlyQuota,
+        isZeroInterest,
+        safeBefore: safeData.safeToSpend,
+        safeAfter,
+        lowestBefore: proj30.lowestBalance,
+        lowestAfter,
+        causesDeficit,
+        exceedsSafe,
+        verdict,
+        verdictTitle
+    };
+};
+
+// M. Resumen / Cierre de Mes en Tarjetas Bento
+const computeMonthlyRecapData = (targetMonthId = getMonthId(viewDate)) => {
+    const flow = getMonthlyFlow(targetMonthId, false);
+    const surplus = round2(flow.inc - flow.exp);
+    const savingsRate = flow.inc > 0 ? round2((surplus / flow.inc) * 100) : 0;
+
+    const [yStr, mStr] = targetMonthId.split('-');
+    const year = parseInt(yStr, 10);
+    const mIdx = parseInt(mStr, 10) - 1;
+
+    const prevDate = new Date(year, mIdx - 1, 1);
+    const prevFlow = getMonthlyFlow(getMonthId(prevDate), false);
+    const expChangePct = prevFlow.exp > 0 ? round2(((flow.exp - prevFlow.exp) / prevFlow.exp) * 100) : 0;
+
+    const catStats = (financeData.categories.expense || []).map(catObj => {
+        const limit = getCategoryLimitForMonth(catObj, mIdx, year);
+        const spent = round2(
+            financeData.transactions
+                .filter(t => !t.isDeleted && !t.isTripIsolated && getTxMonthId(t) === targetMonthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t) && t.category === catObj.name)
+                .reduce((s, t) => s + round2(t.amount), 0)
+        );
+        const diff = limit > 0 ? round2(spent - limit) : 0;
+        const pct = limit > 0 ? Math.round((spent / limit) * 100) : 0;
+        return { name: stripLeadingEmoji(catObj.name), rawName: catObj.name, limit, spent, diff, pct };
+    }).filter(c => c.spent > 0 || c.limit > 0);
+
+    const bySpent = [...catStats].sort((a, b) => b.spent - a.spent);
+    const byOver = [...catStats].filter(c => c.diff > 0).sort((a, b) => b.diff - a.diff);
+
+    const topCategory = bySpent[0] || null;
+    const mostOverBudget = byOver[0] || null;
+
+    const pocketsList = (financeData.pockets || []).map(p => {
+        const m = computePocketMetrics(p);
+        return { id: p.id, name: stripLeadingEmoji(p.name), balance: m.balance, goal: m.goal, remaining: m.remaining };
+    });
+
+    return {
+        monthId: targetMonthId,
+        inc: flow.inc,
+        exp: flow.exp,
+        surplus,
+        savingsRate,
+        prevFlow,
+        expChangePct,
+        topCategory,
+        mostOverBudget,
+        pockets: pocketsList
+    };
+};
+
+// N. Detector de Gastos Hormiga y Alzas Silenciosas en Suscripciones
+const computeAntExpensesAndSubHikes = (targetMonthId = getMonthId(viewDate), smallTxThreshold = 35000) => {
+    const threshold = Math.max(1000, round2(smallTxThreshold));
+    const antTxs = financeData.transactions.filter(t =>
+        !t.isDeleted &&
+        !t.isTripIsolated &&
+        getTxMonthId(t) === targetMonthId &&
+        t.type === 'expense' &&
+        !t.isAdjustment &&
+        isTxClosed(t) &&
+        !isTxFixedExpense(t) &&
+        round2(t.amount) > 0 &&
+        round2(t.amount) <= threshold
+    );
+
+    const totalAntSpend = round2(antTxs.reduce((s, t) => s + round2(t.amount), 0));
+    const antCount = antTxs.length;
+    const annualizedAntSpend = round2(totalAntSpend * 12);
+
+    const grouped = {};
+    antTxs.forEach(t => {
+        const cleanDesc = stripLeadingEmoji(t.description || t.category || 'Gasto menor').trim();
+        const key = cleanDesc.toLowerCase();
+        if (!grouped[key]) {
+            grouped[key] = { label: cleanDesc, category: stripLeadingEmoji(t.category || ''), count: 0, total: 0 };
+        }
+        grouped[key].count++;
+        grouped[key].total = round2(grouped[key].total + round2(t.amount));
+    });
+
+    const topAntItems = Object.values(grouped)
+        .sort((a, b) => b.total - a.total || b.count - a.count)
+        .slice(0, 4);
+
+    // Detectar suscripciones cuyo último cobro real superó el valor configurado o el cobro anterior
+    const subHikes = [];
+    (financeData.subscriptions || []).filter(s => s.status === 'active').forEach(sub => {
+        const cleanSub = stripLeadingEmoji(sub.name).toLowerCase().trim();
+        if (!cleanSub) return;
+        const matchingTxs = financeData.transactions
+            .filter(t => !t.isDeleted && t.type === 'expense' && !t.isAdjustment && isTxClosed(t) && stripLeadingEmoji(t.description || '').toLowerCase().includes(cleanSub))
+            .sort((a, b) => b.id - a.id);
+
+        if (matchingTxs.length > 0) {
+            const latestAmt = round2(matchingTxs[0].amount);
+            const refAmt = round2(sub.amount);
+            const prevAmt = matchingTxs.length > 1 ? round2(matchingTxs[1].amount) : refAmt;
+            const baseline = Math.min(refAmt, prevAmt);
+
+            if (latestAmt > baseline + 100 && baseline > 0) {
+                const delta = round2(latestAmt - baseline);
+                const pctIncrease = round2((delta / baseline) * 100);
+                subHikes.push({
+                    id: sub.id,
+                    name: stripLeadingEmoji(sub.name),
+                    expectedAmt: baseline,
+                    chargedAmt: latestAmt,
+                    delta,
+                    pctIncrease
+                });
+            }
+        }
+    });
+
+    return {
+        threshold,
+        totalAntSpend,
+        antCount,
+        annualizedAntSpend,
+        topAntItems,
+        subHikes
+    };
+};
+
+// O. Simulador de Crédito y Evaluación de Capacidad Real
+const simulateCreditLoan = ({
+    principal = 0,
+    periods = 12,
+    rate = 0,
+    rateType = 'annual',
+    monthlyInsurance = 0,
+    extraMonthly = 0
+}) => {
+    const amt = Math.max(0, round2(principal));
+    const months = Math.max(1, Math.min(360, parseInt(periods, 10) || 12));
+    const safeRate = Math.max(0, Math.min(100, parseFloat(rate) || 0));
+    const safeIns = Math.max(0, round2(monthlyInsurance));
+    const safeExtra = Math.max(0, round2(extraMonthly));
+
+    const baseAmort = calculateAmortization(amt, months, safeRate, rateType);
+    const baseMonthlyQuota = baseAmort.payment;
+    const totalMonthlyQuota = amt > 0 ? round2(baseMonthlyQuota + safeIns) : 0;
+    const totalInterest = baseAmort.totalInterest;
+    const totalInsurance = amt > 0 ? round2(safeIns * months) : 0;
+    const totalCost = round2(amt + totalInterest + totalInsurance);
+
+    const monthlyRateDecimal = baseAmort.monthlyRate;
+    const effectiveMonthlyRatePct = Math.round(monthlyRateDecimal * 1000000) / 10000;
+    const effectiveAnnualRatePct = rateType === 'annual'
+        ? safeRate
+        : round2((Math.pow(1 + monthlyRateDecimal, 12) - 1) * 100);
+
+    // Simulación con abono extra mensual (reducción de plazo)
+    let accelMonths = months;
+    let accelInterest = totalInterest;
+    let savedInterest = 0;
+    let savedMonths = 0;
+
+    if (amt > 0 && safeExtra > 0) {
+        let simBal = amt;
+        let simInt = 0;
+        let mCount = 0;
+        const targetCapPay = round2(baseMonthlyQuota + safeExtra);
+
+        while (simBal > 0 && mCount < 360) {
+            mCount++;
+            const intAmt = round2(simBal * monthlyRateDecimal);
+            simInt = round2(simInt + intAmt);
+            const capPay = Math.min(simBal, Math.max(0, round2(targetCapPay - intAmt)));
+            if (capPay <= 0) break;
+            simBal = round2(simBal - capPay);
+        }
+
+        if (simBal <= 0 && mCount < months) {
+            accelMonths = mCount;
+            accelInterest = round2(simInt);
+            savedInterest = Math.max(0, round2(totalInterest - accelInterest));
+            savedMonths = Math.max(0, months - accelMonths);
+        }
+    }
+
+    // Cruce con capacidad de endeudamiento y flujo libre real del usuario
+    const currMonthId = getMonthId(currentDate);
+    const cap = computeDetailedBorrowingCapacity(currMonthId);
+    const newCommittedDebt = round2(cap.committedMonthly + totalMonthlyQuota);
+    const newDebtBurdenPct = cap.baseIncome > 0 ? round2((newCommittedDebt / cap.baseIncome) * 100) : 0;
+    const remainingSafeQuota = round2(cap.realSafeQuota - totalMonthlyQuota);
+    const remainingFreeCashFlow = round2(cap.freeCashFlow - totalMonthlyQuota);
+
+    // Monto máximo recomendado según cupo seguro disponible
+    const availableForDebtService = Math.max(0, round2(cap.realSafeQuota - safeIns));
+    let maxAffordablePrincipal = 0;
+    if (availableForDebtService > 0) {
+        if (monthlyRateDecimal > 0) {
+            maxAffordablePrincipal = round2(availableForDebtService * ((1 - Math.pow(1 + monthlyRateDecimal, -months)) / monthlyRateDecimal));
+        } else {
+            maxAffordablePrincipal = round2(availableForDebtService * months);
+        }
+    }
+
+    let viability = 'neutral';
+    let viabilityTitle = 'Ingresa el monto y plazo para simular tu crédito';
+    if (amt > 0) {
+        if (cap.baseIncome <= 0) {
+            viability = 'warn';
+            viabilityTitle = 'Configura tu nómina o ingresos para validar tu capacidad de pago';
+        } else if (remainingFreeCashFlow < 0) {
+            viability = 'danger';
+            viabilityTitle = 'Riesgo alto: esta cuota supera tu flujo libre mensual tras gastos fijos';
+        } else if (remainingSafeQuota < 0) {
+            viability = 'warn';
+            viabilityTitle = `Precaución: supera tu tope saludable del ${cap.maxPct}%, aunque tu flujo libre alcanza`;
+        } else {
+            viability = 'good';
+            viabilityTitle = 'Crédito viable: cabe dentro de tu capacidad saludable y flujo libre';
+        }
+    }
+
+    const principalPct = totalCost > 0 ? Math.round((amt / totalCost) * 100) : 100;
+    const extraCostPct = Math.max(0, 100 - principalPct);
+
+    return {
+        principal: amt,
+        periods: months,
+        rate: safeRate,
+        rateType,
+        monthlyInsurance: safeIns,
+        extraMonthly: safeExtra,
+        baseMonthlyQuota,
+        totalMonthlyQuota,
+        totalInterest,
+        totalInsurance,
+        totalCost,
+        effectiveMonthlyRatePct,
+        effectiveAnnualRatePct,
+        schedule: baseAmort.schedule,
+        accelMonths,
+        accelInterest,
+        savedInterest,
+        savedMonths,
+        principalPct,
+        extraCostPct,
+        cap,
+        newCommittedDebt,
+        newDebtBurdenPct,
+        remainingSafeQuota,
+        remainingFreeCashFlow,
+        maxAffordablePrincipal,
+        viability,
+        viabilityTitle
+    };
+};
+
+// P. Comparador de Ofertas de Crédito (Banco A vs. Banco B)
+const compareCreditOffers = ({ principal = 0, offerA = {}, offerB = {} }) => {
+    const amt = Math.max(0, round2(principal));
+
+    const evaluateOffer = (rawOffer, fallbackName) => {
+        const name = String(rawOffer.name || '').trim() || fallbackName;
+        const periods = Math.max(1, Math.min(360, parseInt(rawOffer.periods, 10) || 12));
+        const rate = Math.max(0, Math.min(100, parseFloat(rawOffer.rate) || 0));
+        const rateType = rawOffer.rateType === 'monthly' ? 'monthly' : 'annual';
+        const monthlyInsurance = Math.max(0, round2(rawOffer.monthlyInsurance));
+        const upfrontFee = Math.max(0, round2(rawOffer.upfrontFee));
+
+        const amort = calculateAmortization(amt, periods, rate, rateType);
+        const baseQuota = amort.payment;
+        const monthlyQuota = amt > 0 ? round2(baseQuota + monthlyInsurance) : 0;
+        const totalInterest = amort.totalInterest;
+        const totalInsurance = amt > 0 ? round2(monthlyInsurance * periods) : 0;
+        const totalExtraCost = amt > 0 ? round2(totalInterest + totalInsurance + upfrontFee) : 0;
+        const totalCost = amt > 0 ? round2(amt + totalExtraCost) : 0;
+
+        const monthlyRateDecimal = amort.monthlyRate;
+        const effectiveAnnualRatePct = rateType === 'annual'
+            ? rate
+            : round2((Math.pow(1 + monthlyRateDecimal, 12) - 1) * 100);
+
+        return {
+            name,
+            periods,
+            rate,
+            rateType,
+            monthlyInsurance,
+            upfrontFee,
+            baseQuota,
+            monthlyQuota,
+            totalInterest,
+            totalInsurance,
+            totalExtraCost,
+            totalCost,
+            effectiveAnnualRatePct
+        };
+    };
+
+    const resA = evaluateOffer(offerA, 'Banco A');
+    const resB = evaluateOffer(offerB, 'Banco B');
+
+    if (amt <= 0) {
+        return { valid: false, principal: 0, resA, resB, winner: null, totalSavings: 0, monthlyDiff: 0, higherQuotaWarning: false };
+    }
+
+    const diffTotal = round2(resA.totalCost - resB.totalCost);
+    let winner = 'tie';
+    if (diffTotal < -1) winner = 'A';
+    else if (diffTotal > 1) winner = 'B';
+
+    const totalSavings = Math.abs(diffTotal);
+    const monthlyDiff = Math.abs(round2(resA.monthlyQuota - resB.monthlyQuota));
+
+    // Detectar si el banco ganador en costo total exige una cuota mensual más alta (ej. menor plazo)
+    const higherQuotaWarning =
+        (winner === 'A' && resA.monthlyQuota > resB.monthlyQuota + 1) ||
+        (winner === 'B' && resB.monthlyQuota > resA.monthlyQuota + 1);
+
+    return {
+        valid: true,
+        principal: amt,
+        resA,
+        resB,
+        winner,
+        totalSavings,
+        monthlyDiff,
+        higherQuotaWarning
+    };
 };
 
 // ==========================================
