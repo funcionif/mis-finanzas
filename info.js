@@ -273,7 +273,7 @@ const checkWhatsNewBanner = () => {
     const toast = document.getElementById('sw-update-toast');
     if (toast) {
         const span = toast.querySelector('span');
-        if (span) span.innerText = `🚀 ¡Actualizado a v${APP_VERSION}! Toca para ver novedades`;
+        if (span) span.innerText = `Nueva versión v${APP_VERSION} • Ver novedades`;
         toast.style.cursor = 'pointer';
         toast.classList.remove('hidden');
         toast.onclick = () => {

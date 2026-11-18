@@ -3,7 +3,7 @@
 // Optimizado para Safari iOS y PWA
 // ==========================================
 
-const CACHE_NAME = 'mis-finanzas-v2.1.0';
+const CACHE_NAME = 'mis-finanzas-v2.1.2';
 
 const CORE_ASSETS = [
     './',
