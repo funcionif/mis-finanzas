@@ -265,8 +265,23 @@ window.openUniversalInfoModal = openUniversalInfoModal;
 
 const checkWhatsNewBanner = () => {
     if (typeof authData === 'undefined' || !authData) return;
-    
-    // Para esta versión (2.0.2+), actualizamos el registro silenciosamente 
-    // sin mostrar el banner de alerta al usuario.
+    const lastSeen = localStorage.getItem('myFinancesLastSeenVersion');
+    if (lastSeen === APP_VERSION) return;
+
     localStorage.setItem('myFinancesLastSeenVersion', APP_VERSION);
+
+    const toast = document.getElementById('sw-update-toast');
+    if (toast) {
+        const span = toast.querySelector('span');
+        if (span) span.innerText = `🚀 ¡Actualizado a v${APP_VERSION}! Toca para ver novedades`;
+        toast.style.cursor = 'pointer';
+        toast.classList.remove('hidden');
+        toast.onclick = () => {
+            toast.classList.add('hidden');
+            openUniversalInfoModal('about');
+        };
+        setTimeout(() => {
+            toast.classList.add('hidden');
+        }, 6500);
+    }
 };

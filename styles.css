@@ -154,7 +154,7 @@ body {
     background-color: var(--bg-base);
     color: var(--text-main);
     padding: 20px;
-    padding-top: calc(86px + env(safe-area-inset-top));
+    padding-top: calc(96px + env(safe-area-inset-top));
     padding-bottom: calc(110px + env(safe-area-inset-bottom));
     min-height: 100vh;
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -455,8 +455,7 @@ h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    /* Reducimos el padding superior y evitamos el backdrop-filter en la zona segura */
-    padding: env(safe-area-inset-top) 20px 12px 20px;
+    padding: calc(20px + env(safe-area-inset-top)) 20px 12px 20px;
     background-color: var(--bg-base);
     border-bottom: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border-color));
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -2503,7 +2502,7 @@ body::after {
 #side-drawer .drawer-header,
 #side-drawer-header {
     margin: 0 -16px 6px -16px !important;
-    padding: calc(14px + env(safe-area-inset-top)) 16px 14px 16px !important;
+    padding: calc(22px + env(safe-area-inset-top)) 16px 14px 16px !important;
     flex-shrink: 0 !important;
     background-color: color-mix(in srgb, var(--accent) 14%, var(--card-bg, #ffffff)) !important;
     border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border-color, rgba(148, 163, 184, 0.2))) !important;
