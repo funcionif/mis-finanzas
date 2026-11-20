@@ -1,9 +1,9 @@
 // ==========================================
-// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.1.0)
+// INFO.JS - CENTRO DE AYUDA, LEGAL Y NOTAS DE VERSIÓN (v2.2.0)
 // Módulo independiente para mantener app.js ligero y limpio.
 // ==========================================
 
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.2.0';
 
 function openUniversalInfoModal(sectionKey) {
     const uModal = document.getElementById('universal-info-modal');
@@ -95,7 +95,7 @@ function openUniversalInfoModal(sectionKey) {
                     <h4 style="color:var(--accent); font-size:13px; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px; display:flex; align-items:center; gap:6px;">
                         ${renderIcon('briefcase', 16)} 5. Nómina, Impuestos y Laboral (Colombia)
                     </h4>
-                    <p style="margin-bottom:8px;"><b>Motor de Liquidación Exacto:</b> Depuración formal de salario con todos los lineamientos legales para Colombia. Cálculos para deducciones en salud, pensión y Fondo de Solidaridad Pensional (FSP). Incluye controles de tope de la Ley 1393 (tope 40% ingresos no salariales).</p>
+                    <p style="margin-bottom:8px;"><b>Motor de Liquidación y Pagos No Salariales:</b> Depuración formal de salario con todos los lineamientos legales para Colombia (salud, pensión y FSP). Permite agregar múltiples conceptos no salariales o primas extralegales con nombre personalizado, mes específico de pago, control individual de <i>Base Retefuente</i> y validación automática del tope del 40% de la Ley 1393.</p>
                     <p style="margin-bottom:8px;"><b>Retefuente Art. 383 E.T.:</b> Motor tributario que calcula el impacto fiscal. Puede usar el Procedimiento 1 (tabla en UVT con dependientes, medicina prepagada, intereses de vivienda, AFC y tope exento del 25%) o el Procedimiento 2 (Porcentaje Fijo semestral).</p>
                     <p style="margin-bottom:8px;"><b>Liquidación a Hoy y Simulador de Bonos:</b> La app determina matemáticamente el acumulado pendiente por concepto de Prima, Cesantías, Intereses de cesantías y Vacaciones en tiempo real (utilizando promedios salariales de los últimos meses de acuerdo al Código Sustantivo del Trabajo). También incluye una herramienta para simular el impacto en deducciones cuando recibes una bonificación extra.</p>
                     <p style="margin-bottom:12px;"><b>Proyección Declaración Renta:</b> Un escáner constante que analiza tus consumos. Revisa tu patrimonio consolidado, el volumen de ingresos, el consumo consolidado de tarjetas de crédito y las compras generales. Los compara en tiempo real con la UVT oficial configurada en la app para lanzar alertas tempranas sobre requerimientos de declaración ante la DIAN.</p>
@@ -112,20 +112,23 @@ function openUniversalInfoModal(sectionKey) {
         terms: {
             title: 'Términos de Uso',
             html: `
-                <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted);">
-                    <p style="margin-bottom:10px;"><b>Mis Finanzas</b> es una herramienta de organización, proyección presupuestal y simulación financiera personal desarrollada por <b>Función IF</b>.</p>
-                    <p style="margin-bottom:10px;">Los cálculos tributarios y laborales (Retefuente Art. 383 E.T., Ley 1393, UVT, SMMLV, prestaciones sociales, primas y liquidación de vacaciones) son estimaciones referenciales basadas en la normativa colombiana vigente y parámetros configurables por el usuario; no sustituyen asesoría contable o jurídica profesional.</p>
-                    <p>Dado que toda la información reside localmente en tu navegador, eres totalmente responsable de exportar periódicamente tus copias de seguridad en formato JSON desde el menú de Perfil.</p>
+                <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted); max-height:65vh; overflow-y:auto; padding-right:8px;">
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">1. Naturaleza de la App:</strong> <b>Mis Finanzas</b> es una herramienta de organización, proyección presupuestal y simulación financiera personal desarrollada por <b>Función IF</b>.</p>
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">2. Exención de Responsabilidad:</strong> Los cálculos tributarios y laborales (Retefuente Art. 383 E.T., Ley 1393, UVT, SMMLV, prestaciones sociales, primas y liquidación de vacaciones) son estimaciones referenciales basadas en la normativa colombiana vigente y en los parámetros configurables por el usuario. No sustituyen asesoría contable, jurídica o financiera profesional; toda decisión de gasto, inversión, ahorro o crédito se toma bajo tu propio riesgo.</p>
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">3. Software "Tal Cual" (As-Is):</strong> La aplicación se proporciona sin garantías expresas o implícitas de disponibilidad ininterrumpida o ausencia total de errores. Al utilizarla, aceptas que <b>Función IF</b> no asume responsabilidad por discrepancias numéricas, interpretaciones normativas o pérdidas derivadas de su uso.</p>
+                    <p style="margin-bottom:0;"><strong style="color:var(--text-main);">4. Custodia y Pérdida de Datos:</strong> Al operar 100% de forma local en tu navegador, eres el único responsable de resguardar tu información. Borrar los datos o caché de Safari/Chrome, desinstalar la aplicación web o perder el dispositivo eliminará tus registros de manera irreversible. Es tu responsabilidad exportar periódicamente copias de seguridad (<code>.json</code>) desde el menú de <b>Perfil</b>.</p>
                 </div>
             `
         },
         privacy: {
             title: 'Política de Privacidad',
             html: `
-                <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted);">
-                    <p style="margin-bottom:10px;"><b>Arquitectura 100% Local-First:</b> Mis Finanzas no utiliza servidores remotos, bases de datos en la nube, cuentas externas ni rastreadores publicitarios.</p>
-                    <p style="margin-bottom:10px;">Todos tus saldos, movimientos, configuraciones salariales, metas y PIN cifrado se almacenan exclusivamente en el almacenamiento local (<code>localStorage</code>) de tu dispositivo.</p>
-                    <p>Ningún tercero ni <b>Función IF</b> tiene acceso a tus datos financieros.</p>
+                <div class="glass-sub-box" style="font-size:12px; line-height:1.55; color:var(--text-muted); max-height:65vh; overflow-y:auto; padding-right:8px;">
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">1. Arquitectura 100% Local-First:</strong> <b>Mis Finanzas</b> no utiliza servidores remotos, bases de datos en la nube, cuentas de usuario externas ni rastreadores publicitarios o de telemetría.</p>
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">2. Privacidad Absoluta:</strong> Todos tus saldos, movimientos, suscripciones, bolsillos, configuraciones salariales y credenciales de acceso se almacenan exclusivamente en el almacenamiento local (<code>localStorage</code> e <code>IndexedDB</code>) de tu dispositivo. Ningún tercero, ni <b>Función IF</b>, tiene capacidad técnica para acceder, recopilar, analizar o compartir tu información financiera.</p>
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">3. Manejo de Copias de Seguridad:</strong> Los archivos de respaldo que exportas voluntariamente (<code>.json</code>) y los extractos en PDF se generan localmente sin cifrado externo. Es tu responsabilidad exclusiva almacenarlos en ubicaciones seguras (como iCloud Drive, Google Drive o carpetas protegidas) para evitar accesos no autorizados.</p>
+                    <p style="margin-bottom:10px;"><strong style="color:var(--text-main);">4. Seguridad del Dispositivo:</strong> El bloqueo por PIN cifrado o biometría (Face ID / Touch ID) de la aplicación actúa como una capa de privacidad en la interfaz y depende de la seguridad nativa del sistema operativo. Mantener tu dispositivo protegido con contraseña y actualizado es fundamental para resguardar el acceso físico a tus datos.</p>
+                    <p style="margin-bottom:0;"><strong style="color:var(--text-main);">5. Control Total:</strong> Puedes modificar, respaldar o eliminar de forma permanente toda tu información en cualquier momento desde las opciones de <b>Perfil</b> sin depender de intermediarios.</p>
                 </div>
             `
         },
@@ -146,7 +149,23 @@ function openUniversalInfoModal(sectionKey) {
                 <h4 style="font-size:13px; font-weight:800; margin:14px 0 8px 0; text-align:left;">Historial de Versiones</h4>
 
                 <details class="changelog-accordion" open>
-                    <summary><span>🚀 Versión 2.1.0 (Actual)</span><span>▾</span></summary>
+                    <summary><span>🚀 Versión 2.2.0 (Actual)</span><span>▾</span></summary>
+                    <ul>
+                        <li><b>Nuevo • Control y Cálculo de 4x1000 (GMF):</b> Configura tus cuentas exentas o gravadas con el Gravamen a los Movimientos Financieros y visualiza el impacto real del impuesto en tus retiros y transferencias.</li>
+                        <li><b>Nuevo • Modo Viaje y División Compartida 50/50:</b> Aísla el presupuesto de tus vacaciones con etiqueta automática (<code>#destino</code>), vincúlalo a un bolsillo de ahorro (con asistente para transferir o conservar el sobrante al volver) y activa el modo <b>Viaje Compartido 50/50</b> para registrar con un toque quién pagó cada gasto y generar la liquidación automática (cuenta por cobrar o deuda) al cerrar el viaje.</li>
+                        <li><b>Nuevo • Resumen de Cierre de Mes (Recap) y Balance Anual Proactivo:</b> Carrusel interactivo en tarjetas Bento con logros desbloqueables, gráficas comparativas SVG, consejos estacionales personalizados para cada mes del año, alertas de alzas en suscripciones o gastos hormiga y diagnóstico de memoria local.</li>
+                        <li><b>Nuevo • Gestor Múltiple de Pagos No Salariales y Primas Extralegales:</b> Activa el interruptor en <i>Nómina y Prestaciones</i> para agregar bonos, auxilios o primas extralegales con nombre personalizado, valor, mes específico de pago (o fijo mensual), control individual de <i>Base Retefuente</i>, validación automática del tope del 40% de la Ley 1393 y guía visual con ejemplos comparativos.</li>
+                        <li><b>Nuevo • Contadores de Días Restantes en Cabecera:</b> Indicadores flotantes alineados sobre el selector de fechas que muestran en tiempo real cuántos días faltan para terminar el mes y el año en curso.</li>
+                        <li><b>Mejorado • Nueva Visual del Modal de Registro de Movimientos:</b> Interfaz renovada, más limpia y ergonómica con selector segmentado, conversión de Dólar (USD) y Euro (EUR) a COP en vivo, etiquetas rápidas (<code>#tags</code>), ahorro de vueltos, división de gastos y controles contextuales inteligentes.</li>
+                        <li><b>Mejorado • Asesores Inteligentes y Simuladores Financieros:</b> Optimización del <i>Asesor de Tarjetas</i> (días de gracia, cupo y exoneración de cuota de manejo), <i>Simulador de Compra Inteligente</i> (equivalencia en horas/días de trabajo e impacto en tu punto más bajo de caja a 30 días), <i>Comparador de Créditos (Banco A vs. B)</i> y <i>Proyección de Efectivo Día por Día</i>.</li>
+                        <li><b>Mejorado • Motor Laboral con Promedios CST y Retroactivos:</b> Cálculo de promedios salariales ponderados para Prima (Art. 306 CST) y Cesantías (Art. 253 CST), simulación de aumentos con retroactivo, sincronización mensual en presupuesto y proyección anual de Renta DIAN.</li>
+                        <li><b>Mejorado • Navegación y Aprovechamiento de Pantalla en Cuentas:</b> Al cerrar el modal de <i>Cuentas y Liquidez</i> (tocando por fuera o en <i>Cerrar</i>), la vista se reinicia automáticamente al listado principal; además, se liberó la altura fija del historial de movimientos para aprovechar toda la pantalla.</li>
+                        <li><b>Corregido • Estabilidad Visual y Renderizado:</b> Solución definitiva al colapso horizontal del modal, limpieza de etiquetas duplicadas mediante cabeceras ancladas con <code>position: sticky</code> y ajuste de saltos de línea en cifras monetarias.</li>
+                    </ul>
+                </details>
+
+                <details class="changelog-accordion">
+                    <summary><span>✨ Versión 2.1.0</span><span>▾</span></summary>
                     <ul>
                         <li><b>Modo Viaje con Presupuesto Aislado:</b> Activa un tope exclusivo para vacaciones sin alterar tus categorías mensuales habituales, con guía interactiva, auto-etiquetado (<code>#destino</code>), filtro rápido de gastos y color de tema dedicado.</li>
                         <li><b>Cálculo y Conversión de Dólar (USD) y Euro (EUR) a COP:</b> Selector de divisa directo en el registro de movimientos con <b>cálculo en vivo a pesos colombianos</b>, constancia del valor original en la descripción, auto-etiquetado (<code>#usd</code> / <code>#eur</code>), tasas configurables y consulta de TRM oficial en tiempo real con respaldo 100% offline.</li>

@@ -1,5 +1,5 @@
 // ==========================================
-// INICIO DE ARCHIVO: core.js (v2.1.0)
+// INICIO DE ARCHIVO: core.js (v2.2.0)
 // EL CEREBRO: LÓGICA PURA, MATEMÁTICAS Y BASE DE DATOS
 // Arquitectura Estricta: Cero interacción con el DOM (HTML).
 // ==========================================
@@ -19,6 +19,12 @@ let activeAmortizationSchedule = [];
 let hasUnsavedChanges = false;
 let widgetOrder = [];
 let projectionMode = 'plan';
+
+// Función para normalizar nombres de categorías (ignorar mayúsculas y tildes)
+const normalizeCategoryName = (name) => {
+    if (!name) return '';
+    return name.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+};
 
 // --- 1B. CATÁLOGO DE ICONOGRAFÍA VECTORIAL PLANA (SVG) ---
 const ICONS = {
@@ -700,7 +706,7 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
             // Ejecución en el mes i
             let mSpent = 0;
             financeData.transactions.forEach(t => {
-                if (t.monthId === tempMonthId && t.type === 'expense' && !t.isAdjustment && t.category === catObj.name) {
+                if (!t.isDeleted && !t.isTripIsolated && t.monthId === tempMonthId && t.type === 'expense' && !t.isAdjustment && t.category === catObj.name && isTxClosed(t)) {
                     const matchesScope = subObj
                         ? (t.subcategory === subObj.name)
                         : (!hasSubcats || !t.subcategory || t.subcategory === 'General');
@@ -778,6 +784,12 @@ const getRemainingBudgetForSelection = (type, categoryName, subcategoryName, mon
     if (!type || type === 'transfer' || !categoryName || !monthId) {
         return { hasBudget: false, totalLimit: 0, baseLimit: 0, rolloverAmt: 0, spent: 0, remaining: 0 };
     }
+    
+    // ESTA LÍNEA AÍSLA EL PRESUPUESTO EN EL MODO VIAJE:
+    if (type === 'expense' && financeData.tripMode && financeData.tripMode.active && financeData.tripMode.isolateBudget !== false) {
+        return { hasBudget: false, totalLimit: 0, baseLimit: 0, rolloverAmt: 0, spent: 0, remaining: 0, isTripIsolated: true };
+    }
+
     const [yStr, mStr] = monthId.split('-');
     const year = parseInt(yStr, 10);
     const monthIndex = Math.max(0, Math.min(11, parseInt(mStr, 10) - 1));
@@ -859,6 +871,118 @@ const adjustPocketBalance = (pocketId, delta) => {
     }
 };
 
+// --- MOTOR DE GRAVAMEN A LOS MOVIMIENTOS FINANCIEROS (4x1000 / GMF) ---
+const getGmfAccountInfo = (acc, customParams = null) => {
+    const params = customParams || getTaxParams();
+    const uvt = round2(params.uvt || 52374);
+
+    if (!acc || acc.category !== 'asset' || acc.id === 'Efectivo' || String(acc.id).startsWith('CxC_') || acc.accountSubType === 'cash') {
+        return { applies: false, subType: 'cash', isExempt: true, monthlyCapCop: 0, capUvt: 0, needsSetup: false, label: 'Efectivo (Sin 4x1000)' };
+    }
+
+    const subType = acc.accountSubType || 'unconfigured';
+    const isMarked350 = !!acc.gmfExempt;
+
+    if (subType === 'wallet') {
+        const capUvt = isMarked350 ? 350 : 65;
+        return {
+            applies: true,
+            subType: 'wallet',
+            isExempt: true,
+            capUvt,
+            monthlyCapCop: round2(capUvt * uvt),
+            needsSetup: false,
+            label: isMarked350 ? 'Billetera / Ahorros Exenta (350 UVT)' : 'Billetera / Bajo Monto (65 UVT)'
+        };
+    }
+
+    if (subType === 'checking') {
+        return {
+            applies: true,
+            subType: 'checking',
+            isExempt: false,
+            capUvt: 0,
+            monthlyCapCop: 0,
+            needsSetup: false,
+            label: 'Cuenta Corriente (Grava 4x1000)'
+        };
+    }
+
+    // 'savings' o cuenta bancaria previa a la actualización ('unconfigured')
+    const capUvt = isMarked350 ? 350 : 0;
+    return {
+        applies: true,
+        subType: subType === 'unconfigured' ? 'savings' : subType,
+        isExempt: isMarked350,
+        capUvt,
+        monthlyCapCop: round2(capUvt * uvt),
+        needsSetup: !acc.accountSubType,
+        label: isMarked350 ? 'Ahorros Exenta (350 UVT)' : 'Ahorros (Grava 4x1000)'
+    };
+};
+
+const getMonthlyGmfUsedOutflows = (accountId, monthId, excludeTxId = null) => {
+    let used = 0;
+    (financeData.transactions || []).forEach(t => {
+        if (t.isDeleted || t.isAdjustment || t.isGmfTax) return;
+        if (excludeTxId && String(t.id) === String(excludeTxId)) return;
+        if (getTxMonthId(t) !== monthId || !isTxClosed(t)) return;
+
+        if (t.type === 'expense' && t.account === accountId) {
+            used = round2(used + round2(t.amount));
+        } else if (t.type === 'transfer' && t.account === accountId && !t.isSameBankTransfer) {
+            used = round2(used + round2(t.amount));
+        }
+    });
+    return used;
+};
+
+const calculateTransactionGmf = ({ accountId, amount, type, toAccountId = '', isSameBank = false, dateObj = new Date(), excludeTxId = null }) => {
+    const cleanAmt = Math.max(0, round2(amount || 0));
+    if (cleanAmt <= 0 || (type !== 'expense' && type !== 'transfer')) {
+        return { applies: false, gmfAmount: 0, taxableAmount: 0, remainingCapAfter: 0, monthlyCapCop: 0, usedThisMonth: 0, isExempt: true, needsSetup: false };
+    }
+
+    if (type === 'transfer' && isSameBank) {
+        return { applies: false, gmfAmount: 0, taxableAmount: 0, remainingCapAfter: 0, monthlyCapCop: 0, usedThisMonth: 0, isExempt: true, needsSetup: false, sameBankExempt: true };
+    }
+
+    const acc = getAccountObj(accountId);
+    const info = getGmfAccountInfo(acc);
+    if (!info.applies) {
+        return { applies: false, gmfAmount: 0, taxableAmount: 0, remainingCapAfter: 0, monthlyCapCop: 0, usedThisMonth: 0, isExempt: true, needsSetup: false };
+    }
+
+    const mId = getMonthId(dateObj);
+    const usedThisMonth = getMonthlyGmfUsedOutflows(accountId, mId, excludeTxId);
+    const remainingCapBefore = Math.max(0, round2(info.monthlyCapCop - usedThisMonth));
+    const taxableAmount = Math.max(0, round2(cleanAmt - remainingCapBefore));
+    const gmfAmount = round2(taxableAmount * 0.004);
+    const remainingCapAfter = Math.max(0, round2(remainingCapBefore - cleanAmt));
+
+    return {
+        applies: true,
+        subType: info.subType,
+        isExempt: info.isExempt,
+        needsSetup: info.needsSetup,
+        capUvt: info.capUvt,
+        monthlyCapCop: info.monthlyCapCop,
+        usedThisMonth,
+        remainingCapBefore,
+        remainingCapAfter,
+        taxableAmount,
+        gmfAmount
+    };
+};
+
+const hasAnyGmfConfiguredAccount = () => {
+    const bankAssets = (financeData.customAccounts || []).filter(
+        a => a.category === 'asset' && a.id !== 'Efectivo' && !String(a.id).startsWith('CxC_') && a.accountSubType !== 'cash'
+    );
+    if (bankAssets.length === 0) return true;
+    return bankAssets.some(a => !!a.gmfExempt || !!a.gmfReviewed);
+};
+
 const computeBalancesUpTo = (targetMonthId) => {
     const bals = {};
     financeData.customAccounts.forEach(acc => {
@@ -872,6 +996,9 @@ const computeBalancesUpTo = (targetMonthId) => {
 
     financeData.transactions.forEach(t => {
         if (!t.isDeleted && getTxMonthId(t) <= targetMonthId && isTxClosed(t)) {
+            // Si es un gasto compartido pagado por el acompañante, NO afecta mis saldos locales
+            if (t.isSharedTrip && t.paidBy === 'companion') return;
+
             const accObj = getAccountObj(t.account);
             const toAccObj = t.toAccount ? getAccountObj(t.toAccount) : null;
             const amt = round2(t.amount);
@@ -900,7 +1027,6 @@ const computeBalancesUpTo = (targetMonthId) => {
                         if (bals[t.account] !== undefined) bals[t.account] = round2(bals[t.account] - amt);
                     }
                 }
-
                 if (toAccObj && toAccObj.category !== 'pocket') {
                     if (isLiabilityCategory(toAccObj.category)) {
                         if (bals[t.toAccount] !== undefined) bals[t.toAccount] = round2(bals[t.toAccount] - amt);
@@ -1079,6 +1205,13 @@ const getMonthlyFlow = (targetMonthId, includePending = false) => {
 };
 
 // --- 6. AMORTIZACIÓN, TARJETAS DIFERIDAS, BNPL, SALUD FINANCIERA Y ENDEUDAMIENTO ---
+const calculateFianzaAmount = (baseAmount, fianzaVal, fianzaType = 'pct', includeIva = false) => {
+    const base = Math.max(0, round2(baseAmount || 0));
+    const val = Math.max(0, parseFloat(fianzaVal) || 0);
+    if (base <= 0 || val <= 0) return 0;
+    const rawFee = fianzaType === 'pct' ? round2(base * (val / 100)) : round2(val);
+    return includeIva ? round2(rawFee * 1.19) : rawFee;
+};
 const calculateAmortization = (principal, periods, rate, rateType) => {
     let monthlyRate = rate / 100;
     if (rateType === 'annual') {
@@ -1319,16 +1452,28 @@ const calculateCardMinPaymentEstimate = (card, currentDebt, refDate = currentDat
 
     // Saldo de deuda inicial (no asociado a compras diferidas registradas en la app)
     const unallocatedDebt = Math.max(0, round2(debt - deferredCapital));
+    const initialTerm = Math.max(1, parseInt(card.initialDebtTerm, 10) || 12);
     let initialQuotaApplied = 0;
-    let isInitialFallback12m = false;
+    let initialPrincipalApplied = 0;
+    let initialInterestApplied = 0;
+    let isInitialFallbackTerm = false;
 
     if (unallocatedDebt > 0) {
         const customInitQuota = round2(card.initialDebtQuota || 0);
+        const cardRate = parseFloat(card.rate) || 0;
+        const cardRateType = card.rateType || 'monthly';
+        const amortInit = calculateAmortization(unallocatedDebt, initialTerm, cardRate, cardRateType);
+        const firstMonthInt = round2(unallocatedDebt * amortInit.monthlyRate);
+
         if (customInitQuota > 0) {
-            initialQuotaApplied = Math.min(unallocatedDebt, customInitQuota);
+            initialQuotaApplied = Math.min(round2(unallocatedDebt + firstMonthInt), customInitQuota);
+            initialInterestApplied = Math.min(initialQuotaApplied, firstMonthInt);
+            initialPrincipalApplied = Math.max(0, round2(initialQuotaApplied - initialInterestApplied));
         } else {
-            initialQuotaApplied = round2(unallocatedDebt / 12);
-            isInitialFallback12m = true;
+            initialQuotaApplied = amortInit.payment;
+            initialInterestApplied = firstMonthInt;
+            initialPrincipalApplied = Math.max(0, round2(initialQuotaApplied - initialInterestApplied));
+            isInitialFallbackTerm = true;
         }
     }
 
@@ -1417,7 +1562,10 @@ const calculateCardMinPaymentEstimate = (card, currentDebt, refDate = currentDat
         deferredCount: pending.length,
         unallocatedDebt,
         initialQuotaApplied,
-        isInitialFallback12m,
+        initialTerm,
+        initialPrincipalApplied,
+        initialInterestApplied,
+        isInitialFallbackTerm,
         hasMgmtFee,
         mgmtFeeRule,
         mgmtFeeStatus,
@@ -1511,10 +1659,10 @@ const calculateCardStatementProjection = (card, currentDebt, monthOffset = 0, re
             items.push({
                 kind: 'initial',
                 title: 'Cuota deuda inicial',
-                subtitle: est.isInitialFallback12m ? 'Proyección estándar 12 cuotas' : 'Cuota fija configurada',
+                subtitle: est.isInitialFallbackTerm ? `Proyección estándar ${est.initialTerm} cuotas` : 'Cuota fija configurada',
                 amount: est.initialQuotaApplied,
-                principal: est.initialQuotaApplied,
-                interest: 0,
+                principal: est.initialPrincipalApplied,
+                interest: est.initialInterestApplied,
                 remCapital: est.unallocatedDebt
             });
         }
@@ -1600,18 +1748,25 @@ const calculateCardStatementProjection = (card, currentDebt, monthOffset = 0, re
             }
         });
 
-        const initStepQuota = round2(card.initialDebtQuota || 0) > 0 ? round2(card.initialDebtQuota) : round2(baseEst.unallocatedDebt / 12);
-        const remUnallocAtCutoff = Math.max(0, round2(baseEst.unallocatedDebt - initStepQuota * cycleDelta));
+        const initTerm = Math.max(1, parseInt(card.initialDebtTerm, 10) || 12);
+        const initAmortProj = baseEst.unallocatedDebt > 0
+            ? calculateAmortization(baseEst.unallocatedDebt, initTerm, parseFloat(card.rate) || 0, card.rateType || 'monthly')
+            : { payment: 0, monthlyRate: 0 };
+        const initStepQuota = round2(card.initialDebtQuota || 0) > 0 ? round2(card.initialDebtQuota) : initAmortProj.payment;
+        const initStepPrincipal = Math.max(0, round2(initStepQuota - round2(baseEst.unallocatedDebt * initAmortProj.monthlyRate)));
+        const remUnallocAtCutoff = Math.max(0, round2(baseEst.unallocatedDebt - (initStepPrincipal > 0 ? initStepPrincipal : initStepQuota) * cycleDelta));
         if (remUnallocAtCutoff > 0 && initStepQuota > 0) {
-            const qInit = round2(Math.min(remUnallocAtCutoff, initStepQuota));
+            const projInt = round2(remUnallocAtCutoff * initAmortProj.monthlyRate);
+            const qInit = round2(Math.min(round2(remUnallocAtCutoff + projInt), initStepQuota));
+            const qInitPrin = Math.max(0, round2(qInit - projInt));
             projectedDebtAtCutoff = round2(projectedDebtAtCutoff + remUnallocAtCutoff);
             items.push({
                 kind: 'initial',
                 title: 'Cuota deuda inicial',
                 subtitle: `Proyección +${cycleDelta} mes${cycleDelta > 1 ? 'es' : ''}`,
                 amount: qInit,
-                principal: qInit,
-                interest: 0,
+                principal: qInitPrin,
+                interest: projInt,
                 remCapital: remUnallocAtCutoff
             });
         }
@@ -1716,10 +1871,10 @@ const calculateCardStatementProjection = (card, currentDebt, monthOffset = 0, re
                 billedItems.push({
                     kind: 'initial',
                     title: 'Cuota deuda al corte',
-                    subtitle: billedEst.isInitialFallback12m ? 'Proyección estándar 12 cuotas' : 'Cuota fija configurada',
+                    subtitle: billedEst.isInitialFallbackTerm ? `Proyección estándar ${billedEst.initialTerm} cuotas` : 'Cuota fija configurada',
                     amount: billedEst.initialQuotaApplied,
-                    principal: billedEst.initialQuotaApplied,
-                    interest: 0
+                    principal: billedEst.initialPrincipalApplied,
+                    interest: billedEst.initialInterestApplied
                 });
             }
             if (billedEst.mgmtFeeAmt > 0) {
@@ -2068,28 +2223,33 @@ const checkRentaDeclaration = (year) => {
     
     if (salaryStr) {
         const sCfg = JSON.parse(salaryStr);
-        // Usamos el motor laboral configurado para calcular la depuración anualizada
-        const metrics = calculateLaborMetrics(sCfg, new Date(year, 11, 31), params); 
-        
-        // Anualizamos los datos base del mes
-        const ingresosBrutosAnuales = metrics.ingresosBrutos * 12;
-        const incrngoAnual = metrics.incrngo * 12; // Salud, pensión, FSP
-        const rentaLiquidaAnual = Math.max(0, ingresosBrutosAnuales - incrngoAnual);
-        
-        const deduccionesArt387Anual = metrics.totalDeduccionesArt387 * 12;
-        const dedVoluntaryAnual = (sCfg.dedVoluntary || 0) * 12;
-        const baseNeta25Anual = Math.max(0, rentaLiquidaAnual - deduccionesArt387Anual - dedVoluntaryAnual);
-        
-        const exempt25Anual = Math.min(baseNeta25Anual * 0.25, (params.exempt25AnnualUvt || 790) * uvt);
-        
-        const beneficiosBrutosAnuales = deduccionesArt387Anual + dedVoluntaryAnual + exempt25Anual;
-        const tope40Anual = Math.min(rentaLiquidaAnual * 0.40, (params.global40AnnualUvt || 1340) * uvt);
+        let ingresosBrutosAnuales = 0;
+        let incrngoAnual = 0;
+        let deduccionesArt387Anual = 0;
+        let retMensualSumada = 0;
+        let lastMetrics = null;
+
+        for (let m = 0; m < 12; m++) {
+            const mMetrics = calculateLaborMetrics(sCfg, new Date(year, m, 15), params);
+            ingresosBrutosAnuales = round2(ingresosBrutosAnuales + mMetrics.ingresosBrutos);
+            incrngoAnual = round2(incrngoAnual + mMetrics.incrngo);
+            deduccionesArt387Anual = round2(deduccionesArt387Anual + mMetrics.totalDeduccionesArt387);
+            retMensualSumada = round2(retMensualSumada + mMetrics.ret);
+            lastMetrics = mMetrics;
+        }
+
+        const rentaLiquidaAnual = Math.max(0, round2(ingresosBrutosAnuales - incrngoAnual));
+        const dedVoluntaryAnual = Math.min(round2((sCfg.dedVoluntary || 0) * 12), round2(ingresosBrutosAnuales * 0.30), round2((params.voluntaryAnnualUvt || 3800) * uvt));
+        const baseNeta25Anual = Math.max(0, round2(rentaLiquidaAnual - deduccionesArt387Anual - dedVoluntaryAnual));
+        const exempt25Anual = Math.min(round2(baseNeta25Anual * 0.25), round2((params.exempt25AnnualUvt || 790) * uvt));
+
+        const beneficiosBrutosAnuales = round2(deduccionesArt387Anual + dedVoluntaryAnual + exempt25Anual);
+        const tope40Anual = Math.min(round2(rentaLiquidaAnual * 0.40), round2((params.global40AnnualUvt || 1340) * uvt));
         const beneficiosLimitadosAnuales = Math.min(beneficiosBrutosAnuales, tope40Anual);
-        
-        baseGravableAnual = Math.max(0, rentaLiquidaAnual - beneficiosLimitadosAnuales);
+
+        baseGravableAnual = Math.max(0, round2(rentaLiquidaAnual - beneficiosLimitadosAnuales));
         baseGravableUVT = uvt > 0 ? baseGravableAnual / uvt : 0;
 
-        // Tarifas Marginales - Tabla Art. 241 E.T.
         let impuestoUVT = 0;
         if (baseGravableUVT > 31000) impuestoUVT = (baseGravableUVT - 31000) * 0.39 + 10352;
         else if (baseGravableUVT > 18970) impuestoUVT = (baseGravableUVT - 18970) * 0.37 + 5901;
@@ -2099,9 +2259,7 @@ const checkRentaDeclaration = (year) => {
         else if (baseGravableUVT > 1090) impuestoUVT = (baseGravableUVT - 1090) * 0.19;
 
         impuestoEstimado = round2(impuestoUVT * uvt);
-        
-        // Retenciones a favor: lo retenido mes a mes + retención de primas
-        retencionesEstimadas = round2((metrics.ret * 12) + (metrics.retPrima * 2));
+        retencionesEstimadas = round2(retMensualSumada + ((lastMetrics?.retPrima || 0) * 2));
         saldoAPagar = round2(impuestoEstimado - retencionesEstimadas);
     }
 
@@ -2151,15 +2309,39 @@ const calcArt383TableUVT = (uvtBase) => {
     return (uvtBase - 2300) * 0.39 + 770;
 };
 
-const calculateLaborMetrics = (config, today = new Date(), customParams = null, overrideTransport = null) => {
+const calculateLaborMetrics = (config, today = new Date(), customParams = null, overrideTransport = null, capOverrides = null) => {
     const params = customParams || getTaxParams();
     const uvt = round2(params.uvt || 52374);
     const smmlv = round2(params.smmlv || 1750905);
     const rawTransport = round2(params.transportAid || 249095);
 
     const basic = round2(config.basicSalary || 0);
-    const nonSalary = round2(config.nonSalary || 0);
 
+    // Cálculo dinámico de pagos no salariales para el mes evaluado (today)
+    let nonSalary = 0;
+    let taxableNonSalary = 0;
+    const targetMonthStr = String(today.getMonth());
+
+    if (Array.isArray(config.nonSalaryItems)) {
+        if (config.hasNonSalary !== false) {
+            config.nonSalaryItems.forEach(item => {
+                const amt = round2(item.amount || 0);
+                if (amt <= 0) return;
+                if (item.month === 'all' || String(item.month) === targetMonthStr) {
+                    nonSalary = round2(nonSalary + amt);
+                    if (item.taxable !== false) {
+                        taxableNonSalary = round2(taxableNonSalary + amt);
+                    }
+                }
+            });
+        }
+    } else {
+        // Compatibilidad con configuraciones anteriores de un solo valor
+        nonSalary = round2(config.nonSalary || 0);
+        taxableNonSalary = nonSalary;
+    }
+
+    // Validación Ley 1393 (Tope 40% del total remunerado para IBC de Seguridad Social)
     const totalRemuneration = round2(basic + nonSalary);
     const nonSalaryCapRatio = (params.nonSalaryCapPct || 40) / 100;
     const maxNonSalary = round2(totalRemuneration * nonSalaryCapRatio);
@@ -2188,21 +2370,43 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     }
     fsp = round2(fsp);
 
-    const ingresosBrutos = round2(basic + nonSalary);
+    // Base tributaria (Art. 103 E.T.): Solo suman los conceptos no salariales marcados con "Base Retefuente"
+    const ingresosBrutos = round2(basic + taxableNonSalary);
     const incrngo = round2(health + pension + fsp);
     const rentaLiquida = Math.max(0, round2(ingresosBrutos - incrngo));
 
-    const dedPrepaid = Math.min(round2(config.dedPrepaid || 0), round2((params.prepaidMonthlyUvt || 16) * uvt));
-    const dedHousing = Math.min(round2(config.dedHousing || 0), round2((params.housingMonthlyUvt || 100) * uvt));
-    const dedDependents = config.dedDependents ? Math.min(round2(ingresosBrutos * 0.10), round2((params.dependentsMonthlyUvt || 32) * uvt)) : 0;
-    const dedVoluntary = Math.min(round2(config.dedVoluntary || 0), Math.min(round2(ingresosBrutos * 0.30), round2(((params.voluntaryAnnualUvt || 3800) / 12) * uvt)));
+    const skipDeductions = !!(capOverrides && capOverrides.skipDeductions);
+    const dedPrepaid = skipDeductions ? 0 : Math.min(round2(config.dedPrepaid || 0), round2((params.prepaidMonthlyUvt || 16) * uvt));
+    const dedHousing = skipDeductions ? 0 : Math.min(round2(config.dedHousing || 0), round2((params.housingMonthlyUvt || 100) * uvt));
+    const dedDependents = (!skipDeductions && config.dedDependents) ? Math.min(round2(ingresosBrutos * 0.10), round2((params.dependentsMonthlyUvt || 32) * uvt)) : 0;
+    const dedVoluntary = skipDeductions ? 0 : Math.min(round2(config.dedVoluntary || 0), Math.min(round2(ingresosBrutos * 0.30), round2(((params.voluntaryAnnualUvt || 3800) / 12) * uvt)));
     const totalDeduccionesArt387 = round2(dedPrepaid + dedHousing + dedDependents);
     const baseNeta25 = Math.max(0, round2(rentaLiquida - totalDeduccionesArt387 - dedVoluntary));
 
-    const exempt25MonthlyCapCOP = round2(((params.exempt25AnnualUvt || 790) / 12) * uvt);
+    const retCapEval = params.retCapEval || document.getElementById('param-ret-cap-eval')?.value || 'monthly';
+    const retOrder = params.retOrder || document.getElementById('param-ret-order')?.value || 'salary_first';
+
+    const baseExempt25MonthlyCap = round2(((params.exempt25AnnualUvt || 790) / 12) * uvt);
+    const baseGlobalUvtMonthlyCap = round2(((params.global40AnnualUvt || 1340) / 12) * uvt);
+
+    let exempt25MonthlyCapCOP = baseExempt25MonthlyCap;
+    let globalUvtMonthlyCapCOP = baseGlobalUvtMonthlyCap;
+
+    if (retCapEval === 'annual') {
+        const monthsElapsedBefore = Math.max(0, today.getMonth());
+        const estPriorExempt25 = Math.min(round2(baseNeta25 * 0.25), baseExempt25MonthlyCap) * monthsElapsedBefore;
+        const estPriorBeneficios = Math.min(round2(totalDeduccionesArt387 + dedVoluntary + Math.min(round2(baseNeta25 * 0.25), baseExempt25MonthlyCap)), round2(rentaLiquida * 0.40), baseGlobalUvtMonthlyCap) * monthsElapsedBefore;
+        exempt25MonthlyCapCOP = Math.max(0, round2(((params.exempt25AnnualUvt || 790) * uvt) - estPriorExempt25));
+        globalUvtMonthlyCapCOP = Math.max(0, round2(((params.global40AnnualUvt || 1340) * uvt) - estPriorBeneficios));
+    }
+
+    if (capOverrides) {
+        if (capOverrides.exempt25CapCOP !== undefined) exempt25MonthlyCapCOP = Math.max(0, round2(capOverrides.exempt25CapCOP));
+        if (capOverrides.globalUvtCapCOP !== undefined) globalUvtMonthlyCapCOP = Math.max(0, round2(capOverrides.globalUvtCapCOP));
+    }
+
     const exempt25 = Math.min(round2(baseNeta25 * 0.25), exempt25MonthlyCapCOP);
     const totalBeneficiosBrutos = round2(totalDeduccionesArt387 + dedVoluntary + exempt25);
-    const globalUvtMonthlyCapCOP = round2(((params.global40AnnualUvt || 1340) / 12) * uvt);
     const beneficiosLimitados = Math.min(totalBeneficiosBrutos, round2(rentaLiquida * 0.40), globalUvtMonthlyCapCOP);
 
     const baseGravable = Math.max(0, round2(rentaLiquida - beneficiosLimitados));
@@ -2219,7 +2423,7 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     }
 
     let payrollDebtDeductions = 0;
-    const targetMonthId = getMonthId(today); // Proyecta acorde al mes visualizado
+    const targetMonthId = getMonthId(today);
     
     financeData.customAccounts.filter(a => a.category === 'debt' && a.payrollDeduction).forEach(d => {
         const bal = round2(financeData.transactions.filter(t => (t.account === d.id || t.toAccount === d.id) && t.monthId <= targetMonthId && isTxClosed(t)).reduce((s, t) => {
@@ -2342,13 +2546,11 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const workedMonthsSem = Math.max(1, currentMonthIdx - semStartMonth + 1);
     const workedMonthsYear = Math.max(1, currentMonthIdx + 1);
 
-    // 1. Base Prima Proporcional (Art. 306 CST: promedio ponderado del semestre)
     const effSemStart = startObj > semStart ? startObj : semStart;
     const semWeighted = calcWeightedBaseBetween(effSemStart, today, daysSemester);
     const primaBase = round2(semWeighted.avgBase + (variableIncomeSemester / workedMonthsSem));
     const usedPrimaAverage = semWeighted.usedAverage || variableIncomeSemester > 0;
 
-    // 2. Base Cesantías Proporcionales (Art. 253 CST: promedio anual si varió en los últimos 3 meses)
     const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
     const variedLast3Months = !!(raiseStartObj && raiseStartObj > threeMonthsAgo && raiseStartObj <= today);
     const effYearStart = startObj > startOfYear ? startObj : startOfYear;
@@ -2358,7 +2560,6 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const cesantiasBase = round2(yearWeighted.avgBase + (variableIncomeYear / workedMonthsYear));
     const usedCesantiasAverage = yearWeighted.usedAverage || variableIncomeYear > 0;
 
-    // 3. Bases para Proyección Anual (Semestre 1, Semestre 2 y Año completo al 30 de dic.)
     const jun30 = new Date(currentYear, 5, 30);
     const jul1 = new Date(currentYear, 6, 1);
     const dec30 = new Date(currentYear, 11, 30);
@@ -2416,9 +2617,10 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     });
 
     return {
-        params, uvt, smmlv, basic, nonSalary, excessNonSalary, ibc, effectiveTransport, benefitsTransport, health, pension, fsp,
+        params, uvt, smmlv, basic, nonSalary, taxableNonSalary, excessNonSalary, ibc, effectiveTransport, benefitsTransport, health, pension, fsp,
         ingresosBrutos, incrngo, rentaLiquida, dedPrepaid, dedHousing, dedDependents, dedVoluntary, totalDeduccionesArt387,
-        exempt25, totalBeneficiosBrutos, beneficiosLimitados, baseGravable, numeroUVT, retProc, effectiveRetPct, ret,
+        exempt25, exempt25MonthlyCapCOP, globalUvtMonthlyCapCOP, retCapEval, retOrder,
+        totalBeneficiosBrutos, beneficiosLimitados, baseGravable, numeroUVT, retProc, effectiveRetPct, ret,
         net, grossNet, payrollDebtDeductions, payrollSavingsDeductions, biweeklyRetMode, gross1Q, gross2Q, ss1Q, ss2Q, ret1Q, ret2Q, net1Q, net2Q,
         prestacionesBase: projCesantiasBase, primaBase, cesantiasBase,
         projPrimaJunBase, projPrimaDecBase, projCesantiasBase,
@@ -2435,37 +2637,71 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
 const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', customParams = null) => {
     const bonus = Math.max(0, round2(bonusAmount));
     const params = customParams || getTaxParams();
-    const baseMetrics = calculateLaborMetrics(config, new Date(), params);
+    const retOrder = params.retOrder || document.getElementById('param-ret-order')?.value || 'salary_first';
+    const retCapEval = params.retCapEval || document.getElementById('param-ret-cap-eval')?.value || 'monthly';
+    const baseMetrics = calculateLaborMetrics(config, currentDate, params);
 
     if (bonus <= 0) {
         return {
-            bonus: 0, bonusType, baseMetrics, simMetrics: baseMetrics,
-            deltaHealth: 0, deltaPension: 0, deltaFsp: 0, deltaSS: 0, deltaRet: 0,
+            bonus: 0, bonusType, retOrder, retCapEval, baseMetrics, simMetrics: baseMetrics,
+            deltaHealth: 0, deltaPension: 0, deltaFsp: 0, deltaSS: 0, deltaRet: 0, salaryRetImpact: 0,
             totalDeductions: 0, netBonus: 0, effectiveTaxRate: 0,
             crossedFsp: false, triggeredLey1393: false, deltaExcessLey1393: 0
         };
     }
 
+    const existingItems = Array.isArray(config.nonSalaryItems) && config.hasNonSalary !== false ? config.nonSalaryItems : [];
     const simConfig = bonusType === 'salary'
         ? { ...config, basicSalary: round2((config.basicSalary || 0) + bonus) }
-        : { ...config, nonSalary: round2((config.nonSalary || 0) + bonus) };
+        : {
+            ...config,
+            hasNonSalary: true,
+            nonSalaryItems: [...existingItems, { id: 'sim_extra_bonus', name: 'Bono Ocasional', amount: bonus, month: 'all', taxable: true }],
+            nonSalary: round2((config.nonSalary || 0) + bonus)
+        };
 
-    const simMetrics = calculateLaborMetrics(simConfig, new Date(), params, baseMetrics.effectiveTransport);
+    const simMetrics = calculateLaborMetrics(simConfig, currentDate, params, baseMetrics.effectiveTransport);
 
     const deltaHealth = round2(simMetrics.health - baseMetrics.health);
     const deltaPension = round2(simMetrics.pension - baseMetrics.pension);
     const deltaFsp = round2(simMetrics.fsp - baseMetrics.fsp);
     const deltaSS = round2(deltaHealth + deltaPension + deltaFsp);
-    const deltaRet = round2(simMetrics.ret - baseMetrics.ret);
+
+    let deltaRet = round2(simMetrics.ret - baseMetrics.ret);
+    let salaryRetImpact = 0;
+
+    if (retOrder === 'first_payment') {
+        const bonusFirstConfig = {
+            ...config,
+            basicSalary: bonusType === 'salary' ? bonus : 0,
+            hasNonSalary: bonusType === 'non_salary',
+            nonSalaryItems: bonusType === 'non_salary'
+                ? [{ id: 'sim_first_bonus', name: 'Bono Ocasional', amount: bonus, month: 'all', taxable: true }]
+                : [],
+            nonSalary: bonusType === 'non_salary' ? bonus : 0,
+            transportAuto: false
+        };
+        const bonusFirstMetrics = calculateLaborMetrics(bonusFirstConfig, currentDate, params, 0);
+        deltaRet = bonusFirstMetrics.ret;
+
+        const remExempt25 = Math.max(0, round2((baseMetrics.exempt25MonthlyCapCOP || 0) - bonusFirstMetrics.exempt25));
+        const remGlobalUvt = Math.max(0, round2((baseMetrics.globalUvtMonthlyCapCOP || 0) - bonusFirstMetrics.beneficiosLimitados));
+        const salaryAfterMetrics = calculateLaborMetrics(config, currentDate, params, baseMetrics.effectiveTransport, {
+            exempt25CapCOP: remExempt25,
+            globalUvtCapCOP: remGlobalUvt,
+            skipDeductions: (bonusFirstMetrics.totalDeduccionesArt387 + bonusFirstMetrics.dedVoluntary) > 0
+        });
+        salaryRetImpact = Math.max(0, round2(salaryAfterMetrics.ret - baseMetrics.ret));
+    }
 
     const totalDeductions = round2(deltaSS + deltaRet);
-    const netBonus = round2(bonus - totalDeductions);
+    const netBonus = Math.max(0, round2(bonus - totalDeductions));
     const effectiveTaxRate = round2((totalDeductions / bonus) * 100);
     const deltaExcessLey1393 = Math.max(0, round2(simMetrics.excessNonSalary - baseMetrics.excessNonSalary));
 
     return {
-        bonus, bonusType, baseMetrics, simMetrics,
-        deltaHealth, deltaPension, deltaFsp, deltaSS, deltaRet,
+        bonus, bonusType, retOrder, retCapEval, baseMetrics, simMetrics,
+        deltaHealth, deltaPension, deltaFsp, deltaSS, deltaRet, salaryRetImpact,
         totalDeductions, netBonus, effectiveTaxRate,
         crossedFsp: baseMetrics.fsp === 0 && simMetrics.fsp > 0,
         triggeredLey1393: deltaExcessLey1393 > 0,
@@ -2485,7 +2721,7 @@ const generateICSBlob = (title, description, dateObj) => {
     const icsData = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Mis Finanzas//v2.1.0//ES',
+        'PRODID:-//Mis Finanzas//v2.2.0//ES',
         'BEGIN:VEVENT',
         `UID:${Date.now()}@misfinanzas.local`,
         `DTSTAMP:${formatDateStr(new Date())}`,
@@ -2942,20 +3178,32 @@ const getTripTagSlug = (name) => {
 
 const computeActiveTripStats = () => {
     const trip = financeData.tripMode || { active: false };
-    if (!trip.name) return { spent: 0, count: 0, budget: 0, remaining: 0, pct: 0, slug: 'viaje' };
+    if (!trip.name) return { spent: 0, count: 0, budget: 0, remaining: 0, pct: 0, slug: 'viaje', mePaid: 0, companionPaid: 0 };
+    
     const slug = trip.tag || getTripTagSlug(trip.name);
-    let spent = 0, count = 0;
+    let spent = 0, count = 0, mePaid = 0, companionPaid = 0;
+
     financeData.transactions.forEach(t => {
         if (t.isDeleted || t.type !== 'expense' || t.isAdjustment) return;
         if ((Array.isArray(t.tags) && t.tags.includes(slug)) || t.tripName === trip.name) {
-            spent = round2(spent + round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount));
+            const amt = round2(t.status === 'pending' ? (t.budgetedAmount || t.amount) : t.amount);
+            spent = round2(spent + amt);
             count++;
+            
+            if (t.isSharedTrip) {
+                if (t.paidBy === 'me') mePaid = round2(mePaid + amt);
+                else if (t.paidBy === 'companion') companionPaid = round2(companionPaid + amt);
+            } else {
+                mePaid = round2(mePaid + amt); // Gastos no compartidos también los pagué yo
+            }
         }
     });
+    
     const budget = round2(trip.budget || 0);
     const remaining = budget > 0 ? round2(budget - spent) : 0;
     const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
-    return { spent, count, budget, remaining, pct, slug };
+    
+    return { spent, count, budget, remaining, pct, slug, mePaid, companionPaid };
 };
 
 // E. Proyección de Efectivo Día por Día
@@ -3133,7 +3381,7 @@ const computeCashProjectionData = (horizon = 'eom') => {
 };
 
 // F. Calculadora de Ahorro e Interés Compuesto
-const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, periodsPerYear, contribution, annualRate }) => {
+const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, periodsPerYear, contribution, annualRate, taxRate = 0 }) => {
     const years = targetAge - currentAge;
     if (years <= 0 || years > 70) return { valid: false, years };
 
@@ -3144,14 +3392,25 @@ const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, pe
 
     let balance = safeInitial;
     let totalContributed = safeInitial;
-    const timeline = [{ year: 0, age: currentAge, contributed: totalContributed, interest: 0, balance }];
+    let totalTax = 0;
+    const timeline = [{ year: 0, age: currentAge, contributed: totalContributed, interest: 0, tax: 0, balance }];
 
     for (let y = 1; y <= years; y++) {
+        let yearInterest = 0;
+        let yearTax = 0;
         for (let p = 0; p < periodsPerYear; p++) {
-            const interest = balance * periodicRate;
-            balance = balance + interest + safeContrib;
+            const grossInterest = balance * periodicRate;
+            const taxWithheld = grossInterest * taxRate;
+            const netInterest = grossInterest - taxWithheld;
+            
+            yearInterest += netInterest;
+            yearTax += taxWithheld;
+            
+            balance = balance + netInterest + safeContrib;
             totalContributed += safeContrib;
         }
+        
+        totalTax += yearTax;
         const cleanBal = round2(balance);
         const cleanContrib = round2(totalContributed);
         timeline.push({
@@ -3159,6 +3418,7 @@ const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, pe
             age: currentAge + y,
             contributed: cleanContrib,
             interest: Math.max(0, round2(cleanBal - cleanContrib)),
+            tax: round2(totalTax),
             balance: cleanBal
         });
     }
@@ -3175,6 +3435,7 @@ const calculateCompoundSavingsProjection = ({ currentAge, targetAge, initial, pe
         targetAge,
         initial: safeInitial,
         totalAdded,
+        totalTax: round2(totalTax),
         finalSnap,
         principalPct,
         interestPct,

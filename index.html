@@ -8,9 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <title>Mis Finanzas • Función IF</title>
-    <link rel="manifest" href="manifest.json?v=2.1.0">
+    <link rel="manifest" href="manifest.json?v=2.1.1">
     <link rel="apple-touch-icon" href="icon.png">
-    <link rel="stylesheet" href="styles.css?v=2.1.0">
+    <link rel="stylesheet" href="styles.css?v=2.1.1">
 </head>
 <body class="app-locked">
     <!-- TOAST DE ACTUALIZACIÓN PWA -->
@@ -152,7 +152,7 @@
             <div id="login-view" class="hidden">
                 <div class="auth-brand-bar">
                     <span class="auth-brand-name">Función IF</span>
-                    <span class="drawer-version-pill">v2.1.0</span>
+                    <span class="drawer-version-pill">v2.2.0</span>
                 </div>
                 <div class="lock-icon">
                     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -190,7 +190,7 @@
         <div class="drawer-header">
             <div class="drawer-brand">
                 <h2>Mis Finanzas</h2>
-                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v2.1.0</button>
+                <button type="button" id="drawer-version-btn" class="drawer-version-pill" title="Ver notas de versión">v2.2.0</button>
             </div>
             <button type="button" id="close-drawer-btn" class="drawer-close-btn" aria-label="Cerrar menú">✕</button>
         </div>
@@ -482,6 +482,12 @@
             </button>
         </div>
 
+        <!-- CONTADORES DE DÍAS (Flotantes arriba del selector) -->
+        <div id="days-remaining-bar" class="hidden" style="display:flex; justify-content:space-between; width:100%; padding:0 16px; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:-8px; margin-top:4px; box-sizing:border-box; position:relative; z-index:2;">
+            <span id="days-left-month"></span>
+            <span id="days-left-year"></span>
+        </div>
+
         <div class="month-selector">
             <button type="button" id="prev-month" aria-label="Mes anterior">‹</button>
             <div class="month-center-group">
@@ -558,7 +564,7 @@
 
         <!-- 2. WIDGETS CIRCULARES: METAS DE AHORRO Y SALUD FINANCIERA -->
         <div class="grid" data-widget-id="summary-rings">
-            <div class="card circular-widget dashboard-widget-card" id="widget-savings-goals" style="margin-bottom: 0;">
+            <div class="card circular-widget dashboard-widget-card" id="widget-savings-goals" style="margin-bottom: 0; cursor: pointer;" onclick="if(typeof openSavingsSection === 'function') openSavingsSection('pockets');">
                 <h3>Metas de Ahorro</h3>
                 <div class="circle-chart-container">
                     <svg viewBox="0 0 100 100" class="circle-svg">
@@ -733,7 +739,7 @@
 <!-- PIE DE PÁGINA CLICABLE EN INICIO + BOTÓN ORDENAR -->
     <footer class="main-app-footer">
         <button type="button" id="home-version-btn" class="version-footer-btn" title="Ver notas de versión y novedades">
-            &copy; 2026 Función IF • v2.1.0
+            &copy; 2026 Función IF • v2.2.0
         </button>
         <button type="button" id="toggle-edit-widgets-btn" class="mini-action-btn" style="padding: 5px 10px; font-size: 11px;">
             Ordenar
@@ -756,13 +762,8 @@
         </button>
     </nav>
 
-    <!-- BOTÓN FLOTANTE INDEPENDIENTE (FAB CON ANIMACIÓN) -->
+    <!-- BOTÓN FLOTANTE INDEPENDIENTE (FAB DIRECTO) -->
     <div class="fab-container">
-        <div id="fab-menu" class="fab-menu hidden">
-            <button type="button" class="fab-option" data-type="expense"><span style="color:var(--negative);">↓</span> Nuevo Gasto</button>
-            <button type="button" class="fab-option" data-type="income"><span style="color:var(--positive);">↑</span> Nuevo Ingreso</button>
-            <button type="button" class="fab-option" data-type="transfer"><span style="color:var(--accent);">⇄</span> Transferencia</button>
-        </div>
         <button type="button" id="fab-btn" class="fab-btn" aria-label="Nuevo movimiento">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -783,7 +784,27 @@
                 <div class="form-row">
                     <div class="form-group" style="grid-column: 1 / -1;">
                         <label>Tipo de Transacción</label>
-                        <select id="type">
+                        <div id="tx-type-segmented" class="tx-type-segmented" role="group" aria-label="Tipo de Transacción">
+                            <button type="button" class="tx-type-btn active" data-type="expense" aria-pressed="true">
+                                <span class="tx-type-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                                </span>
+                                <span>Gasto</span>
+                            </button>
+                            <button type="button" class="tx-type-btn" data-type="income" aria-pressed="false">
+                                <span class="tx-type-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                                </span>
+                                <span>Ingreso</span>
+                            </button>
+                            <button type="button" class="tx-type-btn" data-type="transfer" aria-pressed="false">
+                                <span class="tx-type-icon">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                </span>
+                                <span>Transferencia</span>
+                            </button>
+                        </div>
+                        <select id="type" class="hidden" aria-hidden="true" tabindex="-1">
                             <option value="expense">↓ Gasto</option>
                             <option value="income">↑ Ingreso</option>
                             <option value="transfer">⇄ Transferencia</option>
@@ -795,24 +816,26 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label id="label-account">Cuenta</label>
-                        <select id="account" required></select>
+                        <select id="account" required style="padding-right:30px; text-overflow:ellipsis;"></select>
                     </div>
                     <div class="form-group hidden" id="group-to-account">
                         <label>Cuenta Destino</label>
-                        <select id="to-account"></select>
+                        <select id="to-account" style="padding-right:30px; text-overflow:ellipsis;"></select>
                     </div>
                     <div class="form-group" id="group-category">
                         <label>Categoría</label>
-                        <select id="trans-category"></select>
+                        <select id="trans-category" style="padding-right:30px; text-overflow:ellipsis;"></select>
                     </div>
                 </div>
 
                 <div id="quick-payroll-shortcut" class="hidden" style="margin-bottom:10px; display:flex; gap:6px;">
-                    <button type="button" id="btn-tx-quick-payroll" class="btn btn-secondary" style="flex:1; padding:8px 6px; font-size:11.5px; color:var(--positive);">
-                        💼 Autocompletar Nómina
+                    <button type="button" id="btn-tx-quick-payroll" class="btn btn-secondary" style="flex:1; padding:9px 8px; font-size:11.5px; color:var(--positive); display:inline-flex; align-items:center; justify-content:center; gap:5px; line-height:1.2;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        <span>Autocompletar Nómina</span>
                     </button>
-                    <button type="button" id="btn-tx-advance-payroll" class="btn btn-secondary" style="flex:1; padding:8px 6px; font-size:11px; color:var(--accent); letter-spacing:-0.3px;">
-                        💸 Registrar Anticipo Nómina
+                    <button type="button" id="btn-tx-advance-payroll" class="btn btn-secondary" style="flex:1; padding:9px 8px; font-size:11px; color:var(--accent); letter-spacing:-0.2px; display:inline-flex; align-items:center; justify-content:center; gap:5px; line-height:1.2;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <span>Registrar Anticipo Nómina</span>
                     </button>
                 </div>
 
@@ -932,6 +955,7 @@
 
                 <div id="tx-budget-variance-box" class="tx-variance-box hidden"></div>
                 <div id="tx-bnpl-impact-box" class="glass-sub-box hidden" style="font-size:11.5px; color:#d97706;"></div>
+                <div id="tx-gmf-impact-box" class="glass-sub-box hidden" style="margin-bottom:12px; padding:10px 12px; border-color:rgba(245, 158, 11, 0.35); background:rgba(245, 158, 11, 0.08);"></div>
 
                 <!-- BLOQUE CUOTAS TARJETA / CUPO ROTATIVO -->
                 <div id="cc-installments-box" class="glass-sub-box hidden">
@@ -960,6 +984,29 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- PUNTO 33: Fianza / Aval / Cargo inicial opcional -->
+                    <div class="form-row" style="margin-top:2px;">
+                        <div class="form-group">
+                            <label>Fianza / Aval (Opc.)</label>
+                            <input type="text" id="trans-fianza" class="money-input" inputmode="decimal" placeholder="Ej. 14,01">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo Fianza</label>
+                            <select id="trans-fianza-type">
+                                <option value="pct">% Porcentaje</option>
+                                <option value="cop">$ Valor Fijo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin:-4px 0 8px 0;">
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); font-weight:600; cursor:pointer;">
+                            <input type="checkbox" id="trans-fianza-iva" style="width:15px; height:15px; accent-color:var(--accent);">
+                            <span>Sumar IVA (19%) sobre fianza</span>
+                        </label>
+                        <small id="cc-fianza-preview-note" style="font-size:10.5px; color:var(--accent); font-weight:700;"></small>
+                    </div>
+
                     <small id="zero-interest-hint" style="display:block; font-size:10.5px; color:var(--text-muted); margin-bottom:8px;"></small>
                     <div class="dash-strip-grid" style="margin-bottom:8px;">
                         <div class="dash-strip-item"><small>Cuota Mes</small><strong id="cc-preview-quota">$ 0,00</strong></div>
@@ -973,6 +1020,44 @@
                             <tbody id="tx-amortization-body"></tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- BLOQUE ASIGNACIÓN DE PAGO A PASIVOS EN TRANSFERENCIA -->
+                <div id="transfer-debt-allocation-box" class="glass-sub-box hidden">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <strong style="font-size:12.5px; display:inline-flex; align-items:center; gap:6px;">
+                            <span style="color:var(--accent); display:inline-flex;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                            </span>
+                            <span>Aplicación del Abono</span>
+                        </strong>
+                        <span id="transfer-alloc-badge" class="widget-badge">0 selec.</span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Modalidad</label>
+                            <select id="transfer-payment-mode">
+                                <option value="installments">Cuota(s) del mes</option>
+                                <option value="extraordinary">Abono extraordinario a capital</option>
+                            </select>
+                        </div>
+                        <div class="form-group hidden" id="extraordinary-strategy-group">
+                            <label>Estrategia</label>
+                            <select id="transfer-extra-strategy">
+                                <option value="reduce_term">Reducir plazo</option>
+                                <option value="reduce_quota">Reducir cuota</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="transfer-pending-items-list"></div>
+
+                    <!-- PUNTO 32: Intereses, seguros o cargos extra del extracto -->
+                    <div class="form-group" style="margin-top:8px; margin-bottom:4px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                        <label style="font-size:10.5px;">Intereses / Seguros / Cargos extra ($ • Opc.)</label>
+                        <input type="text" id="transfer-extra-charges" class="money-input" inputmode="decimal" placeholder="0,00 (No abona a capital)">
+                    </div>
+
+                    <small id="transfer-allocation-summary" style="display:block; font-size:11px; color:var(--text-muted); margin-top:6px;"></small>
                 </div>
 
                 <!-- BLOQUE ASIGNACIÓN DE PAGO A PASIVOS EN TRANSFERENCIA -->
@@ -1341,14 +1426,47 @@
 
     <!-- MODAL PLAN DE SALIDA DE DEUDAS (AVALANCHA / BOLA DE NIEVE) -->
     <div id="debt-planner-modal" class="modal hidden" style="z-index: 1360;">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:88dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
                 <div>
                     <h2>Plan de Salida de Deudas</h2>
-                    <small style="color:var(--text-muted); font-size:11.5px;">Simulación cascada con abonos extra</small>
+                    <small style="color:var(--text-muted); font-size:11.5px;">Estrategias Avalancha y Bola de Nieve</small>
                 </div>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
+
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
+            <details class="changelog-accordion" style="width:100%; display:block; box-sizing:border-box; margin-bottom:14px; background:rgba(245, 158, 11, 0.07); border:1px solid rgba(245, 158, 11, 0.28); border-radius:14px; padding:11px 12px; box-shadow:none;">
+                <summary style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; color:#d97706; cursor:pointer;">
+                    <span style="display:inline-flex; align-items:center; gap:7px;">
+                        <span style="width:22px; height:22px; border-radius:7px; background:rgba(245, 158, 11, 0.16); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </span>
+                        <span>Avalancha vs. Bola de Nieve: ¿Cómo funcionan?</span>
+                    </span>
+                    <span style="font-size:11px; opacity:0.85;">▾</span>
+                </summary>
+
+                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245, 158, 11, 0.3); display:flex; flex-direction:column; gap:8px;">
+                    <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:11px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-muted); line-height:1.4;">
+                        <div style="display:flex; align-items:flex-start; gap:8px;">
+                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(239, 68, 68, 0.14); color:var(--negative); font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">%</span>
+                            <div><strong style="color:var(--text-main);">Método Avalancha (Mayor tasa primero):</strong> Ataca primero la deuda más cara según su interés para <b style="color:var(--positive);">ahorrar la máxima cantidad de dinero</b>.</div>
+                        </div>
+                        <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                            <span style="width:18px; height:18px; border-radius:50%; background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent); font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">$</span>
+                            <div><strong style="color:var(--text-main);">Método Bola de Nieve (Menor saldo primero):</strong> Liquida primero la deuda más pequeña para <b style="color:var(--text-main);">liberar flujo de caja rápido</b> y ganar impulso.</div>
+                        </div>
+                    </div>
+
+                    <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:11px; padding:10px 11px; display:flex; flex-direction:column; gap:7px; font-size:11.5px; color:var(--text-muted); line-height:1.4;">
+                        <div><strong style="color:var(--text-main);">• Arrastre de cuotas:</strong> Pagas los mínimos de todas y concentras todo el extra en la #1; al liquidarla, su cuota libre pasa a atacar la #2.</div>
+                        <div style="padding-top:7px; border-top:1px dashed var(--border-color);"><strong style="color:var(--text-main);">• Extra Fijo vs. Abonos Únicos:</strong> El <i>Extra Fijo</i> se suma todos los meses; los <i>Abonos Únicos</i> son inyecciones puntuales en una fecha específica.</div>
+                    </div>
+                </div>
+            </details>
+
+            <div id="planner-smart-recommendation" class="hidden"></div>
 
             <div class="form-row">
                 <div class="form-group">
@@ -1359,8 +1477,8 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Excedente Mensual ($)</label>
-                    <input type="text" id="planner-extra-monthly" class="money-input" inputmode="decimal" value="0">
+                    <label>Extra Fijo Mensual ($)</label>
+                    <input type="text" id="planner-extra-monthly" class="money-input" inputmode="decimal" placeholder="Ej. 150.000">
                 </div>
             </div>
 
@@ -1371,7 +1489,7 @@
                         Aplicar Primas Legales al Plan
                     </label>
                     <select id="planner-prima-mode">
-                        <option value="both">Ambas primas (Junio y Diciembre)</option>
+                        <option value="both">Ambas primas (Jun. y Dic.)</option>
                         <option value="june">Solo Prima de Junio</option>
                         <option value="december">Solo Prima de Diciembre</option>
                         <option value="none">No incluir primas</option>
@@ -1383,10 +1501,10 @@
             <div class="form-group">
                 <label style="display:flex; align-items:center; gap:6px;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Abonos Extra Programados (Opcional):
+                    Abonos Únicos por Fecha (Opcional)
                 </label>
                 <div style="display:grid; grid-template-columns: 1.2fr 1fr auto; gap:6px;">
-                    <input type="month" id="planner-oneoff-month">
+                    <input type="month" id="planner-oneoff-month" required>
                     <input type="text" id="planner-oneoff-amount" class="money-input" inputmode="decimal" placeholder="Monto ($)">
                     <button type="button" id="btn-add-planner-extra" class="btn btn-secondary" style="width:42px; padding:0;">+</button>
                 </div>
@@ -1432,6 +1550,7 @@
                     <tbody id="planner-schedule-body"></tbody>
                 </table>
             </div>
+            </div>
         </div>
     </div>
 
@@ -1440,12 +1559,24 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Bolsillos de Ahorro</h2>
-                <button type="button" class="btn-close-modal">Cerrar</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <button type="button" id="btn-pockets-faq" class="mini-action-btn" style="width:30px; height:30px; padding:0; border-radius:50%; font-weight:800;" title="Preguntas frecuentes">?</button>
+                    <button type="button" class="btn-close-modal">Cerrar</button>
+                </div>
             </div>
-            <div class="dash-strip-grid">
-                <div class="dash-strip-item"><small>Total Ahorrado</small><strong id="pockets-modal-total" class="positive">$ 0,00</strong></div>
-                <div class="dash-strip-item"><small style="font-size:9px; letter-spacing:0.2px;">Rendimientos</small><strong id="pockets-modal-yields" class="positive">+$ 0,00</strong></div>
-                <div class="dash-strip-item"><small>Cuota Sugerida</small><strong id="pockets-modal-quota">$ 0/m</strong></div>
+            <div class="dash-strip-grid" style="gap:6px;">
+                <div class="dash-strip-item" style="min-width:0; padding:6px 4px;">
+                    <small style="font-size:8.5px; white-space:nowrap;">Total Ahorrado</small>
+                    <strong id="pockets-modal-total" class="positive" style="font-size:clamp(11px, 3.1vw, 13.5px); white-space:nowrap; overflow:visible; text-overflow:clip;">$ 0,00</strong>
+                </div>
+                <div class="dash-strip-item" id="btn-open-earnings-dashboard" style="min-width:0; cursor:pointer; background:color-mix(in srgb, var(--positive) 10%, transparent); border-radius:10px; padding:6px 4px;" title="Toca para ver cómo van tus ganancias">
+                    <small style="font-size:8.5px; letter-spacing:0.1px; color:var(--positive); white-space:nowrap;">Rendimientos ›</small>
+                    <strong id="pockets-modal-yields" class="positive" style="font-size:clamp(11px, 3.1vw, 13.5px); white-space:nowrap; overflow:visible; text-overflow:clip;">+$ 0,00</strong>
+                </div>
+                <div class="dash-strip-item" style="min-width:0; padding:6px 4px;">
+                    <small style="font-size:8.5px; white-space:nowrap;">Cuota Sugerida</small>
+                    <strong id="pockets-modal-quota" style="font-size:clamp(11px, 3.1vw, 13.5px); white-space:nowrap; overflow:visible; text-overflow:clip;">$ 0/m</strong>
+                </div>
             </div>
             <details class="add-subcat-details" style="margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 16px;">
                 <summary style="font-size: 13.5px; font-weight: 800; padding: 12px 16px; background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--accent) 25%, transparent);">
@@ -1489,6 +1620,10 @@
                                 <small id="new-pocket-quota-hint" style="font-size:10.5px; color:var(--accent); font-weight:700;"></small>
                             </div>
                             <input type="text" id="new-pocket-quota" class="money-input" inputmode="decimal" placeholder="Se calcula automático (editable)">
+                        </div>
+                        <div class="form-group">
+                            <label>Tasa de Rentabilidad (% E.A. - Opcional)</label>
+                            <input type="text" id="new-pocket-rate" class="money-input" inputmode="decimal" placeholder="Ej. 8,00 o 10,25">
                         </div>
                         <div class="switch-row" style="margin-bottom:8px;">
                             <div>
@@ -1553,6 +1688,10 @@
                     </div>
                     <input type="text" id="edit-pocket-quota" class="money-input" inputmode="decimal" placeholder="Auto según fechas">
                     <small id="edit-pocket-quota-hint" style="display:block; font-size:10.5px; color:var(--text-muted); margin-top:4px;"></small>
+                    <div class="form-group">
+                    <label>Tasa de Rentabilidad (% E.A. - Opcional)</label>
+                    <input type="text" id="edit-pocket-rate" class="money-input" inputmode="decimal" placeholder="Ej. 8,00 o 10,25">
+                </div>
                 </div>
                 <div class="switch-row" style="margin-bottom:8px;">
                     <div>
@@ -1572,15 +1711,46 @@
             </form>
         </div>
     </div>
+    <!-- MODAL HISTORIAL DE AHORRO POR BOLSILLO -->
+    <div id="pocket-history-modal" class="modal hidden" style="z-index: 1380;">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:85dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:16px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
+                <div style="min-width:0; flex:1;">
+                    <h3 id="pocket-history-title" style="margin:0; font-size:17px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Historial de Ahorro</h3>
+                    <small id="pocket-history-subtitle" style="display:block; font-size:11px; color:var(--text-muted); margin-top:2px;">Detalle completo de movimientos</small>
+                </div>
+                <button type="button" class="btn-close-modal" style="flex-shrink:0;">Cerrar</button>
+            </div>
+
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 20px 18px; -webkit-overflow-scrolling:touch;">
+                <div class="glass-sub-box" style="padding:12px 14px; margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border-color);">
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:600;">Saldo actual</span>
+                        <strong id="pocket-history-balance" class="positive" style="font-size:16px; font-weight:800;">$ 0,00</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:11.5px;">
+                        <span style="color:var(--text-muted);">Aportes netos: <strong id="pocket-history-principal" style="color:var(--text-main);">$ 0,00</strong></span>
+                        <span style="color:var(--text-muted);">Rendimientos: <strong id="pocket-history-yields" class="positive">+$ 0,00</strong></span>
+                    </div>
+                </div>
+
+                <div id="pocket-history-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL CUENTAS Y DETALLE UNIVERSAL (CUENTAS, TARJETAS, PRÉSTAMOS Y BNPL) -->
-    <div id="accounts-modal" class="modal hidden">
-        <div class="modal-content">
-            <div id="accounts-list-view">
-                <div class="modal-header">
-                    <h2>Cuentas y Liquidez</h2>
-                    <button type="button" class="btn-close-modal">Cerrar</button>
-                </div>
+<div id="accounts-modal" class="modal hidden">
+    <div class="modal-content" style="max-height:85vh; padding:0; display:flex; flex-direction:column; overflow:hidden;">
+        
+        <!-- VISTA DE LISTA DE CUENTAS -->
+        <div id="accounts-list-view" style="display:flex; flex-direction:column; height:100%; width:100%; overflow:hidden;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin:0; border-bottom:1px solid var(--border-color); flex-shrink:0;">
+                <h2 style="margin:0;">Cuentas y Liquidez</h2>
+                <button type="button" class="btn-close-modal">Cerrar</button>
+            </div>
+            
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="color:var(--text-muted); font-size:13px;">Total liquidez disponible</span>
                     <strong id="accounts-total-liquidity" class="positive" style="font-size:18px;">$ 0,00</strong>
@@ -1589,6 +1759,7 @@
                     <div class="combined-bar" id="combined-bar"></div>
                     <div class="combined-legend" id="combined-legend"></div>
                 </div>
+                
                 <details class="add-subcat-details" style="margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 16px;">
                     <summary style="font-size: 13.5px; font-weight: 800; padding: 12px 16px; background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--accent) 25%, transparent);">
                         <span style="display:flex; align-items:center; gap:6px;">
@@ -1607,6 +1778,33 @@
                                     <input type="text" id="new-account-initial" class="money-input" inputmode="decimal" value="0,00">
                                 </div>
                             </div>
+
+                            <div class="form-group">
+                                <label>Tipo de Cuenta (Regla 4x1000)</label>
+                                <select id="new-account-subtype">
+                                    <option value="savings">Cuenta de Ahorros (Exenta si se marca: 350 UVT)</option>
+                                    <option value="wallet">Billetera / Bajo Monto (Exenta hasta 65 UVT/mes)</option>
+                                    <option value="checking">Cuenta Corriente (Grava 4x1000 desde $1)</option>
+                                    <option value="cash">Efectivo / Caja menor (Sin 4x1000)</option>
+                                </select>
+                            </div>
+
+                            <div id="new-account-gmf-box" style="margin-bottom:12px;">
+                                <div class="switch-row" style="margin-bottom:8px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <span style="color:var(--accent); display:flex; flex-shrink:0;">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                                        </span>
+                                        <div>
+                                            <strong>Marcar como exenta de 4x1000</strong>
+                                            <small id="new-account-gmf-sub">Tope exento hasta 350 UVT/mes</small>
+                                        </div>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="new-account-gmf-exempt"><span class="slider"></span></label>
+                                </div>
+                                <div id="new-account-gmf-hint" style="margin-bottom:8px;"></div>
+                            </div>
+
                             <div class="switch-row" style="margin-bottom:8px;">
                                 <div>
                                     <strong>Incluir en Liquidez Total</strong>
@@ -1642,17 +1840,20 @@
 
                 <div id="accounts-summary-list"></div>
             </div>
+        </div>
 
-            <!-- DETALLE COMPLETO -->
-            <div id="account-detail-view" class="hidden">
-                <div class="modal-header" style="margin-bottom:10px;">
-                    <button type="button" id="back-to-accounts-btn" class="mini-action-btn">‹ Volver</button>
-                    <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-                        <button type="button" id="toggle-default-account-btn" class="mini-action-btn">☆ Predet.</button>
-                        <button type="button" id="edit-card-settings-btn" class="mini-action-btn hidden">Cupo/Tasa</button>
-                        <button type="button" id="edit-debt-settings-btn" class="mini-action-btn hidden">Crédito</button>
-                    </div>
+        <!-- DETALLE COMPLETO -->
+        <div id="account-detail-view" class="hidden" style="display:flex; flex-direction:column; height:100%; width:100%; overflow:hidden;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin:0; border-bottom:1px solid var(--border-color); flex-shrink:0;">
+                <button type="button" id="back-to-accounts-btn" class="mini-action-btn">‹ Volver</button>
+                <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                    <button type="button" id="toggle-default-account-btn" class="mini-action-btn">☆ Predet.</button>
+                    <button type="button" id="edit-card-settings-btn" class="mini-action-btn hidden">Cupo/Tasa</button>
+                    <button type="button" id="edit-debt-settings-btn" class="mini-action-btn hidden">Crédito</button>
                 </div>
+            </div>
+            
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
                 <h3 id="detail-account-name" style="font-size:20px; font-weight:800; letter-spacing:-0.4px; line-height:1.25; margin:0 0 14px 0; color:var(--text-main);">Detalle</h3>
                 <div id="default-account-lock-notice" class="glass-sub-box hidden" style="border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08); font-size: 11.5px; line-height: 1.4; margin-bottom: 14px;"></div>
 
@@ -1712,10 +1913,32 @@
                     </div>
 
                     <form id="edit-card-form" class="data-form hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
+                        <div class="form-group"><label>Cupo Total ($)</label><input type="text" id="edit-card-limit" class="money-input" inputmode="decimal" required></div>
                         <div class="form-row">
-                            <div class="form-group"><label>Cupo Total ($)</label><input type="text" id="edit-card-limit" class="money-input" inputmode="decimal" required></div>
-                            <div class="form-group"><label>Cuota Deuda Inicial (Opc.)</label><input type="text" id="edit-card-initial-quota" class="money-input" inputmode="decimal" placeholder="Auto (12m)"></div>
+                            <div class="form-group">
+                                <label>Plazo Deuda Inicial (meses)</label>
+                                <input type="number" id="edit-card-initial-term" min="1" max="120" placeholder="12">
+                            </div>
+                            <div class="form-group">
+                                <label>Cuota Fija Inicial (Opc.)</label>
+                                <input type="text" id="edit-card-initial-quota" class="money-input" inputmode="decimal" placeholder="Auto según plazo">
+                            </div>
                         </div>
+
+                        <details class="changelog-accordion" style="width:100%; display:block; margin-bottom:10px; background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.28); padding:9px 11px; box-shadow:none;">
+                            <summary style="font-size:11.5px; font-weight:800; color:#d97706;">
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    ¿Cómo configurar plazo y cuota inicial?
+                                </span>
+                                <span>▾</span>
+                            </summary>
+                            <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(245, 158, 11, 0.3); font-size:11px; color:var(--text-muted); line-height:1.45; display:flex; flex-direction:column; gap:6px;">
+                                <span>• <b>Plazo Deuda Inicial:</b> Aplica al saldo que ya traía la tarjeta antes de usar la app. En cupos rotativos los bancos suelen diferir a <b>24 o 36 meses</b> (en vez de 12).</span>
+                                <span>• <b>Cuota Fija Inicial (Opc.):</b> Si tienes tu extracto a la mano, escribe aquí la cuota base exacta (sin sumar manejo ni seguros) para que el pago mínimo coincida al centavo.</span>
+                                <span>• <b>Ejemplo:</b> Si tu extracto cobra <b>$ 529.646</b> de mínimo y ya configuraste <b>$ 9.451</b> de cuota de manejo, pon <b>$ 520.195</b> en Cuota Fija Inicial (o cambia el plazo a 24–36 meses).</span>
+                            </div>
+                        </details>
                         <div class="form-row">
                             <div class="form-group"><label>Día de Corte</label><input type="number" id="edit-card-cutoff" min="1" max="31" required></div>
                             <div class="form-group"><label>Día de Pago</label><input type="number" id="edit-card-payment" min="1" max="31" required></div>
@@ -1801,6 +2024,9 @@
 
                 <!-- FICHA PRÉSTAMOS Y CUPOS ROTATIVOS (BNPL) -->
                 <div id="debt-extra-info" class="debt-specs-box hidden">
+                    <!-- Banner de Cupo Límite (Movido aquí arriba) -->
+                    <div id="revolving-limit-banner" class="glass-sub-box hidden" style="background:var(--card-bg); border-color:var(--accent-border); margin-bottom:12px;"></div>
+
                     <div id="revolving-purchases-section" class="hidden" style="margin-bottom:12px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                             <span id="debt-purchases-section-title" style="font-size:12px; font-weight:700;">Compras Pendientes (Cupo Rotativo)</span>
@@ -1849,6 +2075,23 @@
                                 <label>Valor Cuota (Opcional - Se calcula auto)</label>
                                 <input type="text" id="rev-purch-monthly-payment" class="money-input" inputmode="decimal">
                             </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fianza / Aval (Opcional)</label>
+                                    <input type="text" id="rev-purch-fianza" class="money-input" inputmode="decimal" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo Fianza</label>
+                                    <select id="rev-purch-fianza-type">
+                                        <option value="pct">% Porcentaje</option>
+                                        <option value="cop">$ Valor Fijo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <label style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); font-weight:600; margin:-4px 0 10px 0; cursor:pointer;">
+                                <input type="checkbox" id="rev-purch-fianza-iva" style="width:15px; height:15px; accent-color:var(--accent);">
+                                <span>Sumar IVA (19%) sobre fianza / aval</span>
+                            </label>
                             <div class="switch-row">
                                 <div>
                                     <strong>Registrar como gasto nuevo del mes</strong>
@@ -1902,11 +2145,26 @@
                         <form id="pay-installment-form" class="data-form">
                             <div class="form-group"><label>Cuenta desde donde pagas</label><select id="pay-debt-source-acc" required></select></div>
                             <div class="form-row">
-                                <div class="form-group"><label>Abono Capital ($)</label><input type="text" id="pay-debt-principal" class="money-input" inputmode="decimal" required></div>
+                                <div class="form-group"><label>Abono a Capital ($)</label><input type="text" id="pay-debt-principal" class="money-input" inputmode="decimal" required></div>
                                 <div class="form-group"><label>Interés del Mes ($)</label><input type="text" id="pay-debt-interest" class="money-input" inputmode="decimal" required></div>
                             </div>
+                            
+                            <div class="switch-row" style="margin-bottom:8px;">
+                                <div><strong>Incluir seguros / otros cobros</strong><small>Registrará un gasto extra sin afectar tu capital</small></div>
+                                <label class="switch"><input type="checkbox" id="pay-debt-has-extra"><span class="slider"></span></label>
+                            </div>
+                            <div id="pay-debt-extra-group" class="form-row hidden" style="margin-bottom:8px; padding:10px; background:rgba(0,0,0,0.02); border-radius:12px;">
+                                <div class="form-group" style="margin-bottom:0;"><label>Valor Extra ($)</label><input type="text" id="pay-debt-extra-amount" class="money-input" inputmode="decimal"></div>
+                                <div class="form-group" style="margin-bottom:0;"><label>Motivo</label><input type="text" id="pay-debt-extra-desc" placeholder="Ej. Seguro Vida, Mora"></div>
+                            </div>
+                            
                             <div class="form-group"><label>Fecha de pago</label><input type="date" id="pay-debt-date" required></div>
-                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:13px;">Confirmar Pago y Descontar Cuota</button>
+                            
+                            <div class="dash-strip-grid" style="margin-bottom:12px; background:var(--card-bg);">
+                                <div class="dash-strip-item" style="text-align:left; border:none; padding-left:4px;"><small>Total a debitar de tu cuenta</small><strong id="pay-debt-total-preview" class="negative" style="font-size:16px;">$ 0,00</strong></div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="padding:10px; font-size:13px;">Confirmar Pago</button>
                         </form>
                     </div>
 
@@ -1943,6 +2201,16 @@
 
                     <form id="edit-debt-form" class="data-form hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
                         <div class="form-group"><label>Tipo de Deuda</label><select id="edit-debt-type"><option value="fixed">Préstamo Fijo</option><option value="revolving">Cupo Rotativo</option><option value="education">Matrícula / Educativo</option></select></div>
+                        <div id="edit-debt-revolving-limit-section" class="hidden">
+                            <div class="switch-row" style="margin-bottom:8px;">
+                                <div><strong>¿Cuenta con cupo límite aprobado?</strong><small>Muestra cupo usado y disponible</small></div>
+                                <label class="switch"><input type="checkbox" id="edit-debt-has-limit"><span class="slider"></span></label>
+                            </div>
+                            <div class="form-group hidden" id="edit-debt-limit-amount-group">
+                                <label>Cupo Total Aprobado ($)</label>
+                                <input type="text" id="edit-debt-credit-limit" class="money-input" inputmode="decimal" placeholder="Ej. 6.000.000">
+                            </div>
+                        </div>
                         <div class="form-group"><label>Saldo Inicial ($)</label><input type="text" id="edit-debt-original" class="money-input" inputmode="decimal" required></div>
                         <div class="form-row">
                             <div class="form-group"><label>Cuotas Totales</label><input type="number" id="edit-debt-total-quotes" min="1" required></div>
@@ -1975,6 +2243,31 @@
                             <button type="submit" class="btn btn-primary" style="padding:10px 14px; flex-shrink:0;">Ajustar</button>
                         </div>
                     </form>
+                    <div id="edit-account-gmf-section" class="hidden" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label>Tipo de Cuenta (4x1000 / GMF)</label>
+                            <select id="edit-account-subtype">
+                                <option value="savings">Cuenta de Ahorros</option>
+                                <option value="wallet">Billetera / Depósito Bajo Monto (65 UVT)</option>
+                                <option value="checking">Cuenta Corriente (Grava 4x1000)</option>
+                                <option value="cash">Efectivo / Caja menor (Sin 4x1000)</option>
+                            </select>
+                        </div>
+                        <div id="edit-account-gmf-toggle-row" class="switch-row" style="margin-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="color:var(--accent); display:flex; flex-shrink:0;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                                </span>
+                                <div>
+                                    <strong>Cuenta exenta de 4x1000 (350 UVT)</strong>
+                                    <small id="edit-account-gmf-status-sub">Tope legal de hasta 350 UVT/mes</small>
+                                </div>
+                            </div>
+                            <label class="switch"><input type="checkbox" id="edit-account-gmf-exempt"><span class="slider"></span></label>
+                        </div>
+                        <div id="edit-account-gmf-usage-hint" style="margin-bottom:14px;"></div>
+                    </div>
+
                     <div class="switch-row" style="margin-top:10px; margin-bottom:8px;">
                         <div>
                             <strong>Mostrar en Inicio aunque esté en $0</strong>
@@ -2001,18 +2294,21 @@
                 </div>
 
                 <h4 style="margin:12px 0 8px 0; font-size:13.5px; color:var(--text-muted);">Historial de movimientos</h4>
-                <ul id="detail-account-history" class="history-list" style="max-height:220px; overflow-y:auto;"></ul>
+                    <!-- Se elimina max-height y overflow-y:auto para que crezca natural y se haga scroll general -->
+                    <ul id="detail-account-history" class="history-list"></ul>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- MODAL TARJETAS DE CRÉDITO -->
     <div id="cards-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:88dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
                 <h2>Tarjetas de Crédito</h2>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
             <div class="tc-summary-banner">
                 <div><small style="color:var(--text-muted); font-size:11px; display:block;">Deuda utilizada</small><strong id="cards-total-debt" class="negative" style="font-size:17px;">$ 0,00</strong></div>
                 <div style="text-align:right;"><small style="color:var(--text-muted); font-size:11px; display:block;">Cupo disponible</small><strong id="cards-total-available" class="positive" style="font-size:17px;">$ 0,00</strong></div>
@@ -2029,6 +2325,60 @@
                 </summary>
                 <div class="glass-sub-box" style="margin-top:10px; padding:16px;">
                     <form id="new-card-form" class="data-form">
+                        <details class="changelog-accordion" style="width:100%; display:block; box-sizing:border-box; margin-bottom:14px; background:rgba(245, 158, 11, 0.07); border:1px solid rgba(245, 158, 11, 0.28); border-radius:14px; padding:11px 12px; box-shadow:none;">
+                            <summary style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; color:#d97706; cursor:pointer;">
+                                <span style="display:inline-flex; align-items:center; gap:7px;">
+                                    <span style="width:22px; height:22px; border-radius:7px; background:rgba(245, 158, 11, 0.16); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    </span>
+                                    <span>¿Cómo diligenciar y ejemplos?</span>
+                                </span>
+                                <span style="font-size:11px; opacity:0.85;">▾</span>
+                            </summary>
+
+                            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245, 158, 11, 0.3); display:flex; flex-direction:column; gap:8px;">
+                                <!-- Tarjeta de pasos -->
+                                <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:11px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-muted); line-height:1.4;">
+                                    <div style="display:flex; align-items:flex-start; gap:8px;">
+                                        <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">1</span>
+                                        <div><strong style="color:var(--text-main);">Cupo y Deuda Actual:</strong> Ingresa el cupo total y, si ya traes saldo pendiente, digítalo en <i>Deuda Actual</i>; la app calcula tu disponible automáticamente.</div>
+                                    </div>
+                                    <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                        <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">2</span>
+                                        <div><strong style="color:var(--text-main);">Cuota Deuda Inicial:</strong> Aparece al tener saldo previo. Escribe la cuota base del extracto (sin manejo ni seguros) o déjala vacía para estimarla (luego puedes cambiar el plazo a 24 o 36m en <i>Cupo/Tasa</i>).</div>
+                                    </div>
+                                    <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                        <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">3</span>
+                                        <div><strong style="color:var(--text-main);">Corte, Pago y 0% Interés:</strong> Definen tus días de gracia y cuántas cuotas van sin interés en comercios aliados.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Tarjeta de ejemplo estructurado -->
+                                <div style="background:var(--card-inner-bg); border:1px solid color-mix(in srgb, var(--accent) 28%, var(--border-color)); border-radius:11px; padding:10px 11px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <strong style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:5px;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                            <span>Ejemplo: Cupo o Tarjeta con saldo</span>
+                                        </strong>
+                                    </div>
+
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; font-size:11px; color:var(--text-muted); margin-bottom:9px;">
+                                        <div style="display:flex; justify-content:space-between;"><span>Cupo:</span><b style="color:var(--text-main);">$ 9.050.000</b></div>
+                                        <div style="display:flex; justify-content:space-between;"><span>Deuda:</span><b class="negative">$ 6.974.470</b></div>
+                                        <div style="display:flex; justify-content:space-between;"><span>Corte / Pago:</span><b style="color:var(--text-main);">16 / 1</b></div>
+                                        <div style="display:flex; justify-content:space-between;"><span>Tasa:</span><b style="color:var(--text-main);">26,05% E.A.</b></div>
+                                        <div style="display:flex; justify-content:space-between;"><span>Cuota base:</span><b style="color:var(--text-main);">$ 520.195</b></div>
+                                        <div style="display:flex; justify-content:space-between;"><span>Manejo:</span><b style="color:var(--text-main);">$ 9.451</b></div>
+                                    </div>
+
+                                    <div style="background:rgba(16, 185, 129, 0.1); border:1px dashed rgba(16, 185, 129, 0.35); border-radius:8px; padding:7px 10px; display:flex; justify-content:space-between; align-items:center; font-size:11.5px;">
+                                        <span style="color:var(--text-main); font-weight:600;">Mínimo proyectado:</span>
+                                        <strong class="positive" style="font-size:12.5px;">$ 529.646 / mes</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
                         <div class="form-group"><input type="text" id="new-card-name" placeholder="Nombre (Ej. Visa Nu)" required></div>
                         <div class="form-row">
                             <div class="form-group"><label>Cupo Total ($)</label><input type="text" id="new-card-limit" class="money-input" inputmode="decimal" placeholder="Ej. 5.000.000" required></div>
@@ -2136,22 +2486,26 @@
             </details>
 
             <div id="cards-breakdown-list"></div>
+            </div>
         </div>
     </div>
 
     <!-- MODAL PRÉSTAMOS Y CUPOS ROTATIVOS -->
     <div id="debts-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:88dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
                 <h2>Préstamos y Deudas</h2>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
 
             <!-- VISTA: MIS DEUDAS (POR PAGAR) -->
-            <div id="debts-payable-view">
+            <div id="debts-payable-view" style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
                 <div class="tc-summary-banner" style="margin-bottom:12px;">
                     <div><small style="color:var(--text-muted); font-size:11px; display:block;">Deuda Vigente</small><strong id="debts-total-amount" class="negative" style="font-size:17px;">$ 0,00</strong></div>
-                    <button type="button" id="open-debt-planner-btn" class="btn btn-primary" style="width:auto; padding:8px 12px; font-size:12px;">🚀 Plan Avalancha</button>
+                    <button type="button" id="open-debt-planner-btn" class="btn btn-primary" style="width:auto; padding:8px 12px; font-size:12px; display:inline-flex; align-items:center; gap:5px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+    <span>Plan Avalancha</span>
+</button>
                 </div>
                 <div class="combined-bar-container">
                     <div class="combined-bar" id="debts-combined-bar"></div>
@@ -2165,6 +2519,72 @@
                     </summary>
                     <div class="glass-sub-box" style="margin-top:10px; padding:16px;">
                         <form id="new-debt-form" class="data-form">
+                            <form id="new-debt-form" class="data-form">
+                            <details class="changelog-accordion" style="width:100%; display:block; box-sizing:border-box; margin-bottom:14px; background:rgba(245, 158, 11, 0.07); border:1px solid rgba(245, 158, 11, 0.28); border-radius:14px; padding:11px 12px; box-shadow:none;">
+                                <summary style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; color:#d97706; cursor:pointer;">
+                                    <span style="display:inline-flex; align-items:center; gap:7px;">
+                                        <span style="width:22px; height:22px; border-radius:7px; background:rgba(245, 158, 11, 0.16); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        </span>
+                                        <span>¿Cómo diligenciar y ejemplos?</span>
+                                    </span>
+                                    <span style="font-size:11px; opacity:0.85;">▾</span>
+                                </summary>
+
+                                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245, 158, 11, 0.3); display:flex; flex-direction:column; gap:8px;">
+                                    <!-- Tarjeta de pasos -->
+                                    <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:11px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-muted); line-height:1.4;">
+                                        <div style="display:flex; align-items:flex-start; gap:8px;">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">1</span>
+                                            <div><strong style="color:var(--text-main);">Monto Original vs. Actual:</strong> Escribe el valor puro del producto o desembolso (sin sumar la fianza). Si ya pagaste cuotas, pon el saldo actual a la derecha.</div>
+                                        </div>
+                                        <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">2</span>
+                                            <div><strong style="color:var(--text-main);">Fianza / Aval + IVA (19%):</strong> Si te cobran comisión FGA o servicio de fianza (ej. Addi, Sistecrédito), ingrésala en <b>%</b> o <b>$</b> y marca IVA si aplica; la app la suma al capital automáticamente.</div>
+                                        </div>
+                                        <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">3</span>
+                                            <div><strong style="color:var(--text-main);">Deuda nueva vs. anterior:</strong> Activa <i>"Registrar como gasto nuevo"</i> solo si la compra o desembolso ocurrió este mes.</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tarjeta de ejemplo estructurado -->
+                                    <div style="background:var(--card-inner-bg); border:1px solid color-mix(in srgb, var(--accent) 28%, var(--border-color)); border-radius:11px; padding:10px 11px;">
+                                        <div style="margin-bottom:8px;">
+                                            <strong style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px;">
+                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                                                <span>Ejemplo: Compra con Fianza (Addi / Sistecrédito)</span>
+                                            </strong>
+                                        </div>
+
+                                        <div style="display:flex; flex-direction:column; gap:5px; font-size:11px; color:var(--text-muted); margin-bottom:9px;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                <span>Monto puro:</span>
+                                                <b style="color:var(--text-main); white-space:nowrap;">$ 594.700</b>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                <span>Plazo y tasa:</span>
+                                                <b style="color:var(--text-main); white-space:nowrap;">12 meses • 52% E.A.</b>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                <span>Fianza (14,01% + IVA):</span>
+                                                <b class="negative" style="white-space:nowrap;">+$ 99.148</b>
+                                            </div>
+                                        </div>
+
+                                        <div style="background:rgba(16, 185, 129, 0.1); border:1px dashed rgba(16, 185, 129, 0.35); border-radius:8px; padding:7px 10px; display:flex; flex-direction:column; gap:4px; font-size:11.5px;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                                <span style="color:var(--text-main); font-weight:600;">Capital financiado:</span>
+                                                <strong class="positive" style="font-size:12.5px; white-space:nowrap;">$ 693.848</strong>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:10.5px; color:var(--text-muted);">
+                                                <span>Cuota mensual proyectada:</span>
+                                                <b style="color:var(--text-main); white-space:nowrap;">$ 72.017 / mes</b>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
                             <div class="form-group">
                                 <label>Modalidad</label>
                                 <select id="new-debt-type">
@@ -2184,10 +2604,37 @@
                                     <input type="number" id="new-debt-payment-day" min="1" max="31" placeholder="Ej. 5">
                                 </div>
                             </div>
+                            <div id="new-debt-revolving-limit-section" class="hidden">
+                                <div class="switch-row" style="margin-bottom:8px;">
+                                    <div><strong>¿Cuenta con cupo límite aprobado?</strong><small>Calcula cupo usado y disponible automáticamente</small></div>
+                                    <label class="switch"><input type="checkbox" id="new-debt-has-limit"><span class="slider"></span></label>
+                                </div>
+                                <div class="form-group hidden" id="new-debt-limit-amount-group">
+                                    <label>Cupo Total Aprobado ($)</label>
+                                    <input type="text" id="new-debt-credit-limit" class="money-input" inputmode="decimal" placeholder="Ej. 6.000.000">
+                                </div>
+                            </div>
                             <div class="form-group hidden" id="new-debt-revolving-commerce-group">
                                 <label>Comercio / Compra Inicial (Opcional)</label>
                                 <input type="text" id="new-debt-commerce" placeholder="Ej. Dafiti, Celular, Mercado">
                             </div>
+                            <div class="form-row" id="new-debt-fianza-group">
+                                <div class="form-group">
+                                    <label>Fianza / Aval (Opc.)</label>
+                                    <input type="text" id="new-debt-fianza" class="money-input" inputmode="decimal" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipo Fianza / Aval</label>
+                                    <select id="new-debt-fianza-type">
+                                        <option value="pct">% Porcentaje</option>
+                                        <option value="cop">$ Valor Fijo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <label style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); font-weight:600; margin:-4px 0 10px 0; cursor:pointer;">
+                                <input type="checkbox" id="new-debt-fianza-iva" style="width:15px; height:15px; accent-color:var(--accent);">
+                                <span>Sumar IVA (19%) sobre fianza / aval</span>
+                            </label>
                             <div class="form-row">
                                 <div class="form-group"><label>Monto Original ($)</label><input type="text" id="new-debt-original" class="money-input" inputmode="decimal" required></div>
                                 <div class="form-group"><label>Deuda Actual ($)</label><input type="text" id="new-debt-current" class="money-input" inputmode="decimal" placeholder="Igual al original si es nuevo"></div>
@@ -2227,54 +2674,95 @@
         </div>
     </div>
 
-    <!-- MODAL DEUDAS A FAVOR (POR COBRAR) -->
+    <!-- MODAL DEUDAS A FAVOR (CUENTAS POR COBRAR) -->
     <div id="receivables-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:88dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:18px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
                 <h2>A Favor (Por Cobrar)</h2>
                 <button type="button" class="btn-close-modal">Cerrar</button>
             </div>
 
-            <div id="debts-receivable-view">
-                <div class="tc-summary-banner" style="margin-bottom:12px; background:rgba(16, 185, 129, 0.1); border-color:rgba(16, 185, 129, 0.3);">
+            <div id="debts-receivable-view" style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
+                <div class="tc-summary-banner" style="margin-bottom:12px; background:rgba(16, 185, 129, 0.08); border-color:rgba(16, 185, 129, 0.25);">
                     <div>
                         <small style="color:var(--text-muted); font-size:11px; display:block;">Dinero por cobrar</small>
-                        <strong id="receivables-total-amount" class="positive" style="font-size:17px;">$ 0,00</strong>
+                        <strong id="receivables-total-amount" class="positive" style="font-size:18px;">$ 0,00</strong>
                     </div>
+                    <button type="button" id="btn-print-cxc-report" class="mini-action-btn" style="color:var(--positive); border-color:rgba(16, 185, 129, 0.35);">Soporte PDF</button>
                 </div>
-                <details class="add-subcat-details" style="margin-top: 0; padding-top: 0; border-top: none; margin-bottom: 16px;">
-                    <summary style="font-size: 13.5px; font-weight: 800; padding: 12px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 14px; border: 1px dashed rgba(16, 185, 129, 0.25);">
-                        <span style="display:flex; align-items:center; gap:6px; color:var(--positive);">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Registrar Deuda a Favor
+
+                <details class="add-subcat-details" style="margin-top:0; padding-top:0; border-top:none; margin-bottom:16px;">
+                    <summary style="font-size:13.5px; font-weight:800; padding:12px 16px; background:rgba(16, 185, 129, 0.1); border-radius:14px; border:1px dashed rgba(16, 185, 129, 0.35); color:var(--positive);">
+                        <span style="display:flex; align-items:center; gap:6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Registrar Deuda a Favor
                         </span>
                     </summary>
+
                     <div class="glass-sub-box" style="margin-top:10px; padding:16px;">
                         <form id="new-receivable-form" class="data-form">
+                            <details class="changelog-accordion" style="width:100%; display:block; box-sizing:border-box; margin-bottom:14px; background:rgba(245, 158, 11, 0.07); border:1px solid rgba(245, 158, 11, 0.28); border-radius:14px; padding:11px 12px; box-shadow:none;">
+                                <summary style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; color:#d97706; cursor:pointer;">
+                                    <span style="display:inline-flex; align-items:center; gap:7px;">
+                                        <span style="width:22px; height:22px; border-radius:7px; background:rgba(245, 158, 11, 0.16); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        </span>
+                                        <span>¿Cómo funciona y ejemplos?</span>
+                                    </span>
+                                    <span style="font-size:11px; opacity:0.85;">▾</span>
+                                </summary>
+
+                                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(245, 158, 11, 0.3); display:flex; flex-direction:column; gap:8px;">
+                                    <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:11px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-muted); line-height:1.4;">
+                                        <div style="display:flex; align-items:flex-start; gap:8px;">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">1</span>
+                                            <div><strong style="color:var(--text-main);">Préstamo / Dinero prestado:</strong> Descuenta el dinero de tu cuenta bancaria hoy y crea un saldo pendiente a tu favor (no altera tus gastos ni ingresos del mes).</div>
+                                        </div>
+                                        <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">2</span>
+                                            <div><strong style="color:var(--text-main);">Venta / Servicio por cobrar:</strong> Registra un ingreso real en la categoría elegida, pero deja el dinero pendiente en <i>Por Cobrar</i> hasta que te lo paguen.</div>
+                                        </div>
+                                        <div style="display:flex; align-items:flex-start; gap:8px; padding-top:8px; border-top:1px dashed var(--border-color);">
+                                            <span style="width:18px; height:18px; border-radius:50%; background:rgba(245, 158, 11, 0.16); color:#d97706; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">3</span>
+                                            <div><strong style="color:var(--text-main);">¿Cómo registrar cuando te pagan?</strong> Crea una <b>Transferencia</b> desde <i>"Me debe: Persona"</i> hacia tu cuenta bancaria o efectivo.</div>
+                                        </div>
+                                    </div>
+
+                                    <div style="background:var(--card-inner-bg); border:1px solid rgba(16, 185, 129, 0.3); border-radius:11px; padding:9px 11px; font-size:11px; color:var(--text-muted); line-height:1.4;">
+                                        <strong style="color:var(--text-main); display:block; margin-bottom:3px;">Ejemplo rápido:</strong>
+                                        <span>Le prestas <b>$ 200.000</b> a Esteban desde Banco Falabella → baja tu banco en $ 200.000 y sube <i>Me debe: Esteban</i>. Cuando te devuelva $ 100.000, haces una transferencia de Esteban a tu banco por $ 100.000.</span>
+                                    </div>
+                                </div>
+                            </details>
+
                             <div class="form-group">
                                 <label>¿Quién te debe?</label>
                                 <input type="text" id="new-recv-name" placeholder="Ej. Carlos, María" required>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Monto ($)</label>
-                                    <input type="text" id="new-recv-amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Motivo de la deuda</label>
-                                    <select id="new-recv-type" required>
-                                        <option value="loan">Préstamo (Salió dinero)</option>
-                                        <option value="sale">Venta / Servicio prestado</option>
-                                    </select>
-                                </div>
+
+                            <div class="form-group">
+                                <label>Monto ($)</label>
+                                <input type="text" id="new-recv-amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
                             </div>
+
+                            <div class="form-group">
+                                <label>Motivo de la deuda</label>
+                                <select id="new-recv-type">
+                                    <option value="loan">Préstamo (Salida de dinero)</option>
+                                    <option value="sale">Venta / Servicio por cobrar (Ingreso)</option>
+                                </select>
+                            </div>
+
                             <div class="form-group" id="group-new-recv-account">
                                 <label>¿De dónde salió el dinero?</label>
                                 <select id="new-recv-account"></select>
                             </div>
+
                             <div class="form-group hidden" id="group-new-recv-category">
-                                <label>Categoría del Ingreso</label>
+                                <label>Categoría del ingreso</label>
                                 <select id="new-recv-category"></select>
                             </div>
+
                             <button type="submit" class="btn btn-primary" style="width:100%; background:var(--positive); border-color:var(--positive);">+ Crear Deuda a Favor</button>
                         </form>
                     </div>
@@ -2343,65 +2831,86 @@
 
     <!-- MODAL DETALLE DE ACTIVO INDIVIDUAL (VENTA, GASTOS Y VALORIZACIÓN) -->
     <div id="asset-detail-modal" class="modal hidden" style="z-index: 1350;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" id="back-to-assets-btn" class="mini-action-btn">‹ Volver</button>
-                <button type="button" id="edit-asset-settings-btn" class="mini-action-btn">⚙️ Editar</button>
-            </div>
-            <h3 id="detail-asset-name" style="font-size:20px; font-weight:800; margin-bottom:6px;">Activo</h3>
-            <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-                <span id="detail-asset-status" class="period-badge">Vigente</span>
-                <span id="detail-asset-category" style="font-size:12px; color:var(--text-muted); font-weight:600;"></span>
-            </div>
-            <div class="glass-sub-box">
-                <div class="specs-grid">
-                    <div><small>Valor Actual</small><strong id="detail-asset-current" class="positive">$ 0,00</strong></div>
-                    <div style="text-align:right;"><small>Valor Compra</small><strong id="detail-asset-purchase">$ 0,00</strong></div>
+        <div class="modal-content" style="display:flex; flex-direction:column; max-height:88dvh; overflow:hidden; padding:0;">
+            <div class="modal-header" style="padding:16px 18px 12px 18px; margin-bottom:0; border-bottom:1px solid var(--border-color); flex-shrink:0; background:var(--card-bg);">
+                <button type="button" id="back-to-assets-btn" class="mini-action-btn" style="display:inline-flex; align-items:center; gap:4px;">‹ Volver</button>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <button type="button" id="edit-asset-settings-btn" class="mini-action-btn" style="display:inline-flex; align-items:center; gap:5px; color:var(--accent);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span>Editar</span>
+                    </button>
+                    <button type="button" class="btn-close-modal">Cerrar</button>
                 </div>
-                <div class="specs-grid" style="margin-top:8px; margin-bottom:0; padding-top:8px; border-top:1px dashed rgba(148,163,184,0.3);">
-                    <div><small>Gastos / Mejoras</small><strong id="detail-asset-expenses" class="negative">$ 0,00</strong></div>
-                    <div style="text-align:right;"><small>Ganancia Real (ROI)</small><strong id="detail-asset-diff">$ 0,00</strong></div>
-                </div>
-            </div>
-            <div id="asset-action-buttons" class="form-row">
-                <button type="button" id="btn-asset-sell" class="btn btn-primary" style="padding:10px; font-size:13px;">💰 Vender</button>
-                <button type="button" id="btn-asset-expense" class="btn btn-secondary" style="padding:10px; font-size:13px;">📉 Registrar Gasto</button>
             </div>
 
-            <h4 style="margin:16px 0 8px 0; font-size:13.5px; color:var(--text-muted);">📈 Historial de Avalúos y Depreciación</h4>
-            <div id="asset-history-list" style="display:flex; flex-direction:column; max-height:220px; overflow-y:auto; margin-bottom:12px;"></div>
+            <div style="flex:1; overflow-y:auto; padding:14px 18px 22px 18px; -webkit-overflow-scrolling:touch;">
+                <h3 id="detail-asset-name" style="font-size:20px; font-weight:800; margin-bottom:6px;">Activo</h3>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <span id="detail-asset-status" class="period-badge">Vigente</span>
+                    <span id="detail-asset-category" style="font-size:12px; color:var(--text-muted); font-weight:600;"></span>
+                </div>
+                <div class="glass-sub-box">
+                    <div class="specs-grid">
+                        <div><small>Valor Actual</small><strong id="detail-asset-current" class="positive">$ 0,00</strong></div>
+                        <div style="text-align:right;"><small>Valor Compra</small><strong id="detail-asset-purchase">$ 0,00</strong></div>
+                    </div>
+                    <div class="specs-grid" style="margin-top:8px; margin-bottom:0; padding-top:8px; border-top:1px dashed rgba(148,163,184,0.3);">
+                        <div><small>Gastos / Mejoras</small><strong id="detail-asset-expenses" class="negative">$ 0,00</strong></div>
+                        <div style="text-align:right;"><small>Ganancia Real (ROI)</small><strong id="detail-asset-diff">$ 0,00</strong></div>
+                    </div>
+                </div>
+                <div id="asset-action-buttons" class="form-row">
+                    <button type="button" id="btn-asset-sell" class="btn btn-primary" style="padding:10px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        <span>Vender</span>
+                    </button>
+                    <button type="button" id="btn-asset-expense" class="btn btn-secondary" style="padding:10px; font-size:13px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                        <span>Registrar Gasto</span>
+                    </button>
+                </div>
 
-            <form id="edit-asset-form" class="data-form hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
-                <input type="hidden" id="edit-asset-id">
-                <h4 style="font-size:13.5px; font-weight:700; margin-bottom:12px;">Actualizar Avalúo</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Categoría</label>
-                        <select id="edit-asset-category">
-                            <option value="Inmueble">Inmueble</option>
-                            <option value="Vehículo">Vehículo</option>
-                            <option value="Inversión">Inversión</option>
-                            <option value="Tecnología">Tecnología</option>
-                            <option value="Coleccionable">Coleccionable</option>
-                            <option value="Otro">Otro</option>
-                        </select>
+                <h4 style="margin:16px 0 8px 0; font-size:13.5px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent); flex-shrink:0;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    <span>Historial de Avalúos y Depreciación</span>
+                </h4>
+                <div id="asset-history-list" style="display:flex; flex-direction:column; max-height:220px; overflow-y:auto; margin-bottom:12px;"></div>
+
+                <form id="edit-asset-form" class="data-form hidden" style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(148,163,184,0.25);">
+                    <input type="hidden" id="edit-asset-id">
+                    <h4 style="font-size:13.5px; font-weight:700; margin-bottom:12px;">Actualizar Avalúo</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <select id="edit-asset-category">
+                                <option value="Inmueble">Inmueble</option>
+                                <option value="Vehículo">Vehículo</option>
+                                <option value="Inversión">Inversión</option>
+                                <option value="Tecnología">Tecnología</option>
+                                <option value="Coleccionable">Coleccionable</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Avalúo</label>
+                            <input type="date" id="edit-asset-date" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Fecha Avalúo</label>
-                        <input type="date" id="edit-asset-date" required>
+                    <div class="form-group"><label>Nuevo Valor Comercial ($)</label><input type="text" id="edit-asset-val-current" class="money-input" inputmode="decimal" required></div>
+                    <div class="switch-row" style="margin-top:10px; margin-bottom:12px;">
+                        <div>
+                            <strong>Visible en Hoja de Balance</strong>
+                            <small>Suma siempre al patrimonio, pero oculta la línea visual</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="edit-asset-show-balance"><span class="slider"></span></label>
                     </div>
-                </div>
-                <div class="form-group"><label>Nuevo Valor Comercial ($)</label><input type="text" id="edit-asset-val-current" class="money-input" inputmode="decimal" required></div>
-                <div class="switch-row" style="margin-top:10px; margin-bottom:12px;">
-                    <div>
-                        <strong>Visible en Hoja de Balance</strong>
-                        <small>Suma siempre al patrimonio, pero oculta la línea visual</small>
-                    </div>
-                    <label class="switch"><input type="checkbox" id="edit-asset-show-balance"><span class="slider"></span></label>
-                </div>
-                <button type="submit" class="btn btn-primary" style="padding:10px; font-size:13px; width:100%;">Guardar Nuevo Avalúo</button>
-                <button type="button" id="btn-asset-delete" class="btn btn-danger" style="padding:10px; font-size:13px; margin-top:8px; width:100%;">🗑️ Eliminar Activo</button>
-            </form>
+                    <button type="submit" class="btn btn-primary" style="padding:10px; font-size:13px; width:100%;">Guardar Nuevo Avalúo</button>
+                    <button type="button" id="btn-asset-delete" class="btn btn-danger" style="padding:10px; font-size:13px; margin-top:8px; width:100%; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                        <span>Eliminar Activo</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -2793,25 +3302,141 @@
                     <span>Bloquear Aplicación</span>
                 </button>
                 <button type="button" id="profile-version-btn" class="version-footer-btn" style="margin-top:12px;" title="Ver notas de versión y novedades">
-                    &copy; 2026 Función IF • v2.1.0
+                    &copy; 2026 Función IF • v2.2.0
                 </button>
             </div>
 
             <!-- SUBVISTA SALARIO -->
             <div id="profile-salary-view" class="profile-body hidden" style="overflow-y:auto;">
-                <div class="modal-header">
-                    <button type="button" id="back-from-salary-btn" class="mini-action-btn">‹ Volver</button>
-                    <h3>Nómina y Prestaciones</h3>
-                    <button type="button" id="shortcut-to-tax-params-btn" class="mini-action-btn">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
-                        <span>UVT</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+                    <button type="button" id="back-from-salary-btn" class="mini-action-btn" style="display:inline-flex; align-items:center; gap:5px; padding:7px 12px; font-size:12px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        <span>Volver</span>
+                    </button>
+                    <button type="button" id="shortcut-to-tax-params-btn" class="mini-action-btn" style="display:inline-flex; align-items:center; gap:5px; padding:7px 12px; font-size:12px; color:var(--accent); border-color:var(--accent-border);">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                        <span>Topes y UVT</span>
                     </button>
                 </div>
 
+                <h3 style="font-size:19px; font-weight:800; letter-spacing:-0.3px; margin:0 0 14px 0; line-height:1.2;">Nómina y Prestaciones</h3>
+
                 <form id="salary-config-form" class="data-form">
-                    <div class="form-row" style="margin-bottom:8px;">
-                        <div class="form-group" style="margin-bottom:0;"><label>Sueldo Básico ($)</label><input type="text" id="profile-basic-salary" class="money-input" inputmode="decimal" placeholder="Ej. 1.750.905" required></div>
-                        <div class="form-group" style="margin-bottom:0;"><label>No Salarial / Bonos ($)</label><input type="text" id="profile-non-salary" class="money-input" inputmode="decimal" placeholder="0,00"></div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label>Sueldo Básico ($)</label>
+                        <input type="text" id="profile-basic-salary" class="money-input" inputmode="decimal" placeholder="Ej. 4.800.000" required>
+                    </div>
+
+                    <!-- SWITCH: PAGOS NO SALARIALES / BONOS -->
+                    <div class="switch-row" style="margin-bottom:10px; padding:9px 12px;">
+                        <div>
+                            <strong>Recibo pagos no salariales / bonos</strong>
+                            <small>Auxilios, rodamiento o primas extralegales (Art. 128 CST)</small>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="profile-has-non-salary"><span class="slider"></span></label>
+                    </div>
+
+                    <!-- CONTENEDOR DINÁMICO DE ÍTEMS NO SALARIALES -->
+                    <div id="non-salary-section" class="glass-sub-box hidden" style="padding:12px; margin-bottom:12px; border-color:var(--accent-border);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+                            <div>
+                                <strong style="font-size:12.5px; color:var(--text-main); display:block;">Conceptos No Salariales</strong>
+                                <small id="non-salary-month-summary" style="font-size:10.5px; color:var(--accent); font-weight:700;">Activos este mes: $ 0</small>
+                            </div>
+                            <button type="button" id="btn-add-non-salary-item" class="mini-action-btn" style="color:var(--positive); border-color:rgba(16,185,129,0.35); font-weight:700; padding:6px 10px;">
+                                + Agregar concepto
+                            </button>
+                        </div>
+
+                        <!-- Aquí se inyectan dinámicamente los bonos / primas extralegales -->
+                        <div id="non-salary-items-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+                        <!-- ACORDEÓN EXPLICATIVO Y EJEMPLOS DE CÁLCULO -->
+                        <details class="changelog-accordion" style="margin-top:10px; background:rgba(139, 92, 246, 0.05); border:1px solid rgba(139, 92, 246, 0.22); border-radius:14px; padding:10px 12px; box-shadow:none;">
+                            <summary style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:11.5px; font-weight:800; color:var(--accent); cursor:pointer;">
+                                <span style="display:inline-flex; align-items:center; gap:6px; line-height:1.3;">
+                                    <svg style="flex-shrink:0;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <span>¿Cómo aplica la Ley 1393 (40%) y la Retefuente? (Ejemplos)</span>
+                                </span>
+                                <span style="flex-shrink:0; opacity:0.85;">▾</span>
+                            </summary>
+
+                            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(139, 92, 246, 0.25); display:flex; flex-direction:column; gap:9px; font-size:11.5px; color:var(--text-muted); line-height:1.5;">
+                                
+                                <!-- TARJETA 1: LEY 1393 -->
+                                <div style="padding:10px 12px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color); border-left:3.5px solid #f59e0b;">
+                                    <strong style="display:flex; align-items:center; gap:6px; color:var(--text-main); font-size:11.5px; margin-bottom:4px;">
+                                        <svg style="flex-shrink:0; color:#f59e0b;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                                        <span>Regla Ley 1393 (Tope 40% Seguridad Social):</span>
+                                    </strong>
+                                    <span style="display:block;">En cada mes se suman <b>todos</b> los pagos no salariales vigentes en ese periodo (los fijos mensuales + los programados para ese mes). Si superan el <b>40%</b> del total remunerado (<i>Básico + Total No Salarial</i>), el excedente entra automáticamente a tu IBC para Salud (4%), Pensión (4%) y FSP.</span>
+                                </div>
+
+                                <!-- TARJETA 2: BASE RETEFUENTE -->
+                                <div style="padding:10px 12px; border-radius:12px; background:var(--card-bg); border:1px solid var(--border-color); border-left:3.5px solid var(--accent);">
+                                    <strong style="display:flex; align-items:center; gap:6px; color:var(--text-main); font-size:11.5px; margin-bottom:4px;">
+                                        <svg style="flex-shrink:0; color:var(--accent);" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                        <span>Base Retefuente (Art. 103 E.T.):</span>
+                                    </strong>
+                                    <span style="display:block;">Aunque un pago no sea salarial para prestaciones, tributariamente <b>sí hace base</b> para Retención en la Fuente (salvo excepciones legales como vales de alimentación dentro de topes UVT). Solo los ítems con el check <b>"Base Retefuente"</b> activo suman a tu ingreso gravable del mes.</span>
+                                </div>
+
+                                <!-- TARJETA 3: DOS EJEMPLOS COMPARATIVOS LEY 1393 -->
+                                <div style="padding:11px 12px; border-radius:12px; background:var(--card-bg); border:1px solid color-mix(in srgb, var(--accent) 28%, var(--border-color));">
+                                    <strong style="display:flex; align-items:center; gap:6px; color:var(--accent); font-size:11.5px; margin-bottom:8px;">
+                                        <svg style="flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
+                                        <span>Ejemplos prácticos Ley 1393 <span style="white-space:nowrap;">(Base $ 5.000.000):</span></span>
+                                    </strong>
+
+                                    <!-- EJEMPLO 1: NO EXCEDE EL TOPE (VERDE) -->
+                                    <div style="padding:10px 11px; border-radius:11px; background:rgba(16, 185, 129, 0.06); border:1px solid rgba(16, 185, 129, 0.25); margin-bottom:9px; font-size:11px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:5px; border-bottom:1px dashed rgba(16, 185, 129, 0.3);">
+                                            <strong style="color:var(--positive); font-size:11.5px;">1. Cuando NO excede el 40%</strong>
+                                            <span style="font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:99px; background:rgba(16, 185, 129, 0.14); color:var(--positive);">IBC intacto</span>
+                                        </div>
+                                        <div style="display:flex; flex-direction:column; gap:3.5px;">
+                                            <div style="display:flex; justify-content:space-between;"><span>Sueldo Básico:</span><b style="color:var(--text-main);">$ 5.000.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>No Salarial (ej. Bonos):</span><b style="color:var(--text-main);">$ 2.000.000</b></div>
+                                            <div style="display:flex; justify-content:space-between; padding-top:3px; border-top:1px dashed rgba(148,163,184,0.28);"><span>Total Remunerado:</span><b style="color:var(--text-main);">$ 7.000.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Tope máximo 40%:</span><b>$ 2.800.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Excedente (2M ≤ 2,8M):</span><b class="positive">$ 0</b></div>
+                                            <div style="display:flex; justify-content:space-between; padding:4px 6px; margin:2px 0; border-radius:7px; background:rgba(16, 185, 129, 0.12); color:var(--text-main);">
+                                                <span><b>IBC del Mes:</b></span><strong class="positive">$ 5.000.000</strong>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Salud (4%):</span><b style="color:var(--text-main);">$ 200.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Pensión (4%):</span><b style="color:var(--text-main);">$ 200.000</b></div>
+                                        </div>
+                                        <small style="display:block; margin-top:6px; padding-top:5px; border-top:1px dashed rgba(16, 185, 129, 0.25); font-size:10px; line-height:1.35;">
+                                            Como el pago no salarial no supera el 40%, cotizas seguridad social solo sobre tu básico, aunque los ítems con check <b>Base Retefuente</b> sí suman para retención.
+                                        </small>
+                                    </div>
+
+                                    <!-- EJEMPLO 2: SÍ EXCEDE EL TOPE (ÁMBAR) -->
+                                    <div style="padding:10px 11px; border-radius:11px; background:rgba(245, 158, 11, 0.07); border:1px solid rgba(245, 158, 11, 0.28); font-size:11px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding-bottom:5px; border-bottom:1px dashed rgba(245, 158, 11, 0.32);">
+                                            <strong style="color:#d97706; font-size:11.5px;">2. Cuando SÍ excede el 40%</strong>
+                                            <span style="font-size:9.5px; font-weight:800; padding:2px 7px; border-radius:99px; background:rgba(245, 158, 11, 0.16); color:#d97706;">Sube el IBC</span>
+                                        </div>
+                                        <div style="display:flex; flex-direction:column; gap:3.5px;">
+                                            <div style="display:flex; justify-content:space-between;"><span>Sueldo Básico:</span><b style="color:var(--text-main);">$ 5.000.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>No Salarial (Bono + Prima ext.):</span><b style="color:var(--text-main);">$ 4.200.000</b></div>
+                                            <div style="display:flex; justify-content:space-between; padding-top:3px; border-top:1px dashed rgba(148,163,184,0.28);"><span>Total Remunerado:</span><b style="color:var(--text-main);">$ 9.200.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Tope máximo 40%:</span><b>$ 3.680.000</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Excedente (4,2M − 3,68M):</span><b style="color:#d97706;">+$ 520.000</b></div>
+                                            <div style="display:flex; justify-content:space-between; padding:4px 6px; margin:2px 0; border-radius:7px; background:rgba(245, 158, 11, 0.14); color:var(--text-main);">
+                                                <span><b>IBC del Mes (5M + 520k):</b></span><strong style="color:#d97706;">$ 5.520.000</strong>
+                                            </div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Salud (4%):</span><b style="color:var(--text-main);">$ 220.800</b></div>
+                                            <div style="display:flex; justify-content:space-between;"><span>Pensión (4%):</span><b style="color:var(--text-main);">$ 220.800</b></div>
+                                        </div>
+                                        <small style="display:block; margin-top:6px; padding-top:5px; border-top:1px dashed rgba(245, 158, 11, 0.28); font-size:10px; line-height:1.35;">
+                                            El excedente de <b>$ 520.000</b> entra al IBC del mes (subiendo Salud y Pensión a <b>$ 220.800</b> c/u) y los conceptos marcados suman a tu base de Retefuente.
+                                        </small>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </details>
                     </div>
 
                     <!-- ETIQUETA ÚLTIMO AUMENTO REGISTRADO -->
@@ -3037,7 +3662,95 @@
                         <button type="button" id="tab-btn-salary-liquidation" class="pill-btn">Liquidación a Hoy</button>
                     </div>
 
-                    <div id="salary-tab-monthly"></div>
+                    <div id="salary-tab-monthly">
+                        <div class="tc-summary-banner" style="margin-top:0px; margin-bottom:12px; background-color:rgba(16,185,129,0.1); border-color:rgba(16,185,129,0.25);">
+                            <div>
+                                <span style="color:var(--text-muted); font-size:11px; display:block;">Salario Neto Base</span>
+                                <strong id="calc-net-salary" class="positive" style="font-size:20px;">$ 0,00</strong>
+                            </div>
+                            <div style="text-align:right;">
+                                <span id="calc-pay-frequency-label" style="color:var(--text-muted); font-size:11px; display:block; margin-top:8px;">Pago mensual</span>
+                            </div>
+                        </div>
+
+                        <!-- NUEVO: Contenedor para inyectar anticipos -->
+                        <div id="salary-advances-container"></div>
+
+                        <!-- NUEVO: Colilla de Pago (Devengados vs Deducidos - APILADOS) -->
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                            
+                            <!-- DEVENGADOS -->
+                            <div class="glass-sub-box" style="margin-bottom:0; padding:12px 14px; border-color:color-mix(in srgb, var(--positive) 25%, transparent);">
+                                <strong style="display:block; color:var(--text-main); font-size:12.5px; margin-bottom:8px; border-bottom:1px dashed var(--border-color); padding-bottom:6px;">Total Devengado</strong>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);">Sueldo Básico:</span>
+                                    <b id="colilla-basic" class="positive">$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);">No Salarial:</span>
+                                    <b id="colilla-non-salary" class="positive">$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);">Aux. Transporte:</span>
+                                    <b id="colilla-transport" class="positive">$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.05); margin-top:8px;">
+                                    <span style="font-weight:700;">Subtotal Devengado:</span>
+                                    <strong id="colilla-total-dev" class="positive" style="font-size:14.5px;">$ 0</strong>
+                                </div>
+                            </div>
+                            
+                            <!-- DEDUCIDOS -->
+                            <div class="glass-sub-box" style="margin-bottom:0; padding:12px 14px; border-color:color-mix(in srgb, var(--negative) 25%, transparent);">
+                                <strong style="display:block; color:var(--text-main); font-size:12.5px; margin-bottom:8px; border-bottom:1px dashed var(--border-color); padding-bottom:6px;">Total Deducido</strong>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);">Salud (4%):</span>
+                                    <b id="colilla-health" class="negative">-$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);">Pensión (4%):</span>
+                                    <b id="colilla-pension" class="negative">-$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);" id="colilla-fsp-label">FSP:</span>
+                                    <b id="colilla-fsp" class="negative">-$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; margin-bottom:5px;">
+                                    <span style="color:var(--text-muted);" id="colilla-ret-label">Retefuente:</span>
+                                    <b id="colilla-ret" class="negative">-$ 0</b>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding-top:8px; border-top:1px solid rgba(0,0,0,0.05); margin-top:8px;">
+                                    <span style="font-weight:700;">Subtotal Deducido:</span>
+                                    <strong id="colilla-total-ded" class="negative" style="font-size:14.5px;">-$ 0</strong>
+                                </div>
+                            </div>
+                            
+                        </div>
+
+                        <!-- Alertas Dinámicas de Nómina (Ley 1393, Quincenas) -->
+                        <div id="salary-dynamic-alerts"></div>
+
+                        <!-- NUEVO: Desglose de Libranzas y Ahorros de Nómina -->
+                        <div id="salary-payroll-deductions-box" class="glass-sub-box hidden" style="padding:10px 12px; border-color:var(--accent-border);">
+                            <strong style="display:block; font-size:12px; color:var(--text-main); margin-bottom:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px; margin-right:3px;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Descuentos por Libranza / Ahorro</strong>
+                            <div id="salary-payroll-deductions-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                        </div>
+
+                        <details class="changelog-accordion" style="margin-top:10px;">
+                            <summary style="font-size:11.5px; font-weight:700; color:var(--text-muted); cursor:pointer;">
+                                <span>Ver Depuración Retefuente</span>
+                                <span>▾</span>
+                            </summary>
+                            <div id="salary-ret-depuration-body" style="margin-top:8px; font-size:11px; display:flex; flex-direction:column; gap:4px;"></div>
+                        </details>
+                        
+                        <div style="display:flex; gap:8px; margin-top:10px;">
+                            <button type="button" id="btn-copy-colilla" class="btn btn-secondary" style="flex:1; padding:10px; font-size:12px;" title="Copiar Desprendible">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                            <button type="button" id="btn-quick-register-payroll" class="btn btn-primary" style="flex:4; padding:10px; font-size:13px; font-weight:700;">+ Registrar Pago de Nómina</button>
+                        </div>
+                    </div>
 
                     <div id="salary-tab-annual" class="hidden">
                         <div class="liq-item-card"><div><strong>Prima de Junio</strong><small>1er semestre (Neta)</small></div><div style="text-align:right;"><strong id="proj-prima-junio" class="positive">$ 0,00</strong><button type="button" id="btn-reg-prima-junio" class="btn-confirm-pending">+ Registrar</button></div></div>
@@ -3135,7 +3848,7 @@
             <div id="profile-tax-params-view" class="profile-body hidden" style="overflow-y:auto;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                     <button type="button" id="back-from-tax-params-btn" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">← Volver al Menú</button>
-                    <button type="button" id="btn-reset-tax-params-2026" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">↺ Valores 2026</button>
+                    <button type="button" id="btn-reset-tax-params-2026" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">↺ Valores Base</button>
                 </div>
 
                 <h3 style="font-size:18px; font-weight:800; letter-spacing:-0.3px; margin-bottom:4px;">Parámetros Legales y Tributarios</h3>
@@ -3143,34 +3856,21 @@
                     Actualiza aquí los valores oficiales año a año. Todos los topes mensuales y anuales se recalculan automáticamente.
                 </p>
 
-                <!-- PROYECCIÓN IMPUESTO DE RENTA -->
-                <div class="glass-sub-box" style="margin-bottom:16px; border-color:var(--accent-border);">
-                    <div style="margin-bottom:12px;">
-                        <strong style="color:var(--accent); display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:13.5px;">
-                            <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                            <span>Proyección Renta <span id="renta-proj-year">2026</span></span>
-                        </strong>
-                        <span id="renta-proj-badge" class="widget-badge neutral" style="display:inline-flex; align-items:center; gap:4px;">Evaluando...</span>
-                    </div>
-                    <div id="renta-proj-details" style="font-size:11.5px; display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
-                        <!-- Inyectado por JS -->
-                    </div>
-                    <div style="background:rgba(245, 158, 11, 0.08); border-left:3px solid #f59e0b; padding:8px 10px; border-radius:6px; font-size:10px; color:var(--text-muted); line-height:1.4; display:flex; gap:6px; align-items:flex-start;">
-                        <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <div><b>AVISO:</b> Estos son datos informativos proyectados según la información registrada en la app. <b>NO</b> reemplazan la realidad económica ni la información exógena oficial con la que la DIAN u otras entidades validan tu obligación de declarar.</div>
-                    </div>
-                </div>
-
                 <form id="tax-params-form" class="data-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label>Año Vigencia</label>
-                            <input type="number" id="param-tax-year" value="2026">
+                            <input type="number" id="param-tax-year" min="2020" max="2099">
                         </div>
                         <div class="form-group">
                             <label>Valor UVT ($)</label>
                             <input type="text" id="param-uvt" class="money-input" inputmode="decimal">
                         </div>
+                    </div>
+
+                    <!-- Radar de Topes DIAN (Declaración de Renta) -->
+                    <div id="renta-proj-details" class="glass-sub-box" style="margin-bottom:14px; padding:12px 14px; border-color:color-mix(in srgb, var(--accent) 30%, transparent);">
+                        <!-- Se llena dinámicamente desde app.js -->
                     </div>
 
                     <div class="form-row">
@@ -3230,15 +3930,47 @@
                         </div>
 
                         <div class="form-row">
-                            <div class="form-group" style="margin-bottom:0 !important;">
+                            <div class="form-group">
                                 <label>Tope Ley 1393 (% No Sal.)</label>
                                 <input type="text" id="param-non-salary-cap-pct" class="money-input" inputmode="decimal">
                             </div>
-                            <div class="form-group" style="margin-bottom:0 !important;">
+                            <div class="form-group">
                                 <label>Umbral FSP (SMMLV)</label>
                                 <input type="text" id="param-fsp-smmlv" class="money-input" inputmode="decimal">
                             </div>
                         </div>
+
+                        <div class="form-row">
+                            <div class="form-group" style="margin-bottom:0 !important;">
+                                <label>Consumo Renta Exenta</label>
+                                <select id="param-ret-order">
+                                    <option value="salary_first">Retención en Salario</option>
+                                    <option value="first_payment">Retención en primer pago realizado</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0 !important;">
+                                <label>Tope Renta Exenta / Ley 1819</label>
+                                <select id="param-ret-cap-eval">
+                                    <option value="monthly">Mensual</option>
+                                    <option value="annual">Anual</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <details class="changelog-accordion" style="width:100%; display:block; box-sizing:border-box; margin-top:10px; background:rgba(139, 92, 246, 0.06); border:1px solid rgba(139, 92, 246, 0.25); border-radius:12px; padding:10px 11px; box-shadow:none;">
+                            <summary style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:800; color:var(--accent); cursor:pointer;">
+                                <span style="display:inline-flex; align-items:center; gap:6px;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                                    <span>¿Cómo funcionan estas reglas de Retefuente?</span>
+                                </span>
+                                <span style="font-size:11px; opacity:0.85;">▾</span>
+                            </summary>
+                            <div style="margin-top:9px; padding-top:9px; border-top:1px dashed rgba(139, 92, 246, 0.28); font-size:11px; color:var(--text-muted); line-height:1.45; display:flex; flex-direction:column; gap:7px;">
+                                <span>• <strong style="color:var(--text-main);">Retención en Salario:</strong> Tu sueldo mensual consume primero el saldo de renta exenta y alivios; una bonificación adicional tributa sobre el cupo sobrante.</span>
+                                <span>• <strong style="color:var(--text-main);">Retención en primer pago realizado:</strong> El primer pago cronológico del mes (ej. un bono pagado antes de quincena) consume primero el cupo exento y las 95 UVT libres, dejando el remanente para el salario.</span>
+                                <span>• <strong style="color:var(--text-main);">Tope Mensual vs. Anual:</strong> <i>Mensual</i> divide las 790 UVT y 1.340 UVT entre 12 cada mes (65,83 y 111,67 UVT); <i>Anual</i> evalúa el saldo acumulado disponible del año corrido.</span>
+                            </div>
+                        </details>
                     </div>
 
                     <button type="submit" class="btn btn-primary">Guardar Parámetros del Año</button>
@@ -3385,8 +4117,8 @@
                     <div><b>Nota:</b> Usa "Consultar" cuando tengas internet para descargar la TRM oficial del día. La app guardará estos valores y los usará de forma 100% offline cuando estés de viaje sin conexión.</div>
                 </div>
 
-                <form id="currency-rates-form" class="data-form">
-                    <div class="form-row">
+                <form id="currency-rates-form" class="data-form" style="margin-bottom:20px;">
+                    <div class="form-row" style="margin-bottom:12px;">
                         <div class="form-group" style="margin-bottom:0;">
                             <label>Tasa USD ($)</label>
                             <input type="text" id="rate-usd-input" class="money-input" inputmode="decimal" placeholder="Ej. 4.150">
@@ -3396,22 +4128,38 @@
                             <input type="text" id="rate-eur-input" class="money-input" inputmode="decimal" placeholder="Ej. 4.420">
                         </div>
                     </div>
-                    <div style="display:flex; gap:8px; margin-top:12px;">
+                    
+                    <h3 style="font-size:14px; font-weight:700; letter-spacing:-0.2px; margin-bottom:8px; display:flex; align-items:center; gap:6px; padding-top:12px; border-top:1px dashed var(--border-color);">
+                        <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        Inflación de Referencia (Offline)
+                    </h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label id="label-inf-prev">Cierre Dic. (%)</label>
+                            <input type="text" id="rate-inf-prev-input" inputmode="decimal" placeholder="Ej. 9,28">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label id="label-inf-curr">Promedio Año (%)</label>
+                            <input type="text" id="rate-inf-curr-input" inputmode="decimal" placeholder="Ej. 7,16">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:8px; margin-top:14px;">
                         <button type="button" id="btn-sync-rates" class="btn btn-secondary" style="flex:1; font-size:12px; color:var(--accent); padding:10px 8px;">
                             <svg class="ui-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Consultar
                         </button>
-                        <button type="button" id="btn-save-rates" class="btn btn-primary" style="flex:1.5; font-size:12px; padding:10px 8px;">Guardar Tasas</button>
+                        <button type="button" id="btn-save-rates" class="btn btn-primary" style="flex:1.5; font-size:12px; padding:10px 8px;">Guardar Valores</button>
                     </div>
                 </form>
             </div>
 
             <!-- SUBVISTA ALERTAS Y CALENDARIO iOS -->
             <div id="profile-notifications-view" class="profile-body hidden" style="overflow-y:auto;">
-                <div class="modal-header">
-                    <button type="button" id="back-from-notifications-btn" class="mini-action-btn">‹ Volver</button>
-                    <h3>Alertas y Calendario</h3>
-                    <span></span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <button type="button" id="back-from-notifications-btn" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">← Volver al Menú</button>
                 </div>
+                <h3 style="font-size:18px; font-weight:800; letter-spacing:-0.3px; margin:0 0 14px 0;">Alertas y Calendario</h3>
                 <form id="notifications-config-form" class="data-form">
                     <div class="form-group">
                         <label>Día de Inicio del Mes Financiero</label>
@@ -3455,11 +4203,10 @@
 
             <!-- SUBVISTA RESPALDO E IMPORTACIÓN -->
             <div id="profile-backup-view" class="profile-body hidden" style="overflow-y:auto;">
-                <div class="modal-header">
-                    <button type="button" id="back-from-backup-btn" class="mini-action-btn">‹ Volver</button>
-                    <h3>Copia de Seguridad</h3>
-                    <span></span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <button type="button" id="back-from-backup-btn" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">← Volver al Menú</button>
                 </div>
+                <h3 style="font-size:18px; font-weight:800; letter-spacing:-0.3px; margin:0 0 14px 0;">Copia de Seguridad</h3>
                 <div class="glass-sub-box">
                     <strong style="font-size:13.5px; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                         <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
@@ -3531,11 +4278,10 @@
 
             <!-- SUBVISTA SEGURIDAD Y PIN -->
             <div id="profile-security-view" class="profile-body hidden" style="overflow-y:auto;">
-                <div class="modal-header">
-                    <button type="button" id="back-from-security-btn" class="mini-action-btn">‹ Volver</button>
-                    <h3>Seguridad y PIN</h3>
-                    <span></span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <button type="button" id="back-from-security-btn" class="mini-action-btn" style="padding:7px 12px; font-size:12px;">← Volver al Menú</button>
                 </div>
+                <h3 style="font-size:18px; font-weight:800; letter-spacing:-0.3px; margin:0 0 14px 0;">Seguridad y PIN</h3>
                 <form id="profile-pin-form" class="data-form" style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid rgba(148,163,184,0.25);">
                     <div class="switch-row">
                         <div><strong>Bloqueo con PIN al abrir</strong><small>Protege el acceso visual a tus saldos</small></div>
@@ -3743,8 +4489,8 @@
     </div>
 
 <!-- MODAL MODO VIAJE (Con Onboarding) -->
-    <div id="trip-mode-modal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 1380;">
-        <div class="modal-content" style="max-height: 90vh; display:flex; flex-direction:column;">
+    <div id="trip-mode-modal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 1380 !important; align-items: center !important; justify-content: center !important; padding: 16px !important;">
+        <div class="modal-content" style="width: 100% !important; max-width: 420px !important; height: auto !important; min-height: 0 !important; max-height: 88dvh !important; margin: auto !important; border-radius: 26px !important; display: flex !important; flex-direction: column !important; padding: 20px 18px !important; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22) !important;">
             <div class="modal-header" style="flex-shrink:0; margin-bottom:10px;">
                 <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
                     <span class="drawer-icon-box" style="width:36px; height:36px; border-radius:10px; background:rgba(14,165,233,0.14); color:#0ea5e9; flex-shrink:0;">
@@ -3762,16 +4508,16 @@
                 ¿Cómo funciona?
             </button>
 
-            <div style="overflow-y:auto; flex:1; padding-bottom:10px;">
+            <div style="overflow-y:auto; flex:1; padding-bottom:4px;">
                 <!-- PANTALLA 1: EXPLICACIÓN / ONBOARDING -->
                 <div id="trip-onboarding-view">
-                    <div style="text-align:center; padding:10px 8px 18px 8px;">
+                    <div style="text-align:center; padding:6px 4px 6px 4px;">
                         <h2 style="font-size:21px; font-weight:800; color:var(--text-main); margin-bottom:8px; line-height:1.2;">Estás por activar el Modo Viaje</h2>
-                        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.45; margin-bottom:18px;">
-                            Evita que los gastos de tus vacaciones distorsionen tus presupuestos mensuales habituales. Este modo incluye 3 funciones automáticas:
+                        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.45; margin-bottom:16px;">
+                            Evita que los gastos de tus vacaciones distorsionen tus presupuestos mensuales habituales. Este modo incluye 4 funciones automáticas:
                         </p>
                         
-                        <div class="privacy-points-list" style="margin-bottom:20px;">
+                        <div class="privacy-points-list" style="margin-bottom:18px;">
                             <div class="privacy-point-item" style="align-items:flex-start;">
                                 <span class="privacy-point-icon" style="background: rgba(16, 185, 129, 0.14); color: var(--positive); margin-top:2px;">
                                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -3783,10 +4529,10 @@
                             </div>
                             <div class="privacy-point-item" style="align-items:flex-start;">
                                 <span class="privacy-point-icon" style="background: var(--accent-soft); color: var(--accent); margin-top:2px;">
-                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
                                 </span>
                                 <div class="privacy-point-text">
-                                    <strong>Impacto Real en tus Saldos</strong>
+                                    <strong>Impacto Real en Saldos</strong>
                                     <small>El dinero gastado sí se descuenta de tus Cuentas y Tarjetas reales para que tu Patrimonio Neto siga exacto al centavo.</small>
                                 </div>
                             </div>
@@ -3797,6 +4543,15 @@
                                 <div class="privacy-point-text">
                                     <strong>Auto-Etiquetado Inteligente</strong>
                                     <small>Cada gasto que registres mientras esté activo se etiquetará solo (ej. <i>#cartagena</i>) para ver el resumen total del viaje con un toque.</small>
+                                </div>
+                            </div>
+                            <div class="privacy-point-item" style="align-items:flex-start;">
+                                <span class="privacy-point-icon" style="background: rgba(14, 165, 233, 0.14); color: #0ea5e9; margin-top:2px;">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                </span>
+                                <div class="privacy-point-text">
+                                    <strong>Viaje Acompañado (50/50)</strong>
+                                    <small>Registra quién pagó cada gasto compartido sin descontar de tu dinero lo que cubra tu acompañante, y cruza el saldo a favor o deuda al finalizar.</small>
                                 </div>
                             </div>
                         </div>
@@ -3817,7 +4572,7 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Destino / Nombre del Viaje</label>
+                            <label>Destino / Viaje</label>
                             <input type="text" id="trip-name-input" placeholder="Ej. Cartagena">
                         </div>
                         <div class="form-group">
@@ -3826,28 +4581,246 @@
                         </div>
                     </div>
 
+                    <!-- Selector de Bolsillo Vinculado -->
+                    <div class="form-group" style="margin-bottom:14px; padding:10px; background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <label style="margin:0; font-size:11.5px; display:flex; align-items:center; gap:6px;">
+                                <span style="color:var(--positive); display:inline-flex;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                </span>
+                                Vincular a Bolsillo de Ahorro
+                            </label>
+                            <label class="switch" style="transform:scale(0.85); transform-origin:right center; margin:0;"><input type="checkbox" id="trip-pocket-link-check"><span class="slider"></span></label>
+                        </div>
+                        <div id="trip-pocket-select-box" class="hidden">
+                            <small style="display:block; font-size:10.5px; color:var(--text-muted); margin-bottom:6px;">Elige el bolsillo que financiará este viaje:</small>
+                            <select id="trip-pocket-select" style="font-size:13px; font-weight:600; width:100%; border:1px dashed var(--accent);">
+                                <option value="">Selecciona un bolsillo...</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="switch-row" style="margin-bottom:14px;">
                         <div>
                             <strong>Aislar del Presupuesto Mensual</strong>
-                            <small>No suma a tus topes habituales de Comida/Transporte</small>
+                            <small>No suma a tus topes habituales</small>
                         </div>
                         <label class="switch"><input type="checkbox" id="trip-isolate-check" checked><span class="slider"></span></label>
                     </div>
 
+                    <!-- NUEVA SECCIÓN: Viaje Acompañado 50/50 -->
+                    <div style="margin-bottom:14px; padding:12px; background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:12px;">
+                        <div class="switch-row" style="margin-bottom:0;">
+                            <div>
+                                <strong style="display:flex; align-items:center; gap:6px;"><span style="color:var(--accent);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Viaje Acompañado</strong>
+                                <small>Liquidación automática 50/50 al final</small>
+                            </div>
+                            <label class="switch" style="transform:scale(0.85); transform-origin:right center;"><input type="checkbox" id="trip-shared-check"><span class="slider"></span></label>
+                        </div>
+                        <div id="trip-shared-fields" class="hidden" style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:10.5px;">Nombre del Acompañante</label>
+                                <input type="text" id="trip-companion-input" placeholder="Ej. Carlos" style="font-size:13px; padding:8px 10px;">
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="trip-modal-stats-box" class="glass-sub-box hidden" style="margin-bottom:12px;"></div>
+                    <div id="trip-modal-shared-balance-box" class="glass-sub-box hidden" style="margin-bottom:12px; border-color:var(--accent); background:rgba(0,122,255,0.05);"></div>
 
                     <button type="submit" class="btn btn-primary" style="width:100%;">Guardar Configuración de Viaje</button>
                 </form>
             </div>
         </div>
     </div>
+    <!-- MODAL BIENVENIDA VIAJE COMPARTIDO ("PONTE LA CAMISETA") -->
+    <div id="trip-shared-welcome-modal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 1388 !important; align-items: center !important; justify-content: center !important; padding: 16px !important;">
+        <div class="modal-content" style="width: 100% !important; max-width: 390px !important; height: auto !important; min-height: 0 !important; margin: auto !important; border-radius: 26px !important; display: block !important; padding: 26px 20px 20px 20px !important; box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22) !important; text-align: center !important;">
+            <div style="width:58px; height:58px; border-radius:18px; background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--accent); display:flex; align-items:center; justify-content:center; margin:0 auto 14px auto; box-shadow:0 6px 16px color-mix(in srgb, var(--accent) 16%, transparent);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>
+                </svg>
+            </div>
+
+            <span style="display:inline-block; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:0.6px; color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); padding:4px 10px; border-radius:99px; margin-bottom:8px;">
+                Viaje Compartido 50/50
+            </span>
+
+            <h3 style="margin:0 0 8px 0; font-size:20px; font-weight:800; color:var(--text-main); letter-spacing:-0.2px;">
+                ¡Ponte la camiseta!
+            </h3>
+
+            <p id="trip-shared-welcome-desc" style="margin:0 0 14px 0; font-size:13px; color:var(--text-muted); line-height:1.5;">
+                Disfruta del viaje al máximo, pero sé disciplinado y registra todos los gastos compartidos para cruzar cuentas al final.
+            </p>
+
+            <div style="background:var(--card-inner-bg); border:1px solid var(--border-color); border-radius:14px; padding:11px 12px; margin-bottom:16px; display:flex; align-items:center; gap:9px; text-align:left;">
+                <span style="width:28px; height:28px; border-radius:9px; background:rgba(16,185,129,0.14); color:var(--positive); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+                <small style="font-size:11.5px; color:var(--text-main); line-height:1.35;">
+                    En cada gasto podrás elegir con un toque si lo pagaste tú o tu acompañante.
+                </small>
+            </div>
+
+            <button type="button" id="btn-close-trip-shared-welcome" class="btn btn-primary" style="width:100%; padding:13px 16px; font-size:14px; font-weight:700; border-radius:14px;">
+                ¡Listo, a disfrutar!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL LIQUIDACIÓN 50/50 AL DESACTIVAR MODO VIAJE -->
+
+    <!-- MODAL SOBRANTE DE BOLSILLO AL DESACTIVAR MODO VIAJE -->
 
     <!-- CONTENEDOR DE IMPRESIÓN EJECUTIVA PDF -->
     <div id="print-report-container"></div>
 
+<!-- MODAL DE ELIMINACIÓN SEGURA (SAFE DELETE) -->
+    <div id="safe-delete-modal" class="modal hidden" style="z-index: 2500;">
+        <div class="modal-content" style="border-color: rgba(239,68,68,0.4); box-shadow: 0 20px 40px rgba(239,68,68,0.15);">
+            <div class="modal-header" style="margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="drawer-icon-box negative-box" style="width:36px; height:36px; flex-shrink:0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </span>
+                    <h3 style="color:var(--negative); font-size:17px;">Estás eliminando un elemento</h3>
+                </div>
+                <button type="button" id="close-safe-delete-btn" class="btn-close-modal">Cerrar</button>
+            </div>
+            
+            <div style="font-size:12.5px; color:var(--text-main); line-height:1.45; margin-bottom:14px;">
+                <p style="margin-bottom:8px;">Vas a eliminar: <strong id="safe-delete-target-name" style="font-size:14px;">---</strong></p>
+                <ul style="padding-left:18px; color:var(--text-muted); margin-bottom:12px;" id="safe-delete-impact-list">
+                    <li>Eliminaremos toda la información relacionada.</li>
+                    <li>Esta acción no se puede deshacer.</li>
+                </ul>
+                <p>Para confirmarlo, escribe <strong>ELIMINAR</strong> en mayúsculas:</p>
+            </div>
+
+            <form id="safe-delete-form" class="data-form">
+                <input type="text" id="safe-delete-input" class="modal-input" placeholder="Escribe ELIMINAR" autocomplete="off" required style="text-align:center; font-weight:800; letter-spacing:1px; margin-bottom:14px; border:2px solid var(--border-color);">
+                
+                <div class="form-row modal-actions-row" style="margin-top:0;">
+                    <button type="button" id="btn-cancel-safe-delete" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" id="btn-confirm-safe-delete" class="btn btn-danger" disabled style="opacity:0.5; transition:all 0.2s;">Eliminar definitivamente</button>
+                </div>
+            </form>
+        </div>
+    </div>    
+
+<!-- MODAL CÓMO VAN TUS GANANCIAS (BOLSILLOS) -->
+    <div id="pockets-earnings-modal" class="modal hidden" style="z-index: 1385;">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header" style="margin-bottom:12px;">
+                <button type="button" id="close-pockets-earnings-btn" class="mini-action-btn">‹ Volver</button>
+                <h3 style="font-size:16px; font-weight:800;">Cómo van tus ganancias</h3>
+                <button type="button" id="btn-earnings-faq" class="mini-action-btn" style="width:28px; height:28px; padding:0; border-radius:50%; font-weight:800;">?</button>
+            </div>
+
+            <div class="glass-sub-box" style="text-align:center; padding:16px 14px; background:linear-gradient(145deg, color-mix(in srgb, var(--positive) 10%, var(--card-bg)), var(--card-bg)); border-color:color-mix(in srgb, var(--positive) 28%, transparent);">
+                <strong id="earnings-hero-total" class="positive" style="display:block; font-size:26px; font-weight:800; letter-spacing:-0.6px;">$ 0,00</strong>
+                <small style="display:block; font-size:11.5px; color:var(--text-muted); font-weight:600; margin-top:2px;">Ganancia total recibida</small>
+            </div>
+
+            <div class="glass-sub-box" style="padding:14px 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+                    <strong style="font-size:13px; color:var(--text-main);">Historial de ganancias</strong>
+                    <select id="earnings-pocket-filter" class="modal-input" style="width:auto; min-height:30px; padding:3px 8px; font-size:11px; font-weight:700;">
+                        <option value="all">Todos los bolsillos</option>
+                    </select>
+                </div>
+
+                <div id="earnings-selected-callout" style="text-align:center; min-height:38px; margin-bottom:6px;"></div>
+                <div id="earnings-bars-chart" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:8px; align-items:end; height:125px; padding:12px 6px 4px 6px; background:var(--card-inner-bg); border-radius:14px; border:1px solid var(--border-color);"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <button type="button" id="btn-earnings-prev-window" class="mini-action-btn" style="padding:3px 9px; font-size:11px;">‹ Ant.</button>
+                    <small id="earnings-window-label" style="font-size:10.5px; color:var(--text-muted); font-weight:700;">Últimos 6 meses</small>
+                    <button type="button" id="btn-earnings-next-window" class="mini-action-btn" style="padding:3px 9px; font-size:11px;">Sig. ›</button>
+                </div>
+            </div>
+
+            <div class="glass-sub-box" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0;">
+                <div>
+                    <small style="display:block; font-size:10.5px; color:var(--text-muted); font-weight:700;">Tasa Promedio / Activa</small>
+                    <strong id="earnings-avg-rate" class="positive" style="font-size:17px;">0,00% E.A.</strong>
+                </div>
+                <div style="text-align:right;">
+                    <small style="display:block; font-size:10.5px; color:var(--text-muted); font-weight:700;">Estimado próx. mes</small>
+                    <strong id="earnings-est-next-month" style="font-size:14px; color:var(--text-main);">+$ 0,00</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PREGUNTAS FRECUENTES BOLSILLOS -->
+    <div id="pockets-faq-modal" class="modal hidden" style="z-index: 1395;">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h3>Preguntas frecuentes</h3>
+                <button type="button" id="close-pockets-faq-btn" class="mini-action-btn">Cerrar</button>
+            </div>
+            <details class="changelog-accordion" open>
+                <summary><span>¿Cuál es la diferencia entre capital ahorrado y ganancia total recibida?</span><span>▾</span></summary>
+                <p style="font-size:11.5px; color:var(--text-muted); margin-top:8px; line-height:1.45;">El <b>capital ahorrado</b> corresponde únicamente al dinero que tú has transferido o abonado desde tus cuentas. La <b>ganancia total recibida</b> es la suma de todos los intereses generados desde la apertura del bolsillo mediante el botón <b>↗ Rendim.</b></p>
+            </details>
+            <details class="changelog-accordion">
+                <summary><span>¿Cómo se calcula la Cuota Sugerida?</span><span>▾</span></summary>
+                <p style="font-size:11.5px; color:var(--text-muted); margin-top:8px; line-height:1.45;">Toma el saldo que te falta para llegar a la meta y lo divide entre los meses restantes hasta tu fecha objetivo. Si defines una cuota fija manualmente, la app respetará ese valor.</p>
+            </details>
+            <details class="changelog-accordion">
+                <summary><span>¿Cuándo un bolsillo suma o se oculta del Balance?</span><span>▾</span></summary>
+                <p style="font-size:11.5px; color:var(--text-muted); margin-top:8px; line-height:1.45;">Por defecto tus bolsillos suman a tu Patrimonio Neto. Si desactivas <b>Incluir en Hoja de Balance</b>, el ahorro queda protegido visualmente para evitar tentaciones de gasto, pero sigue creciendo normalmente.</p>
+            </details>
+            <details class="changelog-accordion" style="margin-bottom:0;">
+                <summary><span>¿Cómo funciona un bolsillo vinculado al Modo Viaje?</span><span>▾</span></summary>
+                <p style="font-size:11.5px; color:var(--text-muted); margin-top:8px; line-height:1.45;">Puedes ahorrar para tus vacaciones en un bolsillo dedicado y luego retirar o transferir esos fondos a tu cuenta principal cuando actives el <b>Modo Viaje</b>.</p>
+            </details>
+        </div>
+    </div>
+
+    <!-- MODAL REGISTRAR RENDIMIENTO MANUAL -->
+    <div id="pocket-yield-modal" class="modal hidden" style="z-index: 1390;">
+        <div class="modal-content" style="max-width:390px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="pocket-yield-title">Registrar Rendimiento</h3>
+                    <small id="pocket-yield-subtitle" style="color:var(--text-muted); font-size:11px;">Intereses ganados en el periodo</small>
+                </div>
+                <button type="button" id="close-pocket-yield-btn" class="btn-close-modal">Cerrar</button>
+            </div>
+            <form id="pocket-yield-form" class="data-form">
+                <input type="hidden" id="pocket-yield-id">
+                <div id="pocket-yield-estimate-banner" class="tc-summary-banner hidden" style="margin-bottom:10px; padding:9px 12px;">
+                    <span style="font-size:11px; color:var(--text-muted);">Estimado mensual según tasa E.A.:</span>
+                    <strong id="pocket-yield-estimate-val" class="positive" style="font-size:13px;">+$ 0,00</strong>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Rendimiento Ganado ($)</label>
+                        <input type="text" id="pocket-yield-amount" class="money-input" inputmode="decimal" placeholder="0,00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha del Abono</label>
+                        <input type="date" id="pocket-yield-date" required>
+                    </div>
+                </div>
+                <div class="switch-row" style="margin-bottom:12px;">
+                    <div>
+                        <strong>Registrar también en Presupuesto</strong>
+                        <small>Asienta el interés como ingreso en categoría Rendimientos</small>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="pocket-yield-sync-income" checked><span class="slider"></span></label>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">+ Sumar Rendimiento</button>
+            </form>
+        </div>
+    </div>    
+
 <!-- SCRIPTS EN ORDEN CORRECTO -->
-    <script src="core.js?v=2.1.0"></script>
-    <script src="info.js?v=2.1.0"></script>
-    <script src="app.js?v=2.1.0"></script>
+    <script src="core.js?v=2.2.0"></script>
+    <script src="info.js?v=2.2.0"></script>
+    <script src="app.js?v=2.2.0"></script>
+    <script src="modules.js?v=2.2.0"></script>
 </body>
 </html>
