@@ -379,6 +379,66 @@ window.applyThemeUI = (themeValue = null) => {
     });
 };
 
+const persistProfileDisplayName = (rawName) => {
+    if (!authData) return false;
+    const cleanName = String(rawName || '').trim();
+    if (!cleanName) return false;
+
+    const oldName = authData.name;
+    authData.name = cleanName;
+
+    let updated = false;
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k === 'myFinances' || k === 'myFinancesSalary') continue;
+        try {
+            const parsed = JSON.parse(localStorage.getItem(k));
+            if (parsed && typeof parsed === 'object' && parsed.name === oldName) {
+                parsed.name = cleanName;
+                localStorage.setItem(k, JSON.stringify(parsed));
+                updated = true;
+                break;
+            }
+        } catch (e) {}
+    }
+    if (!updated) {
+        localStorage.setItem('myFinancesAuth', JSON.stringify(authData));
+    }
+    syncUserUI();
+    return true;
+};
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-save-profile-name')) {
+        const input = document.getElementById('profile-display-name-input');
+        const btn = document.getElementById('btn-save-profile-name');
+        if (!input || !persistProfileDisplayName(input.value)) {
+            alert('Escribe un nombre válido para tu perfil.');
+            return;
+        }
+        if (btn) {
+            const origText = btn.innerText;
+            btn.innerText = '✓ Listo';
+            setTimeout(() => { btn.innerText = origText; }, 1400);
+        }
+    } else if (e.target.closest('#profile-modal-name')) {
+        document.getElementById('profile-main-view')?.classList.add('hidden');
+        document.querySelectorAll('.profile-body').forEach(v => v.classList.add('hidden'));
+        const themeView = document.getElementById('profile-theme-view');
+        if (themeView) {
+            themeView.classList.remove('hidden');
+            themeView.scrollTop = 0;
+        }
+    }
+});
+
+document.getElementById('profile-display-name-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-save-profile-name')?.click();
+    }
+});
+
 const syncUserUI = () => {
     if (!authData) return;
     const firstName = authData.name.split(' ')[0];
@@ -387,7 +447,20 @@ const syncUserUI = () => {
     if (document.getElementById('app-title')) document.getElementById('app-title').innerText = 'Mis Finanzas';
     if (document.getElementById('profile-avatar-initial')) document.getElementById('profile-avatar-initial').innerText = initial;
     if (document.getElementById('profile-modal-avatar')) document.getElementById('profile-modal-avatar').innerText = initial;
-    if (document.getElementById('profile-modal-name')) document.getElementById('profile-modal-name').innerText = `Hola, ${firstName}`;
+
+    const modalNameEl = document.getElementById('profile-modal-name');
+    if (modalNameEl) {
+        modalNameEl.style.cursor = 'pointer';
+        modalNameEl.title = 'Toca para cambiar tu nombre';
+        modalNameEl.innerHTML = `Hola, <span style="border-bottom: 2px dashed rgba(255,255,255,0.4); padding-bottom: 2px;">${firstName}</span>`;
+    }
+
+    const nameInputEl = document.getElementById('profile-display-name-input');
+    if (nameInputEl && document.activeElement !== nameInputEl) {
+        nameInputEl.value = authData.name || '';
+        nameInputEl.style.width = '';
+    }
+
     if (document.getElementById('login-greeting')) document.getElementById('login-greeting').innerText = `Hola de nuevo, ${firstName}`;
 
     const lockBtn = document.getElementById('btn-lock-app-profile');
@@ -436,11 +509,21 @@ const syncUserUI = () => {
             wrap?.insertBefore(demoBanner, wrap.firstChild);
             
             document.getElementById('btn-clear-demo')?.addEventListener('click', () => {
-                if (confirm('¿Borrar los datos de prueba e iniciar tu cuenta real en limpio?')) {
-                    clearDemoDataAndStart();
-                    location.reload();
-                }
-            });
+    window.openBentoConfirmModal({
+        title: 'Limpiar datos de prueba',
+        subtitle: 'Modo Demostración Activo',
+        message: 'Se eliminarán los movimientos, cuentas y presupuestos de ejemplo para que inicies tu cuenta real en limpio.',
+        confirmText: 'Limpiar y empezar',
+        cancelText: 'Cancelar',
+        danger: true,
+        onConfirm: () => {
+            localStorage.removeItem('myFinancesRecapDismissedMonth');
+            localStorage.removeItem('myFinancesAutoRecapSeenMonth');
+            clearDemoDataAndStart();
+            location.reload();
+        }
+    });
+});
         }
     }
 };
@@ -832,17 +915,27 @@ document.getElementById('btn-confirm-forgot-pin')?.addEventListener('click', () 
     syncUserUI();
 });
 
+const resetAppModal = document.getElementById('reset-app-confirm-modal');
+const closeResetAppModal = () => resetAppModal?.classList.add('hidden');
+
 document.getElementById('reset-auth-btn-profile')?.addEventListener('click', () => {
-    if (confirm('⚠️ ATENCIÓN: Se borrarán TODOS tus datos financieros locales y tu perfil para empezar de cero. ¿Deseas continuar?')) {
-        localStorage.removeItem('myFinancesAuth');
-        localStorage.removeItem('myFinances');
-        localStorage.removeItem('myFinancesSalary');
-        localStorage.removeItem('myFinancesTaxParams');
-        localStorage.removeItem('myFinancesTheme');
-        localStorage.removeItem('myFinancesColorMode');
-        localStorage.removeItem('myFinancesWidgetOrder');
-        location.reload();
+    if (resetAppModal) {
+        resetAppModal.classList.remove('hidden');
     }
+});
+
+document.getElementById('close-reset-app-modal-btn')?.addEventListener('click', closeResetAppModal);
+document.getElementById('btn-cancel-reset-app')?.addEventListener('click', closeResetAppModal);
+
+document.getElementById('btn-confirm-reset-app')?.addEventListener('click', () => {
+    localStorage.removeItem('myFinancesAuth');
+    localStorage.removeItem('myFinances');
+    localStorage.removeItem('myFinancesSalary');
+    localStorage.removeItem('myFinancesTaxParams');
+    localStorage.removeItem('myFinancesTheme');
+    localStorage.removeItem('myFinancesColorMode');
+    localStorage.removeItem('myFinancesWidgetOrder');
+    location.reload();
 });
 
 // --- 4.5 AUTO-BLOQUEO POR SEGUNDO PLANO (VISIBILITY API) ---
@@ -1085,6 +1178,33 @@ window.forceCloseAllModals = () => {
     setActiveNav(document.getElementById('nav-home'));
 };
 
+let pendingUnsavedAction = null;
+
+function requestUnsavedDiscard(message, onConfirm) {
+    const modal = document.getElementById('unsaved-changes-modal');
+    const msgEl = document.getElementById('unsaved-changes-msg');
+    if (!modal) {
+        if (confirm(message)) onConfirm();
+        return;
+    }
+    if (msgEl) msgEl.textContent = message;
+    pendingUnsavedAction = onConfirm;
+    modal.classList.remove('hidden');
+}
+
+const closeUnsavedModal = () => {
+    pendingUnsavedAction = null;
+    document.getElementById('unsaved-changes-modal')?.classList.add('hidden');
+};
+
+document.getElementById('close-unsaved-modal-btn')?.addEventListener('click', closeUnsavedModal);
+document.getElementById('btn-cancel-unsaved')?.addEventListener('click', closeUnsavedModal);
+document.getElementById('btn-confirm-unsaved')?.addEventListener('click', () => {
+    const action = pendingUnsavedAction;
+    closeUnsavedModal();
+    hasUnsavedChanges = false;
+    if (typeof action === 'function') action();
+});
 window.attemptCloseModals = () => {
     const childModals = [
         'pocket-history-modal',
@@ -1109,7 +1229,11 @@ window.attemptCloseModals = () => {
         const cm = document.getElementById(cId);
         if (cm && !cm.classList.contains('hidden')) {
             if (cId === 'cat-months-modal' && hasUnsavedChanges) {
-                if (!confirm('⚠️ Tienes cambios sin guardar en el presupuesto. ¿Seguro que quieres salir?')) return false;
+                requestUnsavedDiscard('Tienes cambios sin guardar en el presupuesto. ¿Seguro que quieres salir?', () => {
+                    hasUnsavedChanges = false;
+                    cm.classList.add('hidden');
+                });
+                return false;
             }
             hasUnsavedChanges = false;
             if (cId === 'quick-action-modal') quickActionHandler = null;
@@ -1119,7 +1243,11 @@ window.attemptCloseModals = () => {
     }
 
     if (isAnyModalOpen() && hasUnsavedChanges) {
-        if (!confirm('⚠️ Tienes cambios sin guardar en un formulario. ¿Estás seguro de que quieres salir y perderlos?')) return false;
+        requestUnsavedDiscard('Tienes cambios sin guardar en un formulario. ¿Estás seguro de que quieres salir y perderlos?', () => {
+            hasUnsavedChanges = false;
+            document.querySelectorAll('.modal:not(.hidden)').forEach(m => m.classList.add('hidden'));
+        });
+        return false;
     }
 
     const txModal = document.getElementById('transaction-modal');
@@ -1481,7 +1609,7 @@ const renderSmartAlerts = (monthId, snap) => {
     }
 
     if (prefs.pendingEnabled) {
-        const pendingCount = financeData.transactions.filter(t => t.monthId === monthId && t.status === 'pending').length;
+        const pendingCount = financeData.transactions.filter(t => !t.isDeleted && t.monthId === monthId && t.status === 'pending').length;
         if (pendingCount > 0 && monthId === currRealMonthId) {
             alerts.push({
                 id: `pending_${monthId}_${pendingCount}`,
@@ -2664,21 +2792,42 @@ document.getElementById('pref-month-start-day')?.addEventListener('change', (e) 
 });
 document.getElementById('quick-month-input')?.addEventListener('change', () => setTimeout(updateCycleRangeBadge, 20));
 
-// --- SISTEMA DE PAPELERA DE RECICLAJE ---
+// --- SISTEMA DE PAPELERA DE RECICLAJE Y BORRADO EN CASCADA ---
 window.moveTxToTrash = (txId) => {
     const tx = financeData.transactions.find(t => String(t.id) === String(txId));
     if (!tx) return;
 
-    if (typeof revertTransferAllocation === 'function' && tx.type === 'transfer') {
-        try {
-            revertTransferAllocation(tx);
-        } catch (err) {
-            console.warn('No se pudo revertir asignación de transferencia:', err);
-        }
-    }
+    // Detectar registros hijos vinculados (intereses, libranzas, cobros compartidos, splits)
+    const children = financeData.transactions.filter(t =>
+        !t.isDeleted && (
+            String(t.linkedToTransfer) === String(tx.id) ||
+            String(t.parentId) === String(tx.id) ||
+            String(t.linkedLibranza) === String(tx.id)
+        )
+    );
 
-    tx.isDeleted = true;
-    tx.deletedAt = Date.now();
+    const allToTrash = [tx, ...children];
+    const deleteTimestamp = Date.now();
+
+    allToTrash.forEach(targetTx => {
+        if (typeof revertTransferAllocation === 'function' && targetTx.type === 'transfer') {
+            try {
+                revertTransferAllocation(targetTx);
+            } catch (err) {
+                console.warn('No se pudo revertir asignación de transferencia:', err);
+            }
+        }
+        if (targetTx.type === 'income' && isTxClosed(targetTx) && getAccountObj(targetTx.account).category === 'pocket') {
+            const p = financeData.pockets.find(x => String(x.id) === String(targetTx.account));
+            if (p) p.yields = Math.max(0, round2((p.yields || 0) - round2(targetTx.amount)));
+        }
+        targetTx.isDeleted = true;
+        targetTx.deletedAt = deleteTimestamp;
+        if (targetTx.id !== tx.id) {
+            targetTx.deletedWithParent = tx.id;
+        }
+    });
+
     localStorage.setItem('myFinances', JSON.stringify(financeData));
     hasUnsavedChanges = false;
 
@@ -2687,7 +2836,7 @@ window.moveTxToTrash = (txId) => {
 
     forceCloseAllModals();
     updateDashboard();
-    updateTrashBadge();
+    if (typeof updateTrashBadge === 'function') updateTrashBadge();
 
     if (returnAcc && returnAcc.accountId && typeof openAccountDetail === 'function') {
         openAccountDetail(returnAcc.accountId, returnAcc.originType || 'home');
@@ -2697,20 +2846,39 @@ window.moveTxToTrash = (txId) => {
 window.restoreTxFromTrash = (txId) => {
     const tx = financeData.transactions.find(t => String(t.id) === String(txId));
     if (!tx) return;
-    delete tx.isDeleted;
-    delete tx.deletedAt;
+
+    // Restaurar también los hijos que fueron borrados junto a este padre
+    const toRestore = financeData.transactions.filter(t => 
+        String(t.id) === String(txId) || String(t.deletedWithParent) === String(txId)
+    );
+
+    toRestore.forEach(targetTx => {
+        if (targetTx.type === 'income' && isTxClosed(targetTx) && getAccountObj(targetTx.account).category === 'pocket') {
+            const p = financeData.pockets.find(x => String(x.id) === String(targetTx.account));
+            if (p) p.yields = round2((p.yields || 0) + round2(targetTx.amount));
+        }
+        delete targetTx.isDeleted;
+        delete targetTx.deletedAt;
+        delete targetTx.deletedWithParent;
+    });
+
     localStorage.setItem('myFinances', JSON.stringify(financeData));
-    renderTrashModal();
+    if (typeof renderTrashModal === 'function') renderTrashModal();
     updateDashboard();
-    updateTrashBadge();
+    if (typeof updateTrashBadge === 'function') updateTrashBadge();
 };
 
 window.permanentlyDeleteTx = (txId) => {
     if (!confirm('¿Eliminar este movimiento definitivamente? Esta acción no se puede deshacer.')) return;
-    financeData.transactions = financeData.transactions.filter(t => String(t.id) !== String(txId));
+    
+    // Eliminar definitivamente el padre y sus hijos en cascada
+    financeData.transactions = financeData.transactions.filter(t => 
+        String(t.id) !== String(txId) && String(t.deletedWithParent) !== String(txId)
+    );
+
     localStorage.setItem('myFinances', JSON.stringify(financeData));
-    renderTrashModal();
-    updateTrashBadge();
+    if (typeof renderTrashModal === 'function') renderTrashModal();
+    if (typeof updateTrashBadge === 'function') updateTrashBadge();
 };
 
 window.updateTrashBadge = () => {
@@ -3511,6 +3679,31 @@ form?.addEventListener('submit', (e) => {
                 if (accObj.category === 'pocket' && typeof adjustPocketBalance === 'function') adjustPocketBalance(accObj.id, -netTransferAmt);
                 const toObj = (typeof getAccountObj === 'function') ? getAccountObj(toAccount) : null;
                 if (toObj && toObj.category === 'pocket' && typeof adjustPocketBalance === 'function') adjustPocketBalance(toObj.id, netTransferAmt);
+
+                const applyAdvanceFee = !!document.getElementById('tx-apply-tc-advance-fee')?.checked;
+                const tcAdvanceFeeAmt = (accObj.category === 'credit_card' && accObj.hasAdvanceFee && toAccount && toAccount !== account && applyAdvanceFee)
+                    ? round2(accObj.advanceFee || 0)
+                    : 0;
+
+                if (tcAdvanceFeeAmt > 0) {
+                    const feeCat = (financeData.categories?.expense || []).find(c => /cuotas|intereses|bancari|financiero/i.test(c.name));
+                    const catName = feeCat ? feeCat.name : 'Cuotas / Intereses';
+                    const destLabel = toObj ? stripLeadingEmoji(toObj.name) : 'otra cuenta';
+                    financeData.transactions.push({
+                        id: txData.id + 333,
+                        monthId: txData.monthId,
+                        type: 'expense',
+                        status: 'closed',
+                        account: account,
+                        category: catName,
+                        subcategory: 'General',
+                        description: `Comisión avance TC → ${destLabel}`,
+                        amount: tcAdvanceFeeAmt,
+                        date: txData.date,
+                        isAdjustment: false,
+                        linkedToTransfer: txData.id
+                    });
+                }
 
                 if (extraChargesAmt > 0) {
                     const intCat = financeData.categories.expense.find(c => stripLeadingEmoji(c.name) === 'Cuotas / Intereses');
@@ -4374,16 +4567,36 @@ document.getElementById('close-split-modal-btn')?.addEventListener('click', () =
 });
 
 document.getElementById('btn-confirm-splits')?.addEventListener('click', () => {
+    const showSplitToast = (text, isError = false) => {
+        document.querySelectorAll('.sw-toast').forEach(t => t.remove());
+        const toast = document.createElement('div');
+        toast.className = 'sw-toast';
+        toast.style.gap = '7px';
+        toast.style.whiteSpace = 'normal';
+        toast.style.lineHeight = '1.3';
+        toast.style.borderRadius = '16px';
+        if (isError) {
+            toast.style.background = 'var(--negative)';
+            toast.style.boxShadow = '0 8px 24px rgba(239, 68, 68, 0.35)';
+        }
+        const iconSvg = isError
+            ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+            : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+        toast.innerHTML = `${iconSvg}<span>${text}</span>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2600);
+    };
+
     let currentAssigned = splitState.items.reduce((sum, item) => round2(sum + (parseFloat(item.amount) || 0)), 0);
     const rem = round2(splitState.baseAmount - currentAssigned);
-    if (Math.abs(rem) >= 0.01) { alert(`La división no es exacta. Tienes un descuadre de ${formatMoney(rem)}.`); return; }
-    if (splitState.items.length < 2) { alert('Debes agregar al menos dos sub-transacciones para dividir el movimiento.'); return; }
+    if (Math.abs(rem) >= 0.01) { showSplitToast(`La división no es exacta. Descuadre de ${formatMoney(rem)}.`, true); return; }
+    if (splitState.items.length < 2) { showSplitToast('Agrega al menos dos sub-transacciones para dividir.', true); return; }
     
     let assigned = splitState.items.reduce((sum, item) => sum + round2(item.amount), 0);
-    if (round2(splitState.baseAmount - assigned) !== 0) { alert('La suma de las divisiones debe ser EXACTAMENTE igual al monto total base. Verifica el restante.'); return; }
+    if (round2(splitState.baseAmount - assigned) !== 0) { showSplitToast('La suma debe ser igual al monto total base.', true); return; }
 
     const validItems = splitState.items.filter(i => i.amount > 0);
-    if (validItems.length < 2) { alert('Debes tener al menos 2 divisiones con monto mayor a $0.'); return; }
+    if (validItems.length < 2) { showSplitToast('Debes tener al menos 2 divisiones mayores a $0.', true); return; }
 
     const status = document.getElementById('trans-status').value;
     const baseDateObj = new Date(`${document.getElementById('trans-date').value}T${document.getElementById('trans-time').value}`);
@@ -4409,7 +4622,7 @@ document.getElementById('btn-confirm-splits')?.addEventListener('click', () => {
     viewDate = new Date(baseDateObj.getFullYear(), baseDateObj.getMonth(), 1);
     document.getElementById('split-tx-modal')?.classList.add('hidden');
     forceCloseAllModals(); updateDashboard();
-    alert(`✅ Transacción dividida y guardada en ${validItems.length} partes.`);
+    showSplitToast(`Transacción dividida y guardada en ${validItems.length} partes`);
 });
 
 // --- LÓGICA DE AHORRO DE MONEDAS (UI) ---
@@ -4498,7 +4711,7 @@ window.confirmPendingTx = (id, event) => {
         showAccountSelect: false,
         amountLabel: 'Valor REAL Pagado / Recibido ($)',
         defaultAmount: defaultAmt,
-        submitLabel: '✅ Confirmar Movimiento',
+        submitLabel: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Confirmar Movimiento</span>`,
         onConfirm: (realAmt) => {
             if (realAmt < 0) { alert('Ingresa un monto válido.'); return false; }
             if (!tx.budgetedAmount) tx.budgetedAmount = defaultAmt;
@@ -4788,20 +5001,36 @@ window.renderTransactionHistory = (monthId, snap, projectionData) => {
         const catIcon = getCategoryIcon(t.category, t.type);
         const accIcon = getAccountIcon(accObj.category);
         
-        let clearBgClass = '';
+        const isSelectedInBatch = isBatchSelectMode && selectedBatchIds.has(String(t.id));
+        let itemHighlightStyle = '';
         if (t.isCleared) {
-            clearBgClass = 'style="background-color: var(--positive-bg); border-color: rgba(16, 185, 129, 0.3);"';
+            itemHighlightStyle = 'background-color: var(--positive-bg); border-color: rgba(16, 185, 129, 0.3);';
+        } else if (isSelectedInBatch) {
+            itemHighlightStyle = 'background-color: color-mix(in srgb, var(--accent) 8%, var(--card-bg)); border-color: var(--accent);';
         }
 
+        const showBatchBox = isBatchSelectMode && !isClearModeActive && !t.isVirtual;
+        const checkboxHtml = showBatchBox
+            ? `<div style="margin-right:8px; margin-top:4px; display:flex; align-items:center; flex-shrink:0;">
+                 <input type="checkbox" class="tx-batch-check" value="${t.id}" ${isSelectedInBatch ? 'checked' : ''} style="width:18px; height:18px; accent-color:var(--accent); cursor:pointer;">
+               </div>`
+            : '';
+
+        const itemPadding = showBatchBox ? '12px 12px' : '14px 16px';
+        const iconBoxStyle = showBatchBox
+            ? 'width:30px; height:30px; border-radius:9px; margin-right:9px; margin-top:2px; flex-shrink:0;'
+            : 'margin-right:12px; margin-top:2px; flex-shrink:0;';
+
         listHtml += `
-        <li class="history-item ${isPending ? 'pending-item' : ''}" data-action="edit-tx" data-id="${t.id}" ${clearBgClass} style="align-items:flex-start; padding: 14px 16px;">
-            <div class="drawer-icon-box ${iconClass}" style="margin-right:12px; margin-top: 2px; flex-shrink: 0;">
-                ${t.type === 'transfer' ? renderIcon('transfer', 16) : catIcon}
+        <li class="history-item ${isPending ? 'pending-item' : ''}" data-action="edit-tx" data-id="${t.id}" style="align-items:flex-start; padding:${itemPadding}; ${itemHighlightStyle}">
+            ${checkboxHtml}
+            <div class="drawer-icon-box ${iconClass}" style="${iconBoxStyle}">
+                ${t.type === 'transfer' ? renderIcon('transfer', showBatchBox ? 14 : 16) : catIcon}
             </div>
             <div class="history-info" style="display:flex; flex-direction:column; gap:4px; flex: 1 1 auto; min-width: 0;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                    <strong style="font-size:14.5px; line-height:1.2; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${stripLeadingEmoji(t.description)}</strong>
-                    <div class="history-amount ${colorClass}" style="text-align:right; font-size:15px; font-weight:800; white-space:nowrap; flex-shrink: 0;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+                    <strong style="font-size:14px; line-height:1.2; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${stripLeadingEmoji(t.description)}</strong>
+                    <div class="history-amount ${colorClass}" style="text-align:right; font-size:14.5px; font-weight:800; white-space:nowrap; flex-shrink: 0;">
                         ${sign}${formatMoneyHtml(baseAmt)}
                     </div>
                 </div>
@@ -4824,20 +5053,187 @@ window.renderTransactionHistory = (monthId, snap, projectionData) => {
         const clearedCount = filteredTxs.filter(t => t.isCleared).length;
         document.getElementById('clear-mode-count').innerText = `${clearedCount} / ${filteredTxs.length}`;
     }
+
+    ensureBatchSelectToggleBtn();
+    syncBatchActionsToolbar();
+};
+
+let isBatchSelectMode = false;
+const selectedBatchIds = new Set();
+
+const setBatchSelectMode = (active, initialId = null) => {
+    isBatchSelectMode = !!active;
+    if (!isBatchSelectMode) {
+        selectedBatchIds.clear();
+    } else {
+        if (isClearModeActive) {
+            isClearModeActive = false;
+            document.getElementById('btn-toggle-clear-mode')?.classList.remove('active');
+            document.getElementById('clear-mode-banner')?.classList.add('hidden');
+        }
+        if (initialId) selectedBatchIds.add(String(initialId));
+    }
+    updateDashboard();
+};
+
+const ensureBatchSelectToggleBtn = () => {
+    const countBadge = document.getElementById('history-count-badge');
+    if (!countBadge || !countBadge.parentElement) return;
+
+    let btn = document.getElementById('btn-toggle-batch-select');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'btn-toggle-batch-select';
+        btn.className = 'mini-action-btn';
+        btn.style.cssText = 'font-size:11px; padding:4px 9px; margin-right:6px;';
+        countBadge.parentElement.insertBefore(btn, countBadge);
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setBatchSelectMode(!isBatchSelectMode);
+        });
+    }
+
+    btn.innerText = isBatchSelectMode ? 'Cancelar' : 'Seleccionar';
+    btn.classList.toggle('active', isBatchSelectMode);
+};
+
+const syncBatchActionsToolbar = () => {
+    let toolbar = document.getElementById('batch-actions-toolbar');
+    if (!toolbar) {
+        toolbar = document.createElement('div');
+        toolbar.id = 'batch-actions-toolbar';
+        toolbar.className = 'hidden';
+        toolbar.style.cssText = 'position:fixed; bottom:calc(88px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); z-index:1500; background:var(--card-bg); border:1.5px solid var(--accent-border); border-radius:18px; padding:10px 14px; box-shadow:0 12px 32px rgba(0,0,0,0.22); display:flex; align-items:center; justify-content:space-between; gap:10px; width:calc(100% - 32px); max-width:400px;';
+        
+        toolbar.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                <button type="button" id="btn-batch-close" style="background:none; border:none; color:var(--text-muted); font-size:16px; font-weight:800; cursor:pointer; padding:4px 6px;">✕</button>
+                <div style="display:flex; flex-direction:column; line-height:1.2;">
+                    <strong id="batch-count-label" style="font-size:13.5px; font-weight:800; color:var(--text-main);">0 selec.</strong>
+                    <button type="button" id="btn-batch-select-all" style="background:none; border:none; padding:0; text-align:left; font-size:10.5px; color:var(--accent); font-weight:700; cursor:pointer;">Marcar todos</button>
+                </div>
+            </div>
+            <button type="button" id="btn-batch-delete" class="btn" style="background:rgba(239, 68, 68, 0.12); color:var(--negative); border:1px solid rgba(239, 68, 68, 0.28); font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:12px; display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Borrar
+            </button>
+        `;
+        document.body.appendChild(toolbar);
+
+        toolbar.querySelector('#btn-batch-close').addEventListener('click', () => {
+            setBatchSelectMode(false);
+        });
+
+        toolbar.querySelector('#btn-batch-select-all').addEventListener('click', () => {
+            const visibleChecks = Array.from(document.querySelectorAll('#transaction-list .tx-batch-check'));
+            const allSelected = visibleChecks.length > 0 && visibleChecks.every(c => selectedBatchIds.has(String(c.value)));
+            if (allSelected) {
+                selectedBatchIds.clear();
+            } else {
+                visibleChecks.forEach(c => selectedBatchIds.add(String(c.value)));
+            }
+            updateDashboard();
+        });
+
+        toolbar.querySelector('#btn-batch-delete').addEventListener('click', () => {
+            const selectedIds = Array.from(selectedBatchIds);
+            if (selectedIds.length === 0) return;
+            
+            if (typeof openSafeDeleteModal === 'function') {
+                openSafeDeleteModal(
+                    `${selectedIds.length} Movimiento${selectedIds.length !== 1 ? 's' : ''}`,
+                    [
+                        `Se enviarán a la Papelera de Reciclaje.`,
+                        `Se ajustarán los saldos y presupuestos.`,
+                        `Los intereses y cuotas asociadas también se borrarán.`
+                    ],
+                    () => {
+                        selectedIds.forEach(id => moveTxToTrash(id));
+                        setBatchSelectMode(false);
+                    }
+                );
+            } else {
+                if (confirm(`¿Mover ${selectedIds.length} movimiento(s) a la papelera?`)) {
+                    selectedIds.forEach(id => moveTxToTrash(id));
+                    setBatchSelectMode(false);
+                }
+            }
+        });
+    }
+
+    if (isBatchSelectMode && selectedBatchIds.size > 0) {
+        toolbar.classList.remove('hidden');
+        toolbar.style.display = 'flex';
+        const count = selectedBatchIds.size;
+        document.getElementById('batch-count-label').innerText = `${count} selec.`;
+        const visibleChecks = document.querySelectorAll('#transaction-list .tx-batch-check');
+        const allSelected = visibleChecks.length > 0 && visibleChecks.length === count;
+        const selAllBtn = document.getElementById('btn-batch-select-all');
+        if (selAllBtn) selAllBtn.innerText = allSelected ? 'Desmarcar todos' : 'Marcar todos';
+    } else {
+        toolbar.classList.add('hidden');
+        toolbar.style.display = 'none';
+    }
 };
 
 let isClearModeActive = false;
 document.getElementById('btn-toggle-clear-mode')?.addEventListener('click', (e) => {
     isClearModeActive = !isClearModeActive;
+    if (isClearModeActive && isBatchSelectMode) {
+        isBatchSelectMode = false;
+        selectedBatchIds.clear();
+    }
     e.target.closest('button').classList.toggle('active', isClearModeActive);
     const clearBanner = document.getElementById('clear-mode-banner');
     if (clearBanner) clearBanner.classList.toggle('hidden', !isClearModeActive);
     updateDashboard(); 
 });
 
+// Mantener pulsado un movimiento (450ms) activa la selección múltiple al instante
+let txLongPressTimer = null;
+let txLongPressTriggered = false;
+
+document.getElementById('transaction-list')?.addEventListener('touchstart', (e) => {
+    const item = e.target.closest('.history-item[data-action="edit-tx"]');
+    if (!item || isBatchSelectMode || isClearModeActive) return;
+    const txId = item.getAttribute('data-id');
+    if (!txId || String(txId).startsWith('v_')) return;
+
+    txLongPressTriggered = false;
+    txLongPressTimer = setTimeout(() => {
+        txLongPressTriggered = true;
+        setBatchSelectMode(true, txId);
+    }, 450);
+}, { passive: true });
+
+['touchmove', 'touchend', 'touchcancel'].forEach(evt => {
+    document.getElementById('transaction-list')?.addEventListener(evt, () => {
+        if (txLongPressTimer) {
+            clearTimeout(txLongPressTimer);
+            txLongPressTimer = null;
+        }
+    }, { passive: true });
+});
+
 document.getElementById('transaction-list')?.addEventListener('click', (e) => {
+    if (txLongPressTriggered) {
+        txLongPressTriggered = false;
+        return;
+    }
+
+    const isCheckbox = e.target.closest('.tx-batch-check');
+    if (isCheckbox) {
+        const id = String(isCheckbox.value);
+        if (isCheckbox.checked) selectedBatchIds.add(id);
+        else selectedBatchIds.delete(id);
+        updateDashboard();
+        return;
+    }
+
     const confirmBtn = e.target.closest('.btn-confirm-pending[data-action="confirm-tx"]');
-    if (confirmBtn) {
+    if (confirmBtn && !isBatchSelectMode) {
         e.stopPropagation();
         const txId = confirmBtn.getAttribute('data-id');
         
@@ -4865,10 +5261,18 @@ document.getElementById('transaction-list')?.addEventListener('click', (e) => {
 
     const historyItem = e.target.closest('.history-item[data-action="edit-tx"]');
     if (historyItem) {
-        const txId = historyItem.getAttribute('data-id');
+        const txId = String(historyItem.getAttribute('data-id'));
         
+        if (isBatchSelectMode) {
+            if (txId.startsWith('v_')) return;
+            if (selectedBatchIds.has(txId)) selectedBatchIds.delete(txId);
+            else selectedBatchIds.add(txId);
+            updateDashboard();
+            return;
+        }
+
         if (isClearModeActive) {
-            const tx = financeData.transactions.find(t => String(t.id) === String(txId));
+            const tx = financeData.transactions.find(t => String(t.id) === txId);
             if (tx) {
                 tx.isCleared = !tx.isCleared;
                 localStorage.setItem('myFinances', JSON.stringify(financeData));
@@ -5283,3 +5687,36 @@ setTimeout(() => {
         unlockObs.observe(authOverlay, { attributes: true, attributeFilter: ['class'] });
     }
 }, 500);
+// --- CASCARÓN VISUAL: SINCRONIZACIÓN GOOGLE DRIVE ---
+document.getElementById('pref-link-gdrive')?.addEventListener('change', (e) => {
+    const controls = document.getElementById('cloud-sync-controls');
+    const nameEl = document.getElementById('cloud-account-name');
+    const emailEl = document.getElementById('cloud-account-email');
+
+    if (e.target.checked) {
+        // Simular un pequeño tiempo de carga de Google Sign-In
+        setTimeout(() => {
+            const auth = JSON.parse(localStorage.getItem('myFinancesAuth') || '{}');
+            const userName = auth.name || 'Usuario';
+            nameEl.innerText = userName;
+            nameEl.style.color = '#0ea5e9';
+            emailEl.innerText = 'Vinculado a Google Drive';
+            controls?.classList.remove('hidden');
+            
+            alert('[Próximamente] Aquí se abrirá la ventana de Google para autorizar a la app a crear una carpeta de respaldo en tu Drive.');
+        }, 400);
+    } else {
+        nameEl.innerText = 'Vincular Google Drive';
+        nameEl.style.color = 'var(--text-main)';
+        emailEl.innerText = 'Activa para iniciar sesión';
+        controls?.classList.add('hidden');
+    }
+});
+
+document.getElementById('btn-cloud-backup')?.addEventListener('click', () => {
+    alert('[Próximamente] Se subirá un archivo cifrado con todas tus finanzas a tu Google Drive personal.');
+});
+
+document.getElementById('btn-cloud-restore')?.addEventListener('click', () => {
+    alert('[Próximamente] La app descargará y aplicará tu último respaldo desde Google Drive.');
+});

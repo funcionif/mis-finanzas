@@ -618,42 +618,66 @@ const isPeriodMatching = (freq, startMonth, currentMonthIndex) => {
     return false;
 };
 
+const getMaxBudgetProjectionYear = () => currentDate.getFullYear() + 1;
+
+const resolveCategoryYearBudget = (catName, year) => {
+    const cfg = financeData.categoryBudgets?.[catName];
+    if (!cfg) return null;
+    const maxYear = getMaxBudgetProjectionYear();
+    if (year > maxYear) return null;
+
+    if (typeof cfg === 'object' && cfg.byYear && typeof cfg.byYear === 'object') {
+        if (cfg.byYear[year] !== undefined) return cfg.byYear[year];
+        const currYear = currentDate.getFullYear();
+        if (year === maxYear && cfg.byYear[currYear] !== undefined) {
+            return cfg.byYear[currYear];
+        }
+        return null;
+    }
+    return cfg;
+};
+
 const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year = null) => {
     const mIdx = monthIndex !== null ? monthIndex : currentDate.getMonth();
-    const y = year !== null ? year : currentDate.getFullYear();
+    const y = year !== null ? year : (typeof viewDate !== 'undefined' && viewDate ? viewDate.getFullYear() : currentDate.getFullYear());
+    const isBeyondHorizon = y > getMaxBudgetProjectionYear();
     
-    // Sumar Suscripciones Reservadas de este mes
+    // Sumar Suscripciones Reservadas de este mes (solo dentro del horizonte de 1 año)
     let reservedSubs = 0;
-    financeData.subscriptions.forEach(sub => {
-        if (sub.status === 'active' && sub.reserveInBudget && sub.category === catObj.name) {
-            let appliesToSub = !subObj || (subObj.name === 'General');
-            if (appliesToSub && sub.nextBillingDate) {
-                const sm = parseInt(sub.nextBillingDate.split('-')[1], 10);
-                const cyc = String(sub.cycle || '').toLowerCase();
-                if (cyc === 'monthly' || cyc === 'mensual') reservedSubs += round2(sub.amount);
-                else if (cyc === 'weekly' || cyc === 'semanal') reservedSubs += round2((sub.amount * 52) / 12);
-                else if ((cyc === 'bimonthly' || cyc === 'bimestral') && ((mIdx - (sm - 1)) % 2 === 0)) reservedSubs += round2(sub.amount);
-                else if ((cyc === 'quarterly' || cyc === 'trimestral') && ((mIdx - (sm - 1)) % 3 === 0)) reservedSubs += round2(sub.amount);
-                else if ((cyc === 'semiannual' || cyc === 'semestral') && ((mIdx - (sm - 1)) % 6 === 0)) reservedSubs += round2(sub.amount);
-                else if ((cyc === 'annual' || cyc === 'anual') && (sm - 1) === mIdx) reservedSubs += round2(sub.amount);
+    if (!isBeyondHorizon) {
+        financeData.subscriptions.forEach(sub => {
+            if (sub.status === 'active' && sub.reserveInBudget && sub.category === catObj.name) {
+                let appliesToSub = !subObj || (subObj.name === 'General');
+                if (appliesToSub && sub.nextBillingDate) {
+                    const sm = parseInt(sub.nextBillingDate.split('-')[1], 10);
+                    const cyc = String(sub.cycle || '').toLowerCase();
+                    if (cyc === 'monthly' || cyc === 'mensual') reservedSubs += round2(sub.amount);
+                    else if (cyc === 'weekly' || cyc === 'semanal') reservedSubs += round2((sub.amount * 52) / 12);
+                    else if ((cyc === 'bimonthly' || cyc === 'bimestral') && ((mIdx - (sm - 1)) % 2 === 0)) reservedSubs += round2(sub.amount);
+                    else if ((cyc === 'quarterly' || cyc === 'trimestral') && ((mIdx - (sm - 1)) % 3 === 0)) reservedSubs += round2(sub.amount);
+                    else if ((cyc === 'semiannual' || cyc === 'semestral') && ((mIdx - (sm - 1)) % 6 === 0)) reservedSubs += round2(sub.amount);
+                    else if ((cyc === 'annual' || cyc === 'anual') && (sm - 1) === mIdx) reservedSubs += round2(sub.amount);
+                }
             }
-        }
-    });
+        });
+    }
 
     // 1. Calcular Límite Base propio del mes actual (Categoría padre o Subcategoría individual)
     let ownBaseLimit = 0;
-    if (subObj) {
-        if (subObj.isMonthly && Array.isArray(subObj.months)) {
-            ownBaseLimit = round2(subObj.months[mIdx] || 0);
-        } else if (subObj.limit > 0 && isPeriodMatching(subObj.frequency || 'monthly', subObj.startMonth || 0, mIdx)) {
-            ownBaseLimit = round2(subObj.limit);
-        }
-    } else {
-        const cfg = financeData.categoryBudgets[catObj.name];
-        if (cfg) {
-            if (typeof cfg === 'number') ownBaseLimit = round2(cfg);
-            else if (cfg.isMonthly && Array.isArray(cfg.months)) ownBaseLimit = round2(cfg.months[mIdx] || 0);
-            else ownBaseLimit = round2(cfg.general || 0);
+    if (!isBeyondHorizon) {
+        if (subObj) {
+            if (subObj.isMonthly && Array.isArray(subObj.months)) {
+                ownBaseLimit = round2(subObj.months[mIdx] || 0);
+            } else if (subObj.limit > 0 && isPeriodMatching(subObj.frequency || 'monthly', subObj.startMonth || 0, mIdx)) {
+                ownBaseLimit = round2(subObj.limit);
+            }
+        } else {
+            const cfg = resolveCategoryYearBudget(catObj.name, y);
+            if (cfg) {
+                if (typeof cfg === 'number') ownBaseLimit = round2(cfg);
+                else if (cfg.isMonthly && Array.isArray(cfg.months)) ownBaseLimit = round2(cfg.months[mIdx] || 0);
+                else ownBaseLimit = round2(cfg.general || 0);
+            }
         }
     }
 
@@ -664,7 +688,7 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
     const rolloverMode = subObj ? (subObj.rollover || 'none') : (catObj.rollover || 'none');
     const hasSubcats = !subObj && Array.isArray(catObj.subcategories) && catObj.subcategories.some(s => !s.isArchived);
     
-    if (rolloverMode !== 'none' && mIdx > 0) {
+    if (!isBeyondHorizon && rolloverMode !== 'none' && mIdx > 0) {
         let runningRollover = 0;
         
         for (let i = 0; i < mIdx; i++) {
@@ -676,7 +700,7 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
                 if (subObj.isMonthly && Array.isArray(subObj.months)) mLimit = round2(subObj.months[i] || 0);
                 else if (subObj.limit > 0 && isPeriodMatching(subObj.frequency || 'monthly', subObj.startMonth || 0, i)) mLimit = round2(subObj.limit);
             } else {
-                const cfg = financeData.categoryBudgets[catObj.name];
+                const cfg = resolveCategoryYearBudget(catObj.name, y);
                 if (cfg) {
                     if (typeof cfg === 'number') mLimit = round2(cfg);
                     else if (cfg.isMonthly && Array.isArray(cfg.months)) mLimit = round2(cfg.months[i] || 0);
@@ -706,7 +730,7 @@ const getCategoryBudgetStatus = (catObj, subObj = null, monthIndex = null, year 
             // Ejecución en el mes i
             let mSpent = 0;
             financeData.transactions.forEach(t => {
-                if (!t.isDeleted && !t.isTripIsolated && t.monthId === tempMonthId && t.type === 'expense' && !t.isAdjustment && t.category === catObj.name && isTxClosed(t)) {
+                if (!t.isDeleted && !t.isTripIsolated && getTxMonthId(t) === tempMonthId && t.type === 'expense' && !t.isAdjustment && t.category === catObj.name && isTxClosed(t)) {
                     const matchesScope = subObj
                         ? (t.subcategory === subObj.name)
                         : (!hasSubcats || !t.subcategory || t.subcategory === 'General');
@@ -925,6 +949,7 @@ const getMonthlyGmfUsedOutflows = (accountId, monthId, excludeTxId = null) => {
     let used = 0;
     (financeData.transactions || []).forEach(t => {
         if (t.isDeleted || t.isAdjustment || t.isGmfTax) return;
+        if (t.isSharedTrip && t.paidBy === 'companion') return;
         if (excludeTxId && String(t.id) === String(excludeTxId)) return;
         if (getTxMonthId(t) !== monthId || !isTxClosed(t)) return;
 
@@ -1111,8 +1136,8 @@ const simulateFutureLiquidity = (startMonthId, targetMonthId, initialLiquidity) 
     let totalProjectedExp = 0;
 
     // Calcular el promedio histórico como respaldo (para categorías sin presupuesto)
-    const regularTrans = financeData.transactions.filter(t => t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
-    const monthsCount = new Set(regularTrans.map(t => t.monthId)).size || 1;
+    const regularTrans = financeData.transactions.filter(t => !t.isDeleted && !t.isTripIsolated && t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
+    const monthsCount = new Set(regularTrans.map(t => getTxMonthId(t))).size || 1;
     const avgExpense = round2(regularTrans.reduce((s, t) => s + round2(t.amount), 0) / monthsCount);
 
     while (currentIterDate <= targetDate) {
@@ -1287,7 +1312,7 @@ const getPendingCardPurchases = (cardId) => {
 
 const getPendingRevolvingPurchases = (debtId) => {
     return financeData.transactions
-        .filter(t => t.account === debtId && t.type === 'expense' && isTxClosed(t) && t.installments !== undefined)
+        .filter(t => !t.isDeleted && t.account === debtId && t.type === 'expense' && isTxClosed(t) && t.installments !== undefined)
         .map(t => {
             const inst = Math.max(1, parseInt(t.installments, 10) || 1);
             const paid = Math.max(0, parseInt(t.paidInstallments, 10) || 0);
@@ -1375,8 +1400,8 @@ const revertTransferAllocation = (tx) => {
         if (toObj.category === 'pocket') adjustPocketBalance(toObj.id, -amt);
     }
     
-    // Limpiar intereses generados automáticamente por esta transferencia
-    financeData.transactions = financeData.transactions.filter(t => t.linkedToTransfer !== tx.id);
+    // Ya no eliminamos físicamente los hijos (intereses) aquí.
+    // El sistema de borrado en cascada en app.js se encarga de enviarlos a la papelera.
 
     if (!Array.isArray(tx.allocatedItems)) return;
     tx.allocatedItems.forEach(item => {
@@ -1432,7 +1457,7 @@ const getCardCycleActivity = (card, refDate = currentDate) => {
     const endMs = cycleEnd.getTime();
 
     financeData.transactions.forEach(t => {
-        if (t.account === card.id && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
+        if (!t.isDeleted && t.account === card.id && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
             if (t.id >= startMs && t.id <= endMs) {
                 cycleSpend = round2(cycleSpend + round2(t.amount));
                 cycleTxCount++;
@@ -1583,7 +1608,7 @@ const getAccountMonthlyInflows = (accountId, monthId, includePending = false) =>
     if (!accountId || !monthId) return 0;
     let totalInflow = 0;
     financeData.transactions.forEach(t => {
-        if (t.monthId === monthId && !t.isAdjustment && (includePending || isTxClosed(t))) {
+        if (!t.isDeleted && getTxMonthId(t) === monthId && !t.isAdjustment && (includePending || isTxClosed(t))) {
             const val = t.status === 'pending' ? round2(t.budgetedAmount || t.amount) : round2(t.amount);
             if (t.type === 'income' && t.account === accountId) {
                 totalInflow = round2(totalInflow + val);
@@ -1625,7 +1650,7 @@ const calculateCardStatementProjection = (card, currentDebt, monthOffset = 0, re
     const cycleEndMs = new Date(cutDateObj.getFullYear(), cutDateObj.getMonth(), cutDateObj.getDate(), 23, 59, 59).getTime();
 
     const cyclePayments = financeData.transactions
-        .filter(t => isTxClosed(t) && ((t.type === 'transfer' && t.toAccount === card.id) || (t.type === 'income' && t.account === card.id)))
+        .filter(t => !t.isDeleted && isTxClosed(t) && ((t.type === 'transfer' && t.toAccount === card.id) || (t.type === 'income' && t.account === card.id)))
         .filter(t => t.id >= cycleStartMs && t.id <= cycleEndMs)
         .map(t => ({
             kind: 'payment',
@@ -1918,7 +1943,7 @@ const calculateCardStatementProjection = (card, currentDebt, monthOffset = 0, re
     }
 
     const histExpenses = financeData.transactions
-        .filter(t => t.account === card.id && t.type === 'expense' && !t.isAdjustment && isTxClosed(t))
+        .filter(t => !t.isDeleted && t.account === card.id && t.type === 'expense' && !t.isAdjustment && isTxClosed(t))
         .filter(t => t.id >= cycleStartMs && t.id <= cycleEndMs)
         .map(t => ({
             kind: 'historical_exp',
@@ -2047,8 +2072,8 @@ const calculateFinancialHealth = (monthId, snap) => {
          financeData.categories.expense.forEach(c => { totalBudget += getCategoryLimitForMonth(c, evalMonthIdx, evalYear); });
     }
 
-    const regularTrans = financeData.transactions.filter(t => t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
-    const monthsCount = new Set(regularTrans.map(t => t.monthId)).size || 1;
+    const regularTrans = financeData.transactions.filter(t => !t.isDeleted && !t.isTripIsolated && t.type === 'expense' && !t.isAdjustment && isTxClosed(t));
+    const monthsCount = new Set(regularTrans.map(t => getTxMonthId(t))).size || 1;
     const avgExpense = round2(regularTrans.reduce((s, t) => s + round2(t.amount), 0) / monthsCount);
 
     // Híbrido: el mayor entre lo comprometido (presupuesto + deudas), promedio histórico, o ejecución real del mes
@@ -2189,6 +2214,7 @@ const checkRentaDeclaration = (year) => {
     
     // 2. Sumatoria de flujos durante el año
     financeData.transactions.forEach(t => {
+        if (t.isDeleted || (t.isSharedTrip && t.paidBy === 'companion')) return;
         const txYear = new Date(t.id).getFullYear();
         if (txYear === year && isTxClosed(t) && !t.isAdjustment) {
             const val = round2(t.amount);
@@ -2383,8 +2409,8 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const totalDeduccionesArt387 = round2(dedPrepaid + dedHousing + dedDependents);
     const baseNeta25 = Math.max(0, round2(rentaLiquida - totalDeduccionesArt387 - dedVoluntary));
 
-    const retCapEval = params.retCapEval || document.getElementById('param-ret-cap-eval')?.value || 'monthly';
-    const retOrder = params.retOrder || document.getElementById('param-ret-order')?.value || 'salary_first';
+    const retCapEval = params.retCapEval || 'monthly';
+    const retOrder = params.retOrder || 'salary_first';
 
     const baseExempt25MonthlyCap = round2(((params.exempt25AnnualUvt || 790) / 12) * uvt);
     const baseGlobalUvtMonthlyCap = round2(((params.global40AnnualUvt || 1340) / 12) * uvt);
@@ -2426,7 +2452,7 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const targetMonthId = getMonthId(today);
     
     financeData.customAccounts.filter(a => a.category === 'debt' && a.payrollDeduction).forEach(d => {
-        const bal = round2(financeData.transactions.filter(t => (t.account === d.id || t.toAccount === d.id) && t.monthId <= targetMonthId && isTxClosed(t)).reduce((s, t) => {
+        const bal = round2(financeData.transactions.filter(t => !t.isDeleted && (t.account === d.id || t.toAccount === d.id) && getTxMonthId(t) <= targetMonthId && isTxClosed(t)).reduce((s, t) => {
             if (t.account === d.id) return s + (t.type === 'income' ? -t.amount : t.amount);
             if (t.type === 'transfer' && t.toAccount === d.id) return s - t.amount;
             return s;
@@ -2486,14 +2512,24 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
     const baseMensualEstandar = round2(basic + benefitsTransport);
     let variableIncomeSemester = 0;
     let variableIncomeYear = 0;
+    const excludedNonVariableRegex = /anticipo|adelanto|cesant[ií]a|interes(es)?\s*(de\s*)?cesant|vacacion|disfrutad|compensad|prima\b|parcial|liquidaci[oó]n|retroactivo/i;
     
     financeData.transactions.forEach(t => {
-        if (t.type === 'income' && t.category && stripLeadingEmoji(t.category).toLowerCase().includes('nómina') && isTxClosed(t) && t.monthId) {
+        if (!t.isDeleted && !t.isAdjustment && t.type === 'income' && t.category && normalizeCategoryName(stripLeadingEmoji(t.category)).includes('nomina') && isTxClosed(t) && t.monthId) {
             const [ty, tm] = t.monthId.split('-').map(Number);
             if (ty === currentYear) {
                 const mIdx = tm - 1;
-                const isBaseSalary = t.description.toLowerCase().includes('nómina') && (t.subcategory === 'General' || !t.subcategory);
-                if (!isBaseSalary) {
+                const descLower = String(t.description || '').toLowerCase();
+                const subLower = String(t.subcategory || '').toLowerCase();
+                const isBaseSalary = descLower.includes('nómina') && (t.subcategory === 'General' || !t.subcategory);
+                const isExcludedConcept = !!(
+                    t.isPayrollAdvance ||
+                    t.benefitType ||
+                    excludedNonVariableRegex.test(descLower) ||
+                    excludedNonVariableRegex.test(subLower)
+                );
+
+                if (!isBaseSalary && !isExcludedConcept) {
                     variableIncomeYear += round2(t.amount);
                     if (mIdx >= semStartMonth && mIdx <= currentMonthIdx) variableIncomeSemester += round2(t.amount);
                 }
@@ -2601,20 +2637,96 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
 
     const vacDaysEarned = round2((daysTotalContract * 15) / 360);
     const vacDaysTaken = Math.max(0, round2(config.vacDaysTaken || 0));
-    const vacDaysPending = Math.max(0, round2(vacDaysEarned - vacDaysTaken));
+    const vacDaysComp = Math.max(0, round2(config.vacDaysComp || 0));
+    const pureTakenDays = config._combinedVacDays ? Math.max(0, round2(vacDaysTaken - vacDaysComp)) : vacDaysTaken;
+    const totalConfigVacDays = config._combinedVacDays ? vacDaysTaken : round2(vacDaysTaken + vacDaysComp);
+    const vacDaysPending = Math.max(0, round2(vacDaysEarned - totalConfigVacDays));
     const liqVacaciones = round2((basic * vacDaysPending) / 30);
 
-    let advPrima = 0, advCes = 0, advInt = 0;
+    const SHORT_MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const benefitPayments = {
+        primaJun: [],
+        primaDec: [],
+        cesantias: [],
+        intereses: [],
+        vacaciones: []
+    };
+
     financeData.transactions.forEach(t => {
-        if (t.type === 'income' && isTxClosed(t)) {
+        if (t.isDeleted || t.isAdjustment || t.type !== 'income' || !isTxClosed(t)) return;
+
+        let txYear = currentYear;
+        let txMonthIdx = 0;
+        if (t.monthId && /^\d{4}-\d{2}$/.test(t.monthId)) {
+            const [yStr, mStr] = t.monthId.split('-');
+            txYear = parseInt(yStr, 10);
+            txMonthIdx = Math.max(0, Math.min(11, parseInt(mStr, 10) - 1));
+        } else {
             const txDate = new Date(t.id);
-            if (txDate.getFullYear() === currentYear) {
-                if (t.benefitType === 'prima') { if (txDate >= semStart) advPrima = round2(advPrima + t.amount); }
-                else if (t.benefitType === 'intereses_cesantias') advInt = round2(advInt + t.amount);
-                else if (t.benefitType === 'cesantias') advCes = round2(advCes + t.amount);
+            txYear = txDate.getFullYear();
+            txMonthIdx = txDate.getMonth();
+        }
+
+        if (txYear !== currentYear) return;
+
+        const amt = round2(t.amount || 0);
+        if (amt <= 0) return;
+
+        const catNorm = normalizeCategoryName(stripLeadingEmoji(t.category || ''));
+        const subNorm = normalizeCategoryName(stripLeadingEmoji(t.subcategory || ''));
+        const descNorm = normalizeCategoryName(t.description || '');
+        let bType = t.benefitType || '';
+
+        if (!bType) {
+            if ((catNorm.includes('prima') || descNorm.includes('prima')) && !descNorm.includes('extralegal') && !catNorm.includes('nomina')) {
+                bType = 'prima';
+            } else if (catNorm.includes('cesant') || descNorm.includes('cesant')) {
+                bType = (descNorm.includes('interes') || descNorm.includes('12%') || subNorm.includes('interes')) ? 'intereses_cesantias' : 'cesantias';
+            } else if (catNorm.includes('vacacion') || descNorm.includes('vacacion')) {
+                bType = 'vacaciones';
             }
         }
+
+        const entry = { amount: amt, monthIdx: txMonthIdx, monthLabel: SHORT_MONTHS_ES[txMonthIdx] || '' };
+        if (bType === 'prima') {
+            if (txMonthIdx <= 5) benefitPayments.primaJun.push(entry);
+            else benefitPayments.primaDec.push(entry);
+        } else if (bType === 'cesantias') {
+            benefitPayments.cesantias.push(entry);
+        } else if (bType === 'intereses_cesantias') {
+            benefitPayments.intereses.push(entry);
+        } else if (bType === 'vacaciones') {
+            benefitPayments.vacaciones.push(entry);
+        }
     });
+
+    const summarizeBenefitPayments = (list) => {
+        const sorted = [...list].sort((a, b) => a.monthIdx - b.monthIdx);
+        const total = round2(sorted.reduce((s, p) => s + p.amount, 0));
+        const months = [...new Set(sorted.map(p => p.monthLabel).filter(Boolean))];
+        return { total, months, count: sorted.length, label: months.join(', ') };
+    };
+
+    const paidPrimaJun = summarizeBenefitPayments(benefitPayments.primaJun);
+    const paidPrimaDec = summarizeBenefitPayments(benefitPayments.primaDec);
+    const paidPrimaActiveSem = semStartMonth === 0 ? paidPrimaJun : paidPrimaDec;
+    const paidCesantias = summarizeBenefitPayments(benefitPayments.cesantias);
+    const paidIntereses = summarizeBenefitPayments(benefitPayments.intereses);
+    const paidVacaciones = summarizeBenefitPayments(benefitPayments.vacaciones);
+
+    const advPrima = paidPrimaActiveSem.total;
+    const advCes = paidCesantias.total;
+    const advInt = paidIntereses.total;
+    const advVac = paidVacaciones.total;
+
+    // Equivalencia en pesos de días disfrutados y días compensados ingresados manualmente
+    const vacTakenAmount = round2((basic * pureTakenDays) / 30);
+    const vacCompAmount = round2((basic * vacDaysComp) / 30);
+    // Para compensadas/pagadas toma el mayor entre comprobante y días compensados (sin duplicar) + días disfrutados
+    const vacPaidOrCompAmount = Math.max(advVac, vacCompAmount);
+    const totalVacUsedAmount = round2(vacTakenAmount + vacPaidOrCompAmount);
+    // Si hay comprobante de vacaciones que excede los días compensados ingresados, descuenta solo la diferencia en liquidación
+    const extraReceiptVacDeduction = Math.max(0, round2(advVac - vacCompAmount));
 
     return {
         params, uvt, smmlv, basic, nonSalary, taxableNonSalary, excessNonSalary, ibc, effectiveTransport, benefitsTransport, health, pension, fsp,
@@ -2627,18 +2739,21 @@ const calculateLaborMetrics = (config, today = new Date(), customParams = null, 
         halfPrimaJunNeta: primaJunCalc.halfNeta, halfPrimaDecNeta: primaDecCalc.halfNeta,
         usedPrimaAverage, usedCesantiasAverage, semWeighted, yearWeighted, oldMonthlyBase, isRetroApplied,
         halfPrimaBruta, retPrima, halfPrimaNeta, daysYear, daysSemester, daysTotalContract, startObj, currentYear,
-        vacDaysEarned, vacDaysTaken, vacDaysPending, liqVacaciones,
+        vacDaysEarned, vacDaysTaken, pureTakenDays, vacDaysComp, vacDaysPending,
+        vacTakenAmount, vacCompAmount, totalVacUsedAmount,
+        paidPrimaJun, paidPrimaDec, paidPrimaActiveSem, paidCesantias, paidIntereses, paidVacaciones,
         liqPrima: Math.max(0, round2(liqPrima - advPrima)),
         liqCesantias: Math.max(0, round2(liqCesantias - advCes)),
-        liqIntereses: Math.max(0, round2(liqIntereses - advInt))
+        liqIntereses: Math.max(0, round2(liqIntereses - advInt)),
+        liqVacaciones: Math.max(0, round2(liqVacaciones - extraReceiptVacDeduction))
     };
 };
 
 const simulateExtraBonus = (config, bonusAmount, bonusType = 'non_salary', customParams = null) => {
     const bonus = Math.max(0, round2(bonusAmount));
     const params = customParams || getTaxParams();
-    const retOrder = params.retOrder || document.getElementById('param-ret-order')?.value || 'salary_first';
-    const retCapEval = params.retCapEval || document.getElementById('param-ret-cap-eval')?.value || 'monthly';
+    const retOrder = params.retOrder || 'salary_first';
+    const retCapEval = params.retCapEval || 'monthly';
     const baseMetrics = calculateLaborMetrics(config, currentDate, params);
 
     if (bonus <= 0) {
@@ -2786,7 +2901,18 @@ const formatMonthName = (date) => {
     const target = new Date(y, m - 1, 1);
     return target.toLocaleDateString('es-CO', { month: 'short', year: 'numeric' }).replace('.', '');
 };
-const getAssetEmoji = (cat) => ({ 'Inmueble': '🏠', 'Vehículo': '🚗', 'Inversión': '📈', 'Tecnología': '💻', 'Coleccionable': '💎', 'Otro': '📦' }[cat] || '📦');
+const getAssetEmoji = (cat) => {
+    const svg = (inner) => `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; vertical-align:-3px;">${inner}</svg>`;
+    const icons = {
+        'Inmueble': svg('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),
+        'Vehículo': svg('<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>'),
+        'Inversión': svg('<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>'),
+        'Tecnología': svg('<rect x="3" y="4" width="18" height="12" rx="2" ry="2"/><line x1="2" y1="20" x2="22" y2="20"/>'),
+        'Coleccionable': svg('<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>'),
+        'Otro': svg('<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>')
+    };
+    return icons[cat] || icons['Otro'];
+};
 
 const calcCommercialDays = (sD, eD) => {
     if (sD > eD) return 0;
@@ -2888,7 +3014,7 @@ window.archiveYearData = async (targetYear) => {
     const txsToKeep = [];
 
     financeData.transactions.forEach(t => {
-        if (t.monthId <= cutoffMonthId && t.status === 'closed') {
+        if (!t.isDeleted && getTxMonthId(t) <= cutoffMonthId && t.status === 'closed') {
             const isDeferred = t.installments > 1;
             const isFullyPaid = isDeferred && ((t.paidInstallments || 0) >= t.installments);
             
@@ -2906,6 +3032,7 @@ window.archiveYearData = async (targetYear) => {
 
     const netImpact = {};
     txsToDelete.forEach(t => {
+        if (t.isDeleted || (t.isSharedTrip && t.paidBy === 'companion')) return;
         const amt = round2(t.amount);
         const fromCat = getAccountObj(t.account).category;
         
@@ -2944,7 +3071,7 @@ window.archiveYearData = async (targetYear) => {
                 type: tType,
                 status: 'closed',
                 account: accId,
-                description: `📦 Saldo Consolidado Cierre ${targetYear}`,
+                description: `Saldo Consolidado Cierre ${targetYear}`,
                 amount: Math.abs(impact),
                 date: `31 dic, 12:00`,
                 isAdjustment: true
@@ -2971,7 +3098,7 @@ window.archiveYearData = async (targetYear) => {
 const computeSafeToSpendToday = (monthId, currSnap) => {
     let pendingExp = 0;
     financeData.transactions.forEach(t => {
-        if (!t.isDeleted && t.monthId === monthId && t.type === 'expense' && t.status === 'pending') {
+        if (!t.isDeleted && !t.isTripIsolated && !(t.isSharedTrip && t.paidBy === 'companion') && getTxMonthId(t) === monthId && t.type === 'expense' && t.status === 'pending') {
             pendingExp = round2(pendingExp + round2(t.budgetedAmount || t.amount));
         }
     });
@@ -2982,7 +3109,7 @@ const computeSafeToSpendToday = (monthId, currSnap) => {
         totalLimit = round2(totalLimit + getCategoryLimitForMonth(c, mIdx));
     });
     financeData.transactions.forEach(t => {
-        if (!t.isDeleted && !t.isTripIsolated && t.monthId === monthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
+        if (!t.isDeleted && !t.isTripIsolated && getTxMonthId(t) === monthId && t.type === 'expense' && !t.isAdjustment && isTxClosed(t)) {
             totalSpentExp = round2(totalSpentExp + round2(t.amount));
         }
     });
@@ -3020,9 +3147,9 @@ const computeCalendarHeatmapData = (baseDate, mode = 'variable') => {
     const offset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const todayStr = currentDate.toLocaleDateString('en-CA');
-    const viewMonthId = getMonthId(baseDate);
-    const currMonthId = getMonthId(currentDate);
-    const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+    const viewMonthId = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const currMonthId = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+    const monthPrefix = `${viewMonthId}-`;
 
     const dayActivity = {};
     financeData.transactions.forEach(t => {
@@ -3289,7 +3416,7 @@ const computeCashProjectionData = (horizon = 'eom') => {
 
             paySlots.forEach(slot => {
                 const alreadyRecorded = financeData.transactions.some(t => {
-                    if (t.isDeleted || t.monthId !== mId || t.type !== 'income') return false;
+                    if (t.isDeleted || getTxMonthId(t) !== mId || t.type !== 'income') return false;
                     const isSal = /salario|n[oó]mina/i.test(`${t.category || ''} ${t.description || ''}`);
                     if (!isSal) return false;
                     if (slot.isFirstHalf === null) return true;
@@ -3305,7 +3432,7 @@ const computeCashProjectionData = (horizon = 'eom') => {
         financeData.customAccounts.filter(a => a.category === 'credit_card').forEach(c => {
             const bal = round2(currSnap.bals[c.id] || 0);
             if (bal <= 0 || !c.paymentDay) return;
-            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && t.monthId === mId && t.toAccount === c.id && t.type === 'transfer');
+            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && getTxMonthId(t) === mId && t.toAccount === c.id && t.type === 'transfer');
             if (!alreadyPaid) {
                 const minPay = calculateCardMinPaymentEstimate(c, bal).totalMinPayment;
                 pushEvent(new Date(y, m, Math.min(c.paymentDay, daysInM)), 'expense', minPay, `Tarjeta ${c.name}`);
@@ -3315,7 +3442,7 @@ const computeCashProjectionData = (horizon = 'eom') => {
         financeData.customAccounts.filter(a => a.category === 'debt' && !a.payrollDeduction).forEach(d => {
             const bal = round2(currSnap.bals[d.id] || 0);
             if (bal <= 0) return;
-            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && t.monthId === mId && t.toAccount === d.id && t.type === 'transfer');
+            const alreadyPaid = financeData.transactions.some(t => !t.isDeleted && getTxMonthId(t) === mId && t.toAccount === d.id && t.type === 'transfer');
             if (!alreadyPaid) {
                 const qAmt = getDebtMonthlyQuotaBreakdown(d, bal).totalQuota;
                 pushEvent(new Date(y, m, Math.min(d.paymentDay || 30, daysInM)), 'expense', qAmt, `Cuota ${d.name}`);
